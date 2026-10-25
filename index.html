@@ -408,7 +408,7 @@ $('today').textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'l
 const boxes=[...document.querySelectorAll('section > ul > li > label > input[type=checkbox]')];
 const total=boxes.length; const sync=$('sync');
 let S={checked:{},chassis:{},walk:[],week:{}};
-const API=atob("aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J5dV9QSzVCaUtWeVQtS2pCNDNVd2gybmNya1NNaVpFOGo0Ni1UYVdWWkFMQjJqNHR0TXNZRVBHY1k2X3JzeUh6QUMvZXhlYw==");
+const API=atob("aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J3SXlvZ1ozUGMzczdJUGc4Vk92d0ZFU2IycGFZLVo2V21HTnRBUFdQdFJaMG1wNHFSSTBnY3hwQTc5b3VidHpvQzIvZXhlYw==");
 let KEYRES;const KEYP=new Promise(r=>{KEYRES=r});
 const keyFrom=s=>{s=String(s||'').trim();const m=s.match(/[?&]k=([^&#\s]+)/);return decodeURIComponent(m?m[1]:s)};
 const post=(body,ms)=>{const ac=typeof AbortController!=='undefined'?new AbortController():null;const t=ac&&setTimeout(()=>ac.abort(),ms||45000);
