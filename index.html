@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yard App</title>
+<meta name="theme-color" content="#2e2d6f">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Yard App"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Layout: a single shift-sheet column, clock times down the left edge like a gate log */
+:root{
+--bg:#f3f4f2; --panel:#ffffff; --ink:#1d2326; --muted:#5d686d; --line:#d6dad8;
+--accent:#e0a100; --accent-ink:#5a4100; --stop:#b3261e; --ok:#2e7d4f;
+--display:"Oswald","Arial Narrow",sans-serif;
+--body:"Lato",system-ui,sans-serif;
+--brand:#2e2d6f; --brand-red:#e42430; --brand-btn:#2e2d6f; --brand-text:#2e2d6f;
+--mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+--bg:#15191b; --panel:#1d2225; --ink:#e7eaea; --muted:#9aa5aa; --line:#30383c;
+--accent:#f2b928; --accent-ink:#f7d36e; --stop:#ff8a80; --ok:#7fd3a0; color-scheme:dark}}
+:root[data-theme="dark"]{
+--bg:#15191b; --panel:#1d2225; --ink:#e7eaea; --muted:#9aa5aa; --line:#30383c;
+--accent:#f2b928; --accent-ink:#f7d36e; --stop:#ff8a80; --ok:#7fd3a0; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-direction:column;gap:6px;border-bottom:4px solid var(--accent);padding-bottom:14px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-size:40px;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:0}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.meter{flex:1 1 220px;height:10px;background:var(--line);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.count{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px}
+button.reset{font:inherit;font-size:13px;background:none;border:1px solid var(--line);color:var(--muted);padding:5px 10px;border-radius:3px;cursor:pointer}
+button.reset:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{display:flex;flex-direction:column;gap:8px}
+h2{font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:.04em;margin:0;display:flex;align-items:baseline;gap:10px}
+h2 .t{font-family:var(--mono);font-size:13px;color:var(--accent-ink);letter-spacing:0}
+ul{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+li{border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+label{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:12px 14px;cursor:pointer;align-items:start}
+label input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--ok)}
+label span{min-width:0}
+label b{font-weight:600}
+label small{display:block;color:var(--muted);font-size:13.5px;margin-top:2px}
+input:checked + span{color:var(--muted)}
+input:checked + span b{text-decoration:line-through}
+.note{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--stop);border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.note h3{margin:0;font-family:var(--display);font-size:18px;text-transform:uppercase;letter-spacing:.04em;color:var(--stop)}
+.note p,.note ol{margin:0}
+.note ol{padding-left:20px}
+.tag{font-family:var(--mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);padding:1px 5px;border-radius:2px}
+.esc{width:100%;border-collapse:collapse;font-size:14px}
+.esc td{padding:8px 10px;border-top:1px solid var(--line)}
+.esc td:first-child{font-family:var(--mono);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow-x:auto}
+footer{color:var(--muted);font-size:13px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.day{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:6px 4px;text-align:center;display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.day .dn{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+.day .pc{font-family:var(--display);font-size:20px;line-height:1}
+.day.full{border-color:var(--ok)} .day.full .pc{color:var(--ok)}
+.day.low .pc{color:var(--stop)} .day.none .pc{color:var(--muted)}
+.day.today{outline:2px solid var(--accent);outline-offset:-1px}
+.stamp{font-family:var(--mono);font-size:12px;color:var(--ok);margin-left:6px}
+.chas{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow-x:auto}
+.chas table{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
+.chas th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-weight:500}
+.chas td{padding:7px 10px;border-top:1px solid var(--line);vertical-align:middle}
+.chas tr:first-child td{border-top:0}
+.cn{font-family:var(--mono);font-weight:500;white-space:nowrap}
+.cm{color:var(--muted);font-size:12.5px}
+.chas select{font:inherit;font-size:13.5px;padding:4px 6px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink);max-width:100%}
+.chas select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.chas .rg{min-width:230px}.rloc a{color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--line)}.rloc a.home{color:var(--go,#1f7a3a)}.rloc small{display:block;color:var(--muted);font-size:12px;margin-top:2px}.rnone{color:var(--muted);font-size:12.5px}.stl{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);margin-top:4px}.rloc .flag{margin-left:0;margin-top:3px;display:inline-block}
+.chas tr.bad td{background:color-mix(in srgb,var(--stop) 9%,transparent)}
+.chas .ct{font-family:var(--mono);font-size:12px;color:var(--ok);white-space:nowrap}
+.flag{font-family:var(--mono);font-size:11px;color:var(--stop);border:1px solid var(--stop);border-radius:2px;padding:0 4px;margin-left:6px;white-space:nowrap}
+.help{color:var(--muted);margin:0;font-size:14px;max-width:65ch}
+.walk{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:14px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld > span,.grp > span{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.walk input[type=text],.walk select,.walk textarea{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink);width:100%;box-sizing:border-box}
+.walk input[type=text]{font-family:var(--mono);text-transform:uppercase}
+.walk textarea{min-height:56px;resize:vertical}
+.walk input:focus-visible,.walk select:focus-visible,.walk textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.grp{display:flex;flex-direction:column;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:3px;padding:6px 10px;font-size:14px;cursor:pointer;background:var(--bg);user-select:none}
+.chip input{margin:0;accent-color:var(--stop)}
+.chip:has(input:checked){border-color:var(--stop);color:var(--stop);font-weight:500}
+.chip.ok:has(input:checked){border-color:var(--ok);color:var(--ok)}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.btn{font:inherit;font-weight:600;background:var(--accent);color:#1d2326;border:0;border-radius:3px;padding:10px 18px;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.msg{font-size:13.5px;color:var(--muted)}
+.log{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+.log li{padding:10px 14px;display:flex;flex-direction:column;gap:3px}
+.log .top{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
+.log .ids{font-family:var(--mono);font-weight:500}
+.log .tm{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.log .st{font-size:13.5px}
+.log li.dmg{border-left:4px solid var(--stop)}
+.log li.dmg .st{color:var(--stop)}
+.log .ph{display:flex;gap:6px;flex-wrap:wrap}
+.log .ph img{width:64px;height:64px;object-fit:cover;border-radius:3px;border:1px solid var(--line)}
+.empty{color:var(--muted);padding:12px 14px;margin:0}
+.cboard{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+.cboard li{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.cboard .top{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
+.cboard .num{font-family:var(--mono);font-weight:500;font-size:15px}
+.cboard .meta{font-size:13px;color:var(--muted)}
+.cboard .days{font-family:var(--display);font-size:22px;line-height:1}
+.cboard .pill{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:2px;padding:1px 6px;text-transform:uppercase;letter-spacing:.04em}
+.cboard li.warn{border-left:4px solid var(--accent)} .cboard li.warn .pill{border-color:var(--accent);color:var(--accent-ink)}
+.cboard li.late{border-left:4px solid var(--stop)} .cboard li.late .pill,.cboard li.late .days{color:var(--stop);border-color:var(--stop)}
+.cboard .out{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cboard .out select,.cboard .out input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink)}
+.btn2{font:inherit;font-size:14px;font-weight:600;background:none;border:1px solid var(--ink);color:var(--ink);border-radius:3px;padding:6px 12px;cursor:pointer}
+.btn2:disabled{opacity:.5}
+.quick{position:sticky;top:0;z-index:5;background:var(--bg);padding-block:8px}
+.qrow{display:flex;gap:8px}
+.qrow input{flex:1;min-width:0;font-family:var(--mono);font-size:18px;text-transform:uppercase;padding:10px 12px;border:2px solid var(--ink);border-radius:3px;background:var(--panel);color:var(--ink)}
+.qres{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.qres.late{border-left:4px solid var(--stop)} .qres.warn{border-left:4px solid var(--accent)} .qres.ok{border-left:4px solid var(--ok)}
+.qres b{font-family:var(--mono)}
+.sync{font-family:var(--mono);font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.meter i{transition:none}}
+
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
+:root[data-theme="dark"]{--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}
+html{padding-top:env(safe-area-inset-top,0px)}
+.brandbar{display:flex;align-items:center;gap:14px;margin:-24px -16px 6px;padding:12px 16px;background:#fff;border-bottom:3px solid var(--brand-red)}
+.brandbar img{height:52px;width:auto;display:block}
+.brandbar .bt{display:flex;flex-direction:column;line-height:1.15}
+.brandbar .bt b{font-family:var(--display);font-size:22px;letter-spacing:.03em;text-transform:uppercase;color:#2e2d6f}
+.brandbar .bt span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5d686d}
+header{border-bottom-color:var(--brand)}
+.meter i{background:var(--brand)}
+.btn{background:var(--brand-btn);color:#fff}
+h2 .t{color:var(--brand-text)}
+.day.today{outline-color:var(--brand)}
+button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outline-color:var(--brand)}
+.signin{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+.signin form{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--brand-red);border-radius:4px;padding:22px 18px;display:flex;flex-direction:column;gap:12px}
+.signin img{height:72px;width:auto;align-self:center;background:#fff;border-radius:4px;padding:6px}
+.signin h2{justify-content:center}
+.signin p{margin:0;color:var(--muted);font-size:14px}
+.signin input{font:inherit;font-family:var(--mono);font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink)}
+.signin .err{color:var(--stop);font-weight:600;min-height:1.2em}
+#qTag:empty{display:none}#qTag,#roleTag{margin:0}
+.signout{font:inherit;font-size:12.5px;background:none;border:0;color:var(--muted);text-decoration:underline;padding:0;cursor:pointer;align-self:flex-start}
+</style>
+</head><body>
+<div class="wrap">
+<header>
+<div class="brandbar"><img src="logo.png" alt="2FF Logistics · America 1"><div class="bt"><b>Yard App</b><span>2FF Logistics · An agency of America 1 Logistics</span></div></div>
+<h1>Yard Day</h1>
+<p class="sub" id="today">Daily checklist. Boxes reset each morning.</p>
+<p class="sub">Shift 8:00 AM–5:00 PM · two 30-minute breaks</p>
+<div class="bar">
+<div class="meter" aria-hidden="true"><i id="fill"></i></div>
+<span class="count" id="count">0 / 0 done</span>
+<button class="reset" id="reset" type="button">Clear today</button>
+</div>
+<span class="sync" id="sync">Loading…</span>
+</header>
+<section class="quick">
+<h2>Container lookup <span class="t">type it as you walk</span></h2>
+<div class="qrow"><input type="text" id="qNum" placeholder="Container # e.g. ABCU1234567" maxlength="11" autocomplete="off" autocapitalize="characters" aria-label="Container number"><button class="btn" type="button" id="qGo">Find</button></div>
+<div class="qres" id="qRes" hidden></div>
+</section>
+<section id="weekSec" hidden>
+<h2>Last 7 days <span class="t">checklist items done</span></h2>
+<div class="week" id="week"></div>
+</section>
+<section>
+<h2>Open the yard <span class="t">8:00–8:15</span></h2>
+<ul>
+<li><label><input type="checkbox" id="c1"><span><b>Gate, fence, lights, cameras</b><small>Gate locks and closes. Fence intact. Overnight lights worked. Cameras recording. Note anything off and tell Lethaniel.</small></span></label></li>
+<li><label><input type="checkbox" id="c2"><span><b>Check overnight arrivals and departures</b><small>Anything that moved after you left must be on the record. Anything not on the record gets logged now and flagged.</small></span></label></li>
+<li><label><input type="checkbox" id="c3"><span><b>Review today's moves with Lethaniel</b><small>Which containers and chassis leave today, which come in, any appointments or cutoffs.</small></span></label></li>
+</ul>
+</section>
+<section>
+<h2>Morning yard walk <span class="t">8:15–9:00</span></h2>
+<ul>
+<li><label><input type="checkbox" id="c23"><span><b>Every unit logged in the yard walk log</b><small>Container #, chassis #, spot, tires, chassis. Damage gets photos.</small></span></label></li>
+<li><label><input type="checkbox" id="c4"><span><b>Every container: location and condition match the record</b><small>Container #, chassis #, owner, loaded or empty, seal #, row/spot.</small></span></label></li>
+<li><label><input type="checkbox" id="c5"><span><b>Chassis: tag anything defective</b><small>Defects go to the defect area with a <span class="tag">DO NOT DISPATCH – company safety hold</span> tag.</small></span></label></li>
+<li><label><input type="checkbox" id="c6"><span><b>Parked trucks and trailers match the paid roster</b><small>Every unit has an active daily, weekly or monthly account. Unknown units get photographed and reported.</small></span></label></li>
+<li><label><input type="checkbox" id="c21"><span><b>Chassis location report done in BlackBerry Radar</b><small>All 17 chassis below have a location by 9:00. Anything "Can't find" goes to Lethaniel right away.</small></span></label></li>
+<li><label><input type="checkbox" id="c7"><span><b>Hazards</b><small>Leaks, spills, flat tires, blocked lanes, debris, standing water. Fix or flag.</small></span></label></li>
+</ul>
+</section>
+<section>
+<h2>Chassis location report <span class="t">8:15–9:00 · BlackBerry Radar</span></h2>
+<p class="help">Open BlackBerry Radar (dashboard.radar.blackberry.com) and find each chassis. Set where it actually is. If Radar says it's in the yard, walk to it and confirm. The BlackBerry location next to each chassis fills in automatically from Radar. Tap it for the map. If Radar has not updated in 24 hours it shows NO UPDATE, so walk the yard and tick "GPS stale".</p>
+<p class="count" id="radarPulled"></p>
+<div class="chas">
+<table>
+<thead><tr><th>Chassis</th><th>Type · GPS ID</th><th>Where it is</th><th>BlackBerry GPS location</th><th>Reported</th></tr></thead>
+<tbody id="chasBody"></tbody>
+</table>
+</div>
+<span class="count" id="chasCount">0 / 17 reported</span>
+</section>
+<section>
+<h2>Yard walk log <span class="t">every unit, every walk</span></h2>
+<p class="help">Log each container and chassis as you walk the rows. Check every tire and the chassis itself. Anything damaged: photograph it, and if it's a chassis defect, tag it and move it to the defect area.</p>
+<form class="walk" id="walkForm" autocomplete="off">
+<div class="row">
+<label class="fld"><span>Container #</span><input type="text" id="wContainer" placeholder="ABCU1234567" maxlength="11" inputmode="text"></label>
+<label class="fld"><span>Chassis #</span><input type="text" id="wChassis" list="chasList" placeholder="MCCZ341024" maxlength="12"></label>
+<label class="fld"><span>Yard spot</span><input type="text" id="wSpot" placeholder="Row B-4" maxlength="20"></label>
+<label class="fld"><span>Loaded / empty</span><select id="wLoad"><option value="">—</option><option>Loaded</option><option>Empty</option><option>Bare chassis</option></select></label>
+</div>
+<datalist id="chasList"></datalist>
+<div class="grp"><span>Tires</span>
+<div class="chips" id="tireChips">
+<label class="chip ok"><input type="checkbox" value="All tires OK" id="t-ok">All OK</label>
+<label class="chip"><input type="checkbox" value="Flat / low">Flat or low</label>
+<label class="chip"><input type="checkbox" value="Cut / bulge / sidewall">Cut, bulge, sidewall</label>
+<label class="chip"><input type="checkbox" value="Tread under 2/32&quot;">Tread under 2/32"</label>
+<label class="chip"><input type="checkbox" value="Missing / loose lug nut">Missing or loose lug</label>
+<label class="chip"><input type="checkbox" value="Rim damage">Rim damage</label>
+</div>
+<label class="fld"><span>Which tire (axle, side, inside/outside)</span><input type="text" id="wTirePos" placeholder="Rear axle, left, outside" maxlength="60" style="text-transform:none;font-family:var(--body)"></label>
+</div>
+<div class="grp"><span>Chassis</span>
+<div class="chips" id="chasChips">
+<label class="chip ok"><input type="checkbox" value="Chassis OK" id="c-ok">All OK</label>
+<label class="chip"><input type="checkbox" value="Lights / reflective tape">Lights, tape</label>
+<label class="chip"><input type="checkbox" value="Air lines / glad-hands">Air lines, glad-hands</label>
+<label class="chip"><input type="checkbox" value="Brakes">Brakes</label>
+<label class="chip"><input type="checkbox" value="Kingpin">Kingpin</label>
+<label class="chip"><input type="checkbox" value="Frame / rails bent or cracked">Frame, rails</label>
+<label class="chip"><input type="checkbox" value="Twist locks / pins">Twist locks, pins</label>
+<label class="chip"><input type="checkbox" value="Landing gear">Landing gear</label>
+<label class="chip"><input type="checkbox" value="Slider locks">Slider locks</label>
+<label class="chip"><input type="checkbox" value="Mud flaps">Mud flaps</label>
+<label class="chip"><input type="checkbox" value="Inspection sticker expired">Sticker expired</label>
+</div>
+</div>
+<div class="grp"><span>Container</span>
+<div class="chips" id="boxChips">
+<label class="chip ok"><input type="checkbox" value="Container OK" id="b-ok">OK</label>
+<label class="chip"><input type="checkbox" value="Container damage">Damage</label>
+<label class="chip"><input type="checkbox" value="Seal missing / broken">Seal missing or broken</label>
+</div>
+</div>
+<label class="fld"><span>Notes</span><textarea id="wNotes" maxlength="500" placeholder="What you saw, what you did (tagged, moved to defect area, called Lethaniel)"></textarea></label>
+<label class="fld" id="photoFld"><span>Photos (one wide, one close-up of each damage)</span><input type="file" id="wPhotos" accept="image/*" capture="environment" multiple></label>
+<div class="actions">
+<button class="btn" type="submit" id="wSave">Save unit</button>
+<span class="msg" id="wMsg"></span>
+</div>
+</form>
+<span class="count" id="walkCount">0 units logged today · 0 with damage</span>
+<ul class="log" id="walkLog"><li class="empty">Nothing logged today. Your first unit shows here when you save it.</li></ul>
+</section>
+<section>
+<h2>Containers in the yard <span class="t">check in · check out</span></h2>
+<p class="help">Check every container in when it hits the yard and out when it leaves. The per diem clock starts when the box is pulled from the port and runs until the empty is returned, so "days out" counts from the pull date. Red means past the per diem free time.</p>
+<form class="walk" id="cinForm" autocomplete="off">
+<div class="row">
+<label class="fld"><span>Container #</span><input type="text" id="ciNum" placeholder="ABCU1234567" maxlength="11"></label>
+<label class="fld"><span>On chassis / grounded</span><select id="ciMount"><option>On chassis</option><option>Grounded</option></select></label>
+<label class="fld"><span>Chassis #</span><input type="text" id="ciChas" list="chasList" placeholder="MCCZ341024" maxlength="12"></label>
+<label class="fld"><span>Steamship line</span><input type="text" id="ciSsl" placeholder="MSC, Maersk, CMA…" maxlength="30" style="text-transform:none;font-family:var(--body)"></label>
+</div>
+<div class="row">
+<label class="fld"><span>Customer / load #</span><input type="text" id="ciLoad" maxlength="40" style="text-transform:none;font-family:var(--body)"></label>
+<label class="fld"><span>Loaded / empty</span><select id="ciLe"><option value="">—</option><option>Loaded</option><option>Empty</option></select></label>
+<label class="fld"><span>Seal #</span><input type="text" id="ciSeal" maxlength="20"></label>
+<label class="fld"><span>Yard spot</span><input type="text" id="ciSpot" placeholder="Row B-4" maxlength="20"></label>
+</div>
+<div class="row">
+<label class="fld"><span>Pulled from port (out-gate)</span><input type="date" id="ciPulled"></label>
+<label class="fld"><span>Per diem free time ends</span><input type="date" id="ciPdEnd"></label>
+<label class="fld"><span>Port last free day (demurrage)</span><input type="date" id="ciLfd"></label>
+</div>
+<label class="fld"><span>Notes</span><textarea id="ciNotes" maxlength="300" placeholder="Hold, appointment, damage, who to call"></textarea></label>
+<div class="actions"><button class="btn" type="submit" id="ciSave">Check in container</button><span class="msg" id="ciMsg"></span></div>
+</form>
+<span class="count" id="contCount">0 containers in the yard · 0 checked out today</span>
+<ul class="cboard" id="contList"><li class="empty">No containers checked in yet.</li></ul>
+</section>
+<section id="gateSec">
+<h2>Port out-gate / in-gate <span class="t">dispatch · from the terminal</span></h2>
+<p class="help">Enter the date each box was <b>out-gated</b> (pulled from the port) and the date the empty was <b>in-gated</b> back at the port. Per diem runs from out-gate to in-gate, so a box is not done until its in-gate date is in. Get dates from the terminal (GPA WebAccess / EIR). Leave a field blank to keep what is already there.</p>
+<form class="walk" id="gateForm" autocomplete="off">
+<div class="row">
+<label class="fld"><span>Container #</span><input type="text" id="gNum" placeholder="ABCU1234567" maxlength="11"></label>
+<label class="fld"><span>Steamship line</span><input type="text" id="gSsl" placeholder="MSC, Maersk, CMA…" maxlength="30" style="text-transform:none;font-family:var(--body)"></label>
+<label class="fld"><span>Customer / load #</span><input type="text" id="gLoad" maxlength="40" style="text-transform:none;font-family:var(--body)"></label>
+</div>
+<div class="row">
+<label class="fld"><span>Out-gate (pulled from port)</span><input type="date" id="gOut"></label>
+<label class="fld"><span>Per diem free time ends</span><input type="date" id="gPdEnd"></label>
+<label class="fld"><span>Port last free day (demurrage)</span><input type="date" id="gLfd"></label>
+<label class="fld"><span>In-gate (empty returned to port)</span><input type="date" id="gIn"></label>
+</div>
+<div class="actions"><button class="btn" type="submit" id="gSave">Save gate dates</button><span class="msg" id="gMsg"></span></div>
+</form>
+<span class="count" id="openCount">0 boxes out of the yard waiting on port in-gate</span>
+<ul class="cboard" id="openList"><li class="empty">Nothing waiting on an in-gate date.</li></ul>
+</section>
+<section id="poolSec">
+<h2>Port pool chassis <span class="t">rented from the port · Prince</span></h2>
+<p class="help">Log every <b>pool chassis</b> we pull out of the port (SACP / CCM gray pool, DCLI, TRAC, Flexi-Van). These are <b>not ours</b>. The pool bills us <b>every day</b> from out-gate until the chassis is in-gated back at the port, even if the box is grounded in our yard. Return it the same day it's empty. Our 17 Milestone chassis do not go here. <b>CCM gives no free days:</b> the out-gate day counts as day 1, and the rate is $27.56/day plus about 7% tax since 10/1/2026 (was $26.50). Chassis # can be typed with or without the dash (SACZ-421922).</p>
+<form class="walk" id="poolForm" autocomplete="off">
+<div class="row">
+<label class="fld"><span>Chassis #</span><input type="text" id="pNum" placeholder="SACZ421922" maxlength="12"></label>
+<label class="fld"><span>Pool / provider</span><select id="pPool"><option>SACP / CCM</option><option>DCLI</option><option>TRAC</option><option>Flexi-Van</option><option>Steamship line</option><option>Other</option></select></label>
+<label class="fld"><span>Size / type</span><select id="pSize"><option value="">—</option><option>20'</option><option>40'</option><option>40/45' extendable</option><option>Tri-axle</option><option>Reefer / genset</option></select></label>
+</div>
+<div class="row">
+<label class="fld"><span>Pulled from</span><select id="pFrom"><option>Garden City Terminal</option><option>Ocean Terminal</option><option>Off-terminal depot</option><option>Street turn</option></select></label>
+<label class="fld"><span>Out-gate date</span><input type="date" id="pOut"></label>
+<label class="fld"><span>Container on it</span><input type="text" id="pCont" placeholder="ABCU1234567" maxlength="11"></label>
+<label class="fld"><span>Daily rate ($)</span><input type="number" id="pRate" min="0" step="0.01" value="27.56"></label>
+</div>
+<label class="fld"><span>Notes</span><textarea id="pNotes" maxlength="300" placeholder="Driver, load #, damage at pickup"></textarea></label>
+<div class="actions"><button class="btn" type="submit" id="pSave">Log pool chassis out</button><span class="msg" id="pMsg"></span></div>
+</form>
+<span class="count" id="poolCount">0 pool chassis out</span>
+<ul class="cboard" id="poolList"><li class="empty">No pool chassis out.</li></ul>
+</section>
+<section>
+<h2>All day <span class="t">every gate move</span></h2>
+<ul>
+<li><label><input type="checkbox" id="c8"><span><b>Log every gate in and gate out</b><small>Container #, chassis #, owner, loaded/empty, seal #. Date, time, driver, carrier, tractor, load or work order #. Who authorized it. Damage. Yard spot (in) or verified destination (out).</small></span></label></li>
+<li><label><input type="checkbox" id="c9"><span><b>Photos on every move</b><small>All sides, doors, container ID, chassis ID, seal. Each damage spot twice: one wide, one close. Keep originals. Never climb equipment or break a seal for a photo.</small></span></label></li>
+<li><label><input type="checkbox" id="c10"><span><b>Chassis safety check before any chassis leaves</b><small>Brakes · lights and reflective tape · wheels, rims, lugs, tires · air lines and glad-hands · kingpin · rails and frame · twist locks and pins · slider locks · annual inspection sticker within 12 months.</small></span></label></li>
+<li><label><input type="checkbox" id="c11"><span><b>Verified release on every outbound</b><small>Release comes from a known customer or carrier contact, not a number the driver hands you.</small></span></label></li>
+<li><label><input type="checkbox" id="c12"><span><b>Vendors on site signed in</b><small>Mechanic, tire, tow and delivery vendors: name, company, time in/out, which unit they worked on.</small></span></label></li>
+<li><label><input type="checkbox" id="c13"><span><b>New parking customers set up before they park</b><small>Name, company, phone, unit #, plate, rate and payment received. No pay, no spot.</small></span></label></li>
+</ul>
+</section>
+<section>
+<h2>Break 1 <span class="t">11:30–12:00</span></h2>
+<ul>
+<li><label><input type="checkbox" id="b1"><span><b>Hand off the gate before you go</b><small>Tell Lethaniel you're on break. Gate closed; no moves in or out until you're back unless he covers it.</small></span></label></li>
+<li><label><input type="checkbox" id="b2"><span><b>Gate log caught up before break</b><small>Every move so far logged with photos.</small></span></label></li>
+</ul>
+</section>
+<section>
+<h2>Break 2 <span class="t">2:30–3:00 PM</span></h2>
+<ul>
+<li><label><input type="checkbox" id="b3"><span><b>Hand off the gate before you go</b><small>Lethaniel leaves at 3:00 PM, so take this break before then. Gate closed while you're out.</small></span></label></li>
+<li><label><input type="checkbox" id="b4"><span><b>Ask Lethaniel what's still coming today</b><small>After 3:00 PM you're the only one on site.</small></span></label></li>
+</ul>
+</section>
+<section>
+<h2>Before end of day <span class="t">by 4:00 PM</span></h2>
+<ul>
+<li><label><input type="checkbox" id="c14"><span><b>Stage tomorrow's departures in order</b><small>1. Safety holds out of the way. 2. Last free day, cutoff and empty-return deadlines. 3. Confirmed appointments.</small></span></label></li>
+<li><label><input type="checkbox" id="c24"><span><b>Container board matches the yard</b><small>Every container on the ground is checked in. Everything that left today is checked out with where it went.</small></span></label></li>
+<li><label><input type="checkbox" id="c15"><span><b>Defect area status</b><small>Each held chassis: repair requested, repair done, certificate received. Only Lethaniel or Julia releases a hold.</small></span></label></li>
+<li><label><input type="checkbox" id="c16"><span><b>Parking accounts past due</b><small>List anyone expired or unpaid and send it to Richard. Do not tow or lock out without his OK.</small></span></label></li>
+</ul>
+</section>
+<section>
+<h2>Yard reconcile <span class="t">4:15–4:45 PM</span></h2>
+<ul>
+<li><label><input type="checkbox" id="c17"><span><b>Physical count equals record count</b><small>What left today, what came in, what is on the ground now. Any difference gets found before you leave.</small></span></label></li>
+<li><label><input type="checkbox" id="c22"><span><b>Update chassis that moved today</b><small>Change the location of any chassis that left or came back since the morning report.</small></span></label></li>
+<li><label><input type="checkbox" id="c18"><span><b>Every open item has a next step, owner and time</b><small>Nothing left in your head overnight.</small></span></label></li>
+<li><label><input type="checkbox" id="c19"><span><b>Lock up by 5:00 PM</b><small>Gate closed and locked, lights on, cameras recording, office secured.</small></span></label></li>
+<li><label><input type="checkbox" id="c20"><span><b>End-of-day text to Lethaniel</b><small>Count in, count out, count on ground, holds, problems.</small></span></label></li>
+</ul>
+</section>
+<div class="note">
+<h3>Stop and call</h3>
+<ol>
+<li>Seal broken or doesn't match → stop the move, call Prince and Julia.</li>
+<li>Release can't be verified → container stays.</li>
+<li>Injury, fire, spill, theft or break-in → 911 first if needed, then Lethaniel and Richard.</li>
+</ol>
+</div>
+<section>
+<h2>Who to call</h2>
+<div class="tbl">
+<table class="esc">
+<tr><td>Yard issue</td><td>Brandon owns it 4 hrs → Yanix 24 hrs → Richard 72 hrs</td></tr>
+<tr><td>2FF equipment</td><td>Lethaniel (on site 7:00 AM–3:00 PM)</td></tr>
+<tr><td>Safety / chassis hold</td><td>Julia, then Lethaniel</td></tr>
+<tr><td>Driver / dispatch</td><td>Prince, backup JC</td></tr>
+<tr><td>Tenants and rent</td><td>Richard</td></tr>
+</table>
+</div>
+</section>
+<footer>Everything saves to the 1 Stop Yard Log sheet with the time. Richard, Lethaniel and Yanix see the same record.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const now=new Date();
+$('today').textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+' · boxes reset each morning.';
+const boxes=[...document.querySelectorAll('section > ul > li > label > input[type=checkbox]')];
+const total=boxes.length; const sync=$('sync');
+let S={checked:{},chassis:{},walk:[],week:{}};
+const API=atob("aHR0cHM6Ly9zY3JpcHQuZ29vZ2xlLmNvbS9tYWNyb3Mvcy9BS2Z5Y2J5dV9QSzVCaUtWeVQtS2pCNDNVd2gybmNya1NNaVpFOGo0Ni1UYVdWWkFMQjJqNHR0TXNZRVBHY1k2X3JzeUh6QUMvZXhlYw==");
+let KEYRES;const KEYP=new Promise(r=>{KEYRES=r});
+const keyFrom=s=>{s=String(s||'').trim();const m=s.match(/[?&]k=([^&#\s]+)/);return decodeURIComponent(m?m[1]:s)};
+const post=(body,ms)=>{const ac=typeof AbortController!=='undefined'?new AbortController():null;const t=ac&&setTimeout(()=>ac.abort(),ms||45000);
+return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow',signal:ac?ac.signal:undefined})
+.catch(e=>{throw new Error(e&&e.name==='AbortError'?'Request timed out':'Network error: '+((e&&e.message)||e))})
+.then(r=>{if(r.status>=500||r.status===0)throw new Error('Network error: HTTP '+r.status);return r.text()})
+.then(t=>{let j;try{j=JSON.parse(t)}catch(e){throw new Error('The yard log sent an unexpected reply. Tell Richard.')}if(!j.ok)throw new Error(j.error||'Not saved');return j.data})
+.finally(()=>t&&clearTimeout(t))};
+function signIn(msg){
+const d=document.createElement('div');d.className='signin';
+d.innerHTML='<form autocomplete="off"><img src="logo.png" alt=""><h2>Yard App</h2><p>Enter your personal Yard App code, or paste the whole link Richard sent you. You only do this once on this phone.</p><input id="siCode" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Your code" aria-label="Your Yard App code"><button class="btn" type="submit">Sign in</button><p class="err" id="siErr"></p></form>';
+document.body.append(d);const f=d.querySelector('form'),inp=d.querySelector('#siCode'),er=d.querySelector('#siErr');if(msg)er.textContent=msg;
+f.addEventListener('submit',e=>{e.preventDefault();const k=keyFrom(inp.value);if(!k){er.textContent='Enter your code.';return}
+if(!navigator.onLine){er.textContent='You need signal to sign in the first time.';return}
+er.textContent='Checking…';post({fn:'getState',args:[],k}).then(s=>{if(!s||!s.me){er.textContent='That code is not recognized. Check the link Richard sent you.';return}
+try{localStorage.setItem('yardKey',k)}catch(x){}d.remove();KEYRES(k)}).catch(x=>{er.textContent=(x&&x.message)||String(x)})});
+setTimeout(()=>inp.focus(),50)}
+(()=>{let k='';try{k=new URLSearchParams(location.search).get('k')||'';if(k)localStorage.setItem('yardKey',k);else k=localStorage.getItem('yardKey')||''}catch(e){}
+if(k)KEYRES(k);else signIn()})();
+// ---- offline: writes made without signal are saved on the phone and sent when signal returns ----
+const WRITES=new Set(['setCheck','setChassis','addWalk','gateIn','gateOut','groundIt','setGate','poolOut','poolReturn']);
+const qGet=(n='yardQ')=>{try{return JSON.parse(localStorage.getItem(n)||'[]')}catch(e){return []}};
+const qSet=(q,n='yardQ')=>{try{localStorage.setItem(n,JSON.stringify(q));return true}catch(e){return false}};
+const isNet=e=>!navigator.onLine||/network|connection|http 0|failed to fetch|load failed|timed? ?out|offline/i.test(String((e&&e.message)||e));
+const call=(fn,args,at)=>KEYP.then(k=>post({fn,args,k,at},fn==='addWalk'?120000:45000));
+function optimistic(fn,a){try{if(fn==='setCheck'){S.checked=S.checked||{};if(a[2])S.checked[a[0]]='saved on phone';else delete S.checked[a[0]]}
+else if(fn==='setChassis'){S.chassis=S.chassis||{};S.chassis[a[0]]={w:a[1],g:!!a[2],t:'saved on phone'}}}catch(e){}}
+function queueIt(fn,args,at){const q=qGet();let item={fn,args,at};q.push(item);
+if(!qSet(q)){if(fn==='addWalk'){q[q.length-1]={fn,args:[args[0],[]],at};if(!qSet(q))throw new Error('Phone storage is full. Entry NOT saved.');alert('No signal: the unit was saved on your phone WITHOUT the photos (too big to hold). Retake the photos when you have signal.')}else throw new Error('Phone storage is full. Entry NOT saved.')}
+optimistic(fn,args);showQ();return S}
+const run=(fn,...args)=>{if(!WRITES.has(fn))return call(fn,args);const at=Date.now();
+if(!navigator.onLine)return Promise.resolve().then(()=>queueIt(fn,args,at));
+return call(fn,args,at).then(s=>s,e=>{if(isNet(e))return queueIt(fn,args,at);throw e})};
+let flushing=false;
+async function flushQ(){if(flushing||!navigator.onLine||!qGet().length)return;flushing=true;showQ();
+try{while(true){const q=qGet();if(!q.length)break;const it=q[0];let drop=true;
+try{const s=await call(it.fn,it.args,it.at);if(s)apply(s)}catch(e){if(isNet(e)){drop=false}else{const f=qGet('yardQfail');f.push({fn:it.fn,at:it.at,msg:String((e&&e.message)||e)});qSet(f.slice(-20),'yardQfail')}}
+if(!drop)break;const q2=qGet();q2.shift();qSet(q2)}}finally{flushing=false;showQ()}}
+function showQ(){const n=qGet().length,f=qGet('yardQfail');let t=document.getElementById('qTag');
+if(!t){t=document.createElement('p');t.id='qTag';t.className='count';t.style.fontWeight='600';const s=document.getElementById('sync');if(s)s.after(t);else return}
+t.style.color=f.length?'var(--stop,#b3261e)':'';
+t.textContent=(n?(navigator.onLine?'Syncing '+n+' entr'+(n===1?'y':'ies')+' saved on this phone…':'NO SIGNAL – '+n+' entr'+(n===1?'y':'ies')+' saved on this phone. Keep working; they send automatically when signal comes back.'):(navigator.onLine?'':'NO SIGNAL – entries you make now are saved on this phone and sent when signal returns.'))
++(f.length?' '+f.length+' saved entr'+(f.length===1?'y was':'ies were')+' rejected when sent (last: '+f[f.length-1].msg+'). Tap here to clear.':'');
+t.onclick=f.length?()=>{qSet([],'yardQfail');showQ()}:null}
+window.addEventListener('online',()=>{showQ();flushQ()});window.addEventListener('offline',showQ);setInterval(flushQ,30000);
+const ok=()=>{sync.textContent='Saved to the 1 Stop Yard Log · '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})};
+const fail=e=>{sync.textContent='Not saved. Check your signal and try again. ('+(e&&e.message||e)+')'};
+function saveCache(s){try{localStorage.setItem('yardS',JSON.stringify({s,at:Date.now()}))}catch(e){try{const c=Object.assign({},s,{walk:[]});localStorage.setItem('yardS',JSON.stringify({s:c,at:Date.now()}))}catch(x){}}}
+function apply(s,cached){S=s;if(!cached)saveCache(s);render();renderChas();renderWalk();renderWeek();renderCont();renderOpen();renderPool();applyRole();if($('qNum').value)quick();}
+function render(){
+let n=0;
+boxes.forEach(b=>{
+const t=S.checked[b.id]; b.checked=!!t; if(t)n++;
+const span=b.nextElementSibling.querySelector('b'); let st=span.querySelector('.stamp');
+if(t){if(!st){st=document.createElement('span');st.className='stamp';span.appendChild(st)} st.textContent=t;} else if(st) st.remove();
+});
+$('count').textContent=n+' / '+total+' done'; $('fill').style.width=(n/total*100)+'%';
+}
+boxes.forEach(b=>b.addEventListener('change',()=>{
+const label=b.nextElementSibling.querySelector('b').firstChild.textContent.trim();
+sync.textContent='Saving…';
+run('setCheck',b.id,label,b.checked).then(s=>{apply(s);ok()}).catch(e=>{b.checked=!b.checked;fail(e)});
+}));
+$('reset').hidden=true;
+// chassis
+const CHASSIS=[['MCHZ400125','40 GN','WIH011020805240029C'],['MCHZ400625','40 GN','WIH01102071524001B8'],['MCHZ400898','40 GN','WIH01102070224000A5'],['MCCZ404132','40 GN','WIH0110208052400245'],['MCCZ404134','40 GN','WIH01102080524002DC'],['MCCZ404407','40 GN','WIH0140109032400165'],['MCCZ410748','40 GN','WIH01102080524003E6'],['MCCZ410783','40 GN','WIH0110208052400328'],['MCCZ341024','20/40 Tri','WIH0142103062501454'],['MCCZ341026','20/40 Tri','WIH0142103062501253'],['MCCZ341180','20/40 Tri','WIH01102050423001D0'],['MCCZ341459','20/40 Tri','WIH011020523230022E'],['MCCZ341460','20/40 Tri','WIH0110205052300018'],['MCCZ341526','20/40 Tri','WIH011020505230001B'],['MCCZ241533','20/40 Slider','WIH0142103062501546'],['MCCZ242195','20/40 Slider','WVN0142110152500210'],['MCCZ241840','20/40 Slider','']];
+const WHERE=[['','Choose…'],['yard','In yard (seen)'],['load','Out on a load'],['shop','At shop / repair'],['hold','Defect hold'],['oos','Out of service'],['missing',"Can't find"]];
+const body=$('chasBody');
+CHASSIS.forEach(([n,type,gps])=>{
+const tr=document.createElement('tr'); tr.dataset.n=n;
+tr.innerHTML='<td class="cn">'+n+(gps?'':'<span class="flag">NO GPS</span>')+'</td><td class="cm">'+type+' · '+(gps?gps.slice(-6):'not on Milestone list')+'</td><td><select id="w-'+n+'" aria-label="Location of '+n+'">'+WHERE.map(([v,l])=>'<option value="'+v+'">'+l+'</option>').join('')+'</select></td><td class="rg"><div class="rloc" id="r-'+n+'"><span class="rnone">No Radar pull yet</span></div><label class="stl"><input type="checkbox" id="g-'+n+'" aria-label="GPS stale for '+n+'"> GPS stale</label></td><td class="ct" id="t-'+n+'"></td>';
+body.appendChild(tr);
+const sel=tr.querySelector('select'), g=tr.querySelector('input');
+const send=()=>{sync.textContent='Saving…';run('setChassis',n,sel.value,g.checked).then(s=>{apply(s);ok()}).catch(fail)};
+sel.addEventListener('change',send); g.addEventListener('change',send);
+});
+function renderChas(){
+let k=0;
+CHASSIS.forEach(([n])=>{const c=S.chassis[n]||{}; const tr=body.querySelector('tr[data-n="'+n+'"]');
+tr.querySelector('select').value=c.w||''; tr.querySelector('input').checked=!!c.g; $('t-'+n).textContent=c.w?c.t:'';
+const r=(S.radar||{})[n];const box=$('r-'+n);box.textContent='';
+if(r){const a=document.createElement('a');a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(r.ll||r.loc);a.target='_blank';a.rel='noopener';a.textContent=r.loc.replace(/, United States$/,'').replace(/(\d{5})-\d{4}/,'$1');if(/116 Gulfstream/i.test(r.loc))a.className='home';
+const m=document.createElement('small');m.textContent='as of '+r.asof+(r.st?' · '+r.st.replace(/\s*\(.*\)$/,''):'');box.append(a,m);
+if(r.ageH!=null&&r.ageH>24){const f=document.createElement('span');f.className='flag';f.textContent='NO UPDATE '+Math.floor(r.ageH/24)+'d';box.append(f)}
+const nf=tr.querySelector('.cn .flag');if(nf)nf.hidden=true;}
+else{const s=document.createElement('span');s.className='rnone';s.textContent='No Radar pull yet';box.append(s)}
+tr.classList.toggle('bad',c.w==='missing'||!!c.g||!!(r&&r.ageH>24)); if(c.w)k++;});
+const pulled=Object.values(S.radar||{}).map(x=>x.pulled).filter(Boolean).sort().pop();$('radarPulled').textContent=pulled?'BlackBerry locations last pulled '+pulled+'. Updates about 7:40 AM and 4:40 PM every day.':'';
+$('chasCount').textContent=k+' / '+CHASSIS.length+' reported';
+}
+// walk log
+const dl=$('chasList'); CHASSIS.forEach(([n])=>{const o=document.createElement('option');o.value=n;dl.appendChild(o)});
+function chipGroup(id){const g=$(id),okb=g.querySelector('.ok input'),rest=[...g.querySelectorAll('input')].filter(i=>i!==okb);
+okb.addEventListener('change',()=>{if(okb.checked)rest.forEach(i=>i.checked=false)}); rest.forEach(i=>i.addEventListener('change',()=>{if(i.checked)okb.checked=false}));
+return ()=>({ok:okb.checked,issues:rest.filter(i=>i.checked).map(i=>i.value)});}
+const rT=chipGroup('tireChips'),rC=chipGroup('chasChips'),rB=chipGroup('boxChips');
+const wMsg=$('wMsg'),logEl=$('walkLog');
+function renderWalk(){
+const rows=(S.walk||[]).slice().reverse(); const dmg=rows.filter(r=>r.damaged).length;
+$('walkCount').textContent=rows.length+' unit'+(rows.length===1?'':'s')+' logged today · '+dmg+' with damage';
+logEl.textContent='';
+if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent='Nothing logged today. Your first unit shows here when you save it.';logEl.appendChild(li);return}
+rows.forEach(r=>{const li=document.createElement('li'); if(r.damaged)li.className='dmg';
+const top=document.createElement('div');top.className='top';
+const ids=document.createElement('span');ids.className='ids';ids.textContent=[r.container||'No container',r.chassis||'No chassis'].join(' · ');
+const tm=document.createElement('span');tm.className='tm';tm.textContent=r.time+(r.spot?' · '+r.spot:'')+(r.load?' · '+r.load:'');top.append(ids,tm);
+const st=document.createElement('span');st.className='st';const iss=[r.tires,r.chas,r.box].filter(Boolean).join(', ');
+st.textContent=iss?iss+(r.tirePos?' ('+r.tirePos+')':''):'No damage'; li.append(top,st);
+if(r.notes){const n=document.createElement('span');n.className='tm';n.textContent=r.notes;li.append(n)}
+if(r.photos){const n=document.createElement('span');n.className='tm';n.textContent=String(r.photos).split('\n').length+' photo(s) saved';li.append(n)}
+logEl.append(li);});
+}
+function shrink(file){return new Promise((res,rej)=>{const img=new Image();const u=URL.createObjectURL(file);
+img.onload=()=>{const m=1280,s=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',0.8).split(',')[1])};img.onerror=rej;img.src=u;});}
+$('walkForm').addEventListener('submit',async e=>{
+e.preventDefault();
+const container=$('wContainer').value.trim().toUpperCase(), chassis=$('wChassis').value.trim().toUpperCase();
+if(!container&&!chassis){wMsg.textContent='Enter a container # or a chassis #.';return}
+const t=rT(),c=rC(),b=rB();
+if(!t.ok&&!t.issues.length){wMsg.textContent='Check the tires: tap All OK or what you found.';return}
+if(chassis&&!c.ok&&!c.issues.length){wMsg.textContent='Check the chassis: tap All OK or what you found.';return}
+const btn=$('wSave');btn.disabled=true;wMsg.textContent='Saving…';
+let photos=[];try{photos=await Promise.all([...($('wPhotos').files||[])].slice(0,6).map(shrink))}catch(err){wMsg.textContent='A photo could not be read; saving without it.'}
+const row={container,chassis,spot:$('wSpot').value.trim(),load:$('wLoad').value,tires:t.issues,tirePos:$('wTirePos').value.trim(),chas:c.issues,box:b.issues,notes:$('wNotes').value.trim(),damaged:!!(t.issues.length||c.issues.length||b.issues.length)};
+run('addWalk',row,photos).then(s=>{apply(s);ok();e.target.reset();wMsg.textContent='Saved '+(container||chassis)+'.'+(row.damaged?' Damage logged. Tag it and tell Lethaniel.':'');$('wContainer').focus()})
+.catch(err=>{wMsg.textContent='Not saved. Check your signal and tap Save again.';fail(err)}).finally(()=>{btn.disabled=false});
+});
+function renderWeek(){
+const wk=$('week'); wk.textContent='';
+for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);const k=ymd(d);const v=S.week[k];
+const el=document.createElement('div');el.className='day';const pct=v==null?null:Math.round(v/total*100);
+el.classList.add(pct===null?'none':pct>=100?'full':pct<70?'low':'mid'); if(i===0)el.classList.add('today');
+const dn=document.createElement('span');dn.className='dn';dn.textContent=d.toLocaleDateString(undefined,{weekday:'short'});
+const pc=document.createElement('span');pc.className='pc';pc.textContent=pct===null?'—':pct+'%';el.append(dn,pc);wk.append(el);}
+$('weekSec').hidden=false;
+}
+const DAY=86400000;
+const fmtD=ms=>ms?new Date(ms).toLocaleDateString(undefined,{month:'numeric',day:'numeric'}):'';
+const dayStart=ms=>{const d=new Date(ms);d.setHours(0,0,0,0);return d.getTime()};
+function contInfo(x){const nowMs=Date.now();const daysOut=x.pulled?Math.round((dayStart(nowMs)-dayStart(x.pulled))/DAY):null;const daysIn=x.inAt?Math.round((dayStart(nowMs)-dayStart(x.inAt))/DAY):0;const left=x.pdEnd?Math.round((dayStart(x.pdEnd)-dayStart(nowMs))/DAY):null;
+let status='OK',cls='';
+if(left!=null&&left<0){status='Per diem running '+(-left)+'d';cls='late'}
+else if(left!=null&&left<=1){status=left===0?'Free time ends today':'Free time ends tomorrow';cls='warn'}
+else if(left==null&&daysOut!=null&&daysOut>=4){status='No free-time date · '+daysOut+'d out';cls='warn'}
+else if(left!=null){status=left+'d free time left'}
+const demLate=x.lfd&&x.pulled&&dayStart(x.pulled)>dayStart(x.lfd)?Math.round((dayStart(x.pulled)-dayStart(x.lfd))/DAY):0;
+return Object.assign({},x,{daysOut,daysIn,left,status,cls,demLate});}
+function contMeta(r){return[r.mount==='Grounded'?'Grounded':(r.chassis?'On chassis '+r.chassis:'On chassis (no # entered)'),r.ctype&&r.ctype.indexOf('Pool')===0?'POOL CHASSIS':'' ,r.ssl,r.le,r.spot&&('Spot '+r.spot),r.load,r.pulled&&('Pulled '+fmtD(r.pulled)),r.pdEnd&&('Free time ends '+fmtD(r.pdEnd)),r.demLate?('Pulled '+r.demLate+'d after port LFD: demurrage owed'):'','In yard '+r.daysIn+'d'].filter(Boolean).join(' · ')}
+function renderCont(){
+const c=S.cont||{inYard:[],outToday:0}; const list=$('contList'); list.textContent='';
+const rows=(c.inYard||[]).map(contInfo);
+rows.sort((a,b)=>((a.left==null?99:a.left)-(b.left==null?99:b.left))||((b.daysOut||0)-(a.daysOut||0)));
+const late=rows.filter(r=>r.cls==='late').length;
+$('contCount').textContent=rows.length+' container'+(rows.length===1?'':'s')+' in the yard · '+(c.outToday||0)+' checked out today'+(late?' · '+late+' on per diem':'');
+if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent='No containers checked in yet.';list.appendChild(li);return}
+rows.forEach(r=>{
+const li=document.createElement('li'); li.dataset.c=r.container; if(r.cls)li.className=r.cls;
+const top=document.createElement('div');top.className='top';
+const n=document.createElement('span');n.className='num';n.textContent=r.container;
+const dy=document.createElement('span');dy.className='days';dy.textContent=(r.daysOut!=null?r.daysOut:'–')+'d out';
+const pill=document.createElement('span');pill.className='pill';pill.textContent=r.status;
+top.append(n,dy,pill);
+const meta=document.createElement('span');meta.className='meta';meta.textContent=contMeta(r);
+const out=document.createElement('div');out.className='out';
+const sel=document.createElement('select');sel.setAttribute('aria-label','Where '+r.container+' is going');
+['Going to…','Customer delivery','Empty return to port','Export to port','Another yard','Other'].forEach((t,i)=>{const o=document.createElement('option');o.value=i?t:'';o.textContent=t;sel.appendChild(o)});
+const b=document.createElement('button');b.type='button';b.className='btn2';b.textContent='Check out';
+b.addEventListener('click',()=>{if(!sel.value){sel.focus();return}b.disabled=true;sync.textContent='Saving…';run('gateOut',r.container,sel.value,'').then(s=>{apply(s);ok()}).catch(e=>{b.disabled=false;fail(e)})});
+out.append(sel,b);
+if(r.mount!=='Grounded'&&r.chassis){const g=document.createElement('button');g.type='button';g.className='btn2';g.textContent='Grounded it';g.title='Container taken off the chassis and set on the ground';
+g.addEventListener('click',()=>{g.disabled=true;sync.textContent='Saving…';run('groundIt',r.container).then(s=>{apply(s);ok()}).catch(e=>{g.disabled=false;fail(e)})});out.append(g)}
+li.append(top,meta,out);list.appendChild(li);
+});
+}
+$('cinForm').addEventListener('submit',e=>{
+e.preventDefault();const m=$('ciMsg');
+const num=$('ciNum').value.trim().toUpperCase(), mount=$('ciMount').value, chas=$('ciChas').value.trim().toUpperCase();
+if(!/^[A-Z]{4}\d{7}$/.test(num)){m.textContent='Container # should be 4 letters and 7 numbers, like ABCU1234567.';return}
+if(mount==='On chassis'&&!chas){m.textContent='Enter the chassis # it is sitting on, or pick Grounded.';return}
+const prev=((S.cont&&S.cont.open)||[]).find(x=>x.container===num);
+if(!$('ciPulled').value&&!(prev&&prev.pulled)){m.textContent='Enter the date it was pulled from the port.';return}
+const btn=$('ciSave');btn.disabled=true;m.textContent='Saving…';
+const c={container:num,mount,chassis:mount==='On chassis'?chas:'',ssl:$('ciSsl').value.trim(),load:$('ciLoad').value.trim(),le:$('ciLe').value,seal:$('ciSeal').value.trim(),spot:$('ciSpot').value.trim(),pulled:$('ciPulled').value,pdEnd:$('ciPdEnd').value,lfd:$('ciLfd').value,notes:$('ciNotes').value.trim()};
+run('gateIn',c).then(s=>{apply(s);ok();e.target.reset();m.textContent='Checked in '+num+'.';quick()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved. Try again.'}).finally(()=>{btn.disabled=false});
+});
+
+const isoD=ms=>{if(!ms)return'';const d=new Date(ms);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function openMeta(r){return[r.st==='Out from port'?'Out from port, not at the yard yet':('Left yard '+fmtD(r.outAt)+(r.to?' to '+r.to:'')),r.ssl,r.load,r.pulled&&('Out-gate '+fmtD(r.pulled)),r.pdEnd&&('Free time ends '+fmtD(r.pdEnd)),r.chassis&&('Chassis '+r.chassis)].filter(Boolean).join(' · ')}
+function renderOpen(){
+const c=S.cont||{};const list=$('openList');list.textContent='';
+const rows=(c.open||[]).map(contInfo);
+rows.sort((a,b)=>((a.left==null?99:a.left)-(b.left==null?99:b.left))||((b.daysOut||0)-(a.daysOut||0)));
+const late=rows.filter(r=>r.cls==='late').length;
+$('openCount').textContent=rows.length+' box'+(rows.length===1?'':'es')+' out of the yard waiting on port in-gate'+(late?' · '+late+' on per diem':'');
+if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent='Nothing waiting on an in-gate date.';list.appendChild(li);return}
+rows.forEach(r=>{const li=document.createElement('li');li.dataset.c=r.container;if(r.cls)li.className=r.cls;
+const top=document.createElement('div');top.className='top';
+const n=document.createElement('span');n.className='num';n.textContent=r.container;
+const dy=document.createElement('span');dy.className='days';dy.textContent=(r.daysOut!=null?r.daysOut:'–')+'d out';
+const pill=document.createElement('span');pill.className='pill';pill.textContent=r.status;top.append(n,dy,pill);
+const meta=document.createElement('span');meta.className='meta';meta.textContent=openMeta(r);
+const out=document.createElement('div');out.className='out';
+const b=document.createElement('button');b.type='button';b.className='btn2';b.textContent='Enter in-gate';
+b.addEventListener('click',()=>gateFill(r,true));out.append(b);
+li.append(top,meta,out);list.appendChild(li)});
+}
+function gateFill(r,focusIn){$('gNum').value=r.container;$('gSsl').value=r.ssl||'';$('gLoad').value=r.load||'';$('gOut').value=isoD(r.pulled);$('gPdEnd').value=isoD(r.pdEnd);$('gLfd').value=isoD(r.lfd);$('gIn').value='';
+$('gateForm').scrollIntoView({behavior:'smooth',block:'start'});(focusIn?$('gIn'):$('gOut')).focus()}
+$('gateForm').addEventListener('submit',e=>{e.preventDefault();const m=$('gMsg');
+const num=$('gNum').value.trim().toUpperCase();
+if(!/^[A-Z]{4}\d{7}$/.test(num)){m.textContent='Container # should be 4 letters and 7 numbers, like ABCU1234567.';return}
+const g={container:num,ssl:$('gSsl').value.trim(),load:$('gLoad').value.trim(),outgate:$('gOut').value,pdEnd:$('gPdEnd').value,lfd:$('gLfd').value,ingate:$('gIn').value};
+if(!g.outgate&&!g.ingate&&!g.pdEnd&&!g.lfd){m.textContent='Enter an out-gate or in-gate date.';return}
+if(g.outgate&&g.ingate&&g.ingate<g.outgate){m.textContent='In-gate is before out-gate. Check the dates.';return}
+const btn=$('gSave');btn.disabled=true;m.textContent='Saving…';
+run('setGate',g).then(s=>{apply(s);ok();e.target.reset();m.textContent='Saved '+num+(g.ingate?': returned to port, per diem stopped.':'.')}).catch(err=>{m.textContent=(err&&err.message)||'Not saved. Try again.'}).finally(()=>{btn.disabled=false});
+});
+// quick lookup
+function applyRole(){const me=S.me;const r=(me&&me.r)||[];const can=x=>r.includes('admin')||r.includes(x);
+const set=(sels,on)=>sels.forEach(s=>document.querySelectorAll(s+' input,'+s+' select,'+s+' textarea,'+s+' button').forEach(e=>e.disabled=!on));
+set(['#walkForm','#cinForm','#contList','#chasBody'],can('yard'));set(['#gateForm','#openList','#poolForm','#poolList'],can('gate'));
+boxes.forEach(b=>b.disabled=!can('yard'));
+let tag=$('roleTag');if(!tag){tag=document.createElement('p');tag.id='roleTag';tag.className='count';sync.after(tag)}
+tag.textContent=me?('Signed in as '+me.n+(r.includes('admin')?' · full access':r.includes('yard')?' · yard entries':r.includes('gate')?' · gate dates & pool chassis':'')):'View only. Use your personal link from Richard to make entries.';}
+function renderPool(){
+const P=S.pool||{out:[],back:[]};const list=$('poolList');list.textContent='';
+const inYard={};((S.cont&&S.cont.inYard)||[]).forEach(c=>{if(c.chassis)inYard[c.chassis]=c.container});
+const rows=(P.out||[]).map(x=>{const days=x.outgate?Math.round((dayStart(Date.now())-dayStart(x.outgate))/DAY)+1:null;return Object.assign({},x,{days,cost:(x.rate!=null&&days!=null)?x.rate*days:null})}).sort((a,b)=>(b.days||0)-(a.days||0));
+const tot=rows.reduce((s,r)=>s+(r.cost||0),0);
+$('poolCount').textContent=rows.length+' pool chassis out'+(rows.length?' · '+rows.reduce((s,r)=>s+(r.days||0),0)+' chassis-days running':'')+(tot?' · est. $'+tot.toFixed(2):'');
+if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent='No pool chassis out.';list.appendChild(li);return}
+rows.forEach(r=>{const li=document.createElement('li');li.dataset.c=r.chassis;if(r.days>=3)li.className='late';else if(r.days>=2)li.className='warn';
+const top=document.createElement('div');top.className='top';
+const n=document.createElement('span');n.className='num';n.textContent=r.chassis;
+const dy=document.createElement('span');dy.className='days';dy.textContent=(r.days!=null?r.days:'–')+'d out';
+const pill=document.createElement('span');pill.className='pill';pill.textContent=inYard[r.chassis]?'In our yard with '+inYard[r.chassis]:(r.days>=3?'Return it':'Out');top.append(n,dy,pill);
+const meta=document.createElement('span');meta.className='meta';meta.textContent=[r.pool,r.size,r.from,r.outgate&&('Out-gate '+fmtD(r.outgate)),r.container&&('Box '+r.container),r.rate!=null&&('$'+r.rate+'/day'),r.cost!=null&&('est. $'+r.cost.toFixed(2)),r.notes].filter(Boolean).join(' · ');
+const out=document.createElement('div');out.className='out';
+const d=document.createElement('input');d.type='date';d.setAttribute('aria-label','Returned date for '+r.chassis);d.value=isoD(Date.now());
+const to=document.createElement('select');to.setAttribute('aria-label','Returned to');['Garden City Terminal','Ocean Terminal','Off-terminal depot','Street turn / handed off'].forEach(t=>{const o=document.createElement('option');o.textContent=t;to.appendChild(o)});
+const b=document.createElement('button');b.type='button';b.className='btn2';b.textContent='Returned';
+b.addEventListener('click',()=>{if(!d.value){d.focus();return}b.disabled=true;sync.textContent='Saving…';run('poolReturn',r.chassis,d.value,to.value,'').then(s=>{apply(s);ok()}).catch(e=>{b.disabled=false;fail(e)})});
+out.append(d,to,b);li.append(top,meta,out);list.appendChild(li)});
+}
+$('poolForm').addEventListener('submit',e=>{e.preventDefault();const m=$('pMsg');
+const num=$('pNum').value.trim().toUpperCase().replace(/[\s-]/g,'');
+if(!/^[A-Z]{4}\d{6,7}$/.test(num)){m.textContent='Chassis # should be 4 letters and 6-7 numbers, like CCMZ123456.';return}
+if(!$('pOut').value){m.textContent='Enter the out-gate date.';return}
+const p={chassis:num,pool:$('pPool').value,size:$('pSize').value,from:$('pFrom').value,outgate:$('pOut').value,container:$('pCont').value.trim(),rate:$('pRate').value,notes:$('pNotes').value.trim()};
+const btn=$('pSave');btn.disabled=true;m.textContent='Saving…';
+run('poolOut',p).then(s=>{apply(s);ok();e.target.reset();m.textContent='Logged '+num+' out.'}).catch(err=>{m.textContent=(err&&err.message)||'Not saved. Try again.'}).finally(()=>{btn.disabled=false});
+});
+function quick(){
+const q=$('qNum').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,''), res=$('qRes'); res.className='qres'; res.textContent='';
+if(!q){res.hidden=true;return}
+res.hidden=false;
+const hit=((S.cont&&S.cont.inYard)||[]).map(contInfo).find(x=>x.container===q);
+if(hit){res.classList.add(hit.cls||'ok');
+const h=document.createElement('span');const bb=document.createElement('b');bb.textContent=hit.container;h.append(bb,' · '+(hit.daysOut!=null?hit.daysOut+' days out':'')+' · '+hit.status);
+const m=document.createElement('span');m.className='meta';m.textContent=contMeta(hit);
+const go=document.createElement('button');go.type='button';go.className='btn2';go.textContent='Show on board';
+go.addEventListener('click',()=>{const li=document.querySelector('#contList li[data-c="'+hit.container+'"]');if(li){li.scrollIntoView({behavior:'smooth',block:'center'});li.querySelector('select').focus()}});
+res.append(h,m,go);return}
+const oh=((S.cont&&S.cont.open)||[]).map(contInfo).find(x=>x.container===q);
+if(oh){res.classList.add(oh.cls||'ok');
+const h=document.createElement('span');const bb=document.createElement('b');bb.textContent=oh.container;h.append(bb,' · '+(oh.daysOut!=null?oh.daysOut+' days out':'')+' · '+oh.status+' · waiting on port in-gate');
+const m=document.createElement('span');m.className='meta';m.textContent=openMeta(oh);
+const g1=document.createElement('button');g1.type='button';g1.className='btn2';g1.textContent='Enter in-gate';g1.addEventListener('click',()=>gateFill(oh,true));
+const g2=document.createElement('button');g2.type='button';g2.className='btn2';g2.textContent='Check it in to the yard';
+g2.addEventListener('click',()=>{$('ciNum').value=q;$('ciSsl').value=oh.ssl||'';$('ciLoad').value=oh.load||'';$('ciPulled').value=isoD(oh.pulled);$('ciPdEnd').value=isoD(oh.pdEnd);$('ciLfd').value=isoD(oh.lfd);$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});$('ciChas').focus()});
+res.append(h,m,g1,g2);return}
+const ph=((S.pool&&S.pool.out)||[]).find(x=>x.chassis===q);
+if(ph){const days=ph.outgate?Math.round((dayStart(Date.now())-dayStart(ph.outgate))/DAY)+1:null;res.classList.add(days>=3?'late':(days>=2?'warn':'ok'));
+const h=document.createElement('span');const bb=document.createElement('b');bb.textContent=ph.chassis;h.append(bb,' · pool chassis ('+ph.pool+') · '+(days!=null?days+' days out':'')+(ph.container?' · box '+ph.container:''));
+const go=document.createElement('button');go.type='button';go.className='btn2';go.textContent='Show in pool chassis';
+go.addEventListener('click',()=>{const li=document.querySelector('#poolList li[data-c="'+ph.chassis+'"]');if(li)li.scrollIntoView({behavior:'smooth',block:'center'})});
+res.append(h,go);return}
+const ch=((S.cont&&S.cont.closed)||[]).filter(x=>x.container===q).sort((a,b)=>b.ingate-a.ingate)[0];
+if(ch){const pd=ch.pulled?Math.round((dayStart(ch.ingate)-dayStart(ch.pulled))/DAY):null;const over=ch.pdEnd?Math.round((dayStart(ch.ingate)-dayStart(ch.pdEnd))/DAY):null;
+res.classList.add(over>0?'late':'ok');const h=document.createElement('span');const bb=document.createElement('b');bb.textContent=ch.container;
+h.append(bb,' · returned to port '+fmtD(ch.ingate)+(pd!=null?' · '+pd+' days out':'')+(over>0?' · '+over+' day(s) of per diem':' · no per diem'));
+const go=document.createElement('button');go.type='button';go.className='btn2';go.textContent='Check in again (new trip)';
+go.addEventListener('click',()=>{$('ciNum').value=q;$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});$('ciChas').focus()});
+res.append(h,go);return}
+const h=document.createElement('span');
+if(!/^[A-Z]{4}\d{7}$/.test(q)){h.textContent='Keep typing: 4 letters and 7 numbers.';res.append(h);return}
+const bb=document.createElement('b');bb.textContent=q;h.append(bb,' is not in the system.');res.classList.add('warn');
+const go=document.createElement('button');go.type='button';go.className='btn2';go.textContent='Check it in';
+go.addEventListener('click',()=>{$('ciNum').value=q;$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});$('ciChas').focus()});
+res.append(h,go);
+}
+$('qNum').addEventListener('input',quick); $('qGo').addEventListener('click',quick);
+$('qNum').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();quick()}});
+let C=null;try{C=JSON.parse(localStorage.getItem('yardS')||'null')}catch(e){}
+if(C&&C.s){const s=C.s;if(s.today&&s.today!==ymd(now)){s.checked={}}apply(s,true);
+sync.textContent='Showing the yard log saved on this phone ('+new Date(C.at).toLocaleString([], {month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'})+'). Updating…';showQ()}
+else{render();renderChas();renderWalk();renderCont();renderOpen();renderPool();}
+const load=()=>run('getState').then(s=>{apply(s);sync.textContent='Connected to the 1 Stop Yard Log · updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});showQ();flushQ()})
+.catch(e=>{if(e&&/not recognized|Unknown code/i.test(e.message||'')){try{localStorage.removeItem('yardKey')}catch(x){}location.reload();return}
+sync.textContent=isNet(e)?'NO SIGNAL – showing what was saved on this phone. Entries you make are saved and sent when signal returns.':'Could not load the yard log. ('+((e&&e.message)||e)+')';showQ()});
+load();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine)load()});
+window.addEventListener('online',()=>load());setInterval(()=>{if(navigator.onLine&&!document.hidden)load()},300000);
+{const so=document.createElement('button');so.type='button';so.className='signout';so.textContent='Sign out of this phone';
+so.addEventListener('click',()=>{if(qGet().length&&!confirm('There are entries on this phone that have not sent yet. Sign out anyway and lose them?'))return;try{localStorage.removeItem('yardKey');localStorage.removeItem('yardS');localStorage.removeItem('yardQ')}catch(e){}location.reload()});
+document.querySelector('header').append(so)}
+if('serviceWorker' in navigator&&location.protocol==='https:'&&location.hostname!=='localhost')navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body></html>
