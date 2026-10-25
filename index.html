@@ -130,6 +130,26 @@ footer{color:var(--muted);font-size:13px}
 .qres.late{border-left:4px solid var(--stop)} .qres.warn{border-left:4px solid var(--accent)} .qres.ok{border-left:4px solid var(--ok)}
 .qres b{font-family:var(--mono)}
 .sync{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.dash{display:flex;flex-direction:column;gap:10px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--muted);border-radius:4px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .kl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.kpi .kv{font-family:var(--display);font-size:28px;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi .ks{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.kpi.g{border-left-color:var(--ok)} .kpi.y{border-left-color:var(--accent)} .kpi.r{border-left-color:var(--stop)} .kpi.r .kv{color:var(--stop)}
+.act li{padding:9px 12px;display:flex;flex-direction:column;gap:2px;border-left:5px solid var(--accent)}
+.act li.r{border-left-color:var(--stop)} .act li.empty{border-left-color:var(--ok);color:var(--muted)}
+.act .aw{font-weight:600} .act .ad{font-size:13px;color:var(--muted)}
+.dtrend{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;background:var(--panel)}
+.dtrend th,.dtrend td{border-top:1px solid var(--line);padding:5px 6px;text-align:center}
+.dtrend th:first-child,.dtrend td:first-child{text-align:left;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.dmgl li{padding:9px 12px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.dmgl .dn{font-family:var(--mono);font-weight:600} .dmgl .dd{flex:1 1 200px;font-size:13px;color:var(--muted)}
+.dmgl a{font-size:13px}
+.drow{display:flex;gap:8px;flex-wrap:wrap}
+.drow input{flex:1 1 180px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:3px;background:var(--panel);color:var(--ink);text-transform:uppercase}
+.dmsg{font-size:13px;margin:0}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}}
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -170,6 +190,18 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 </div>
 <span class="sync" id="sync">Loading…</span>
 </header>
+<section id="dashSec" class="dash" hidden>
+<h2>Manager dashboard <span class="t" id="dAsof">today at a glance</span></h2>
+<div class="kpis" id="dKpis"></div>
+<h3 class="kl" style="margin:4px 0 0;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.04em">Needs action</h3>
+<ul class="act" id="dAct"></ul>
+<h3 style="margin:4px 0 0;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.04em">Last 7 days</h3>
+<div class="tbl"><table class="dtrend" id="dTrend"></table></div>
+<h3 style="margin:4px 0 0;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.04em">Damage reports <span class="t" style="font-family:var(--mono);font-size:12px;color:var(--accent-ink);text-transform:none">PDF for Milestone, a customer or insurance</span></h3>
+<ul class="dmgl" id="dDmg"></ul>
+<div class="drow"><input id="dCh" list="chasList" placeholder="Any chassis # e.g. MCCZ341024" maxlength="11" autocomplete="off" aria-label="Chassis number for damage report"><button class="btn" type="button" id="dGo">Make damage report</button></div>
+<p class="dmsg" id="dMsg"></p>
+</section>
 <section class="quick">
 <h2>Container lookup <span class="t">type it as you walk</span></h2>
 <div class="qrow"><input type="text" id="qNum" placeholder="Container # e.g. ABCU1234567" maxlength="11" autocomplete="off" autocapitalize="characters" aria-label="Container number"><button class="btn" type="button" id="qGo">Find</button></div>
@@ -433,7 +465,7 @@ const WRITES=new Set(['setCheck','setChassis','addWalk','gateIn','gateOut','grou
 const qGet=(n='yardQ')=>{try{return JSON.parse(localStorage.getItem(n)||'[]')}catch(e){return []}};
 const qSet=(q,n='yardQ')=>{try{localStorage.setItem(n,JSON.stringify(q));return true}catch(e){return false}};
 const isNet=e=>!navigator.onLine||/network|connection|http 0|failed to fetch|load failed|timed? ?out|offline/i.test(String((e&&e.message)||e));
-const call=(fn,args,at)=>KEYP.then(k=>post({fn,args,k,at},fn==='addWalk'?120000:45000));
+const call=(fn,args,at)=>KEYP.then(k=>post({fn,args,k,at},(fn==='addWalk'||fn==='damageReport')?120000:45000));
 function optimistic(fn,a){try{if(fn==='setCheck'){S.checked=S.checked||{};if(a[2])S.checked[a[0]]='saved on phone';else delete S.checked[a[0]]}
 else if(fn==='setChassis'){S.chassis=S.chassis||{};S.chassis[a[0]]={w:a[1],g:!!a[2],t:'saved on phone'}}}catch(e){}}
 function queueIt(fn,args,at){const q=qGet();let item={fn,args,at};q.push(item);
@@ -457,7 +489,7 @@ window.addEventListener('online',()=>{showQ();flushQ()});window.addEventListener
 const ok=()=>{sync.textContent='Saved to the 1 Stop Yard Log · '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})};
 const fail=e=>{sync.textContent='Not saved. Check your signal and try again. ('+(e&&e.message||e)+')'};
 function saveCache(s){try{localStorage.setItem('yardS',JSON.stringify({s,at:Date.now()}))}catch(e){try{const c=Object.assign({},s,{walk:[]});localStorage.setItem('yardS',JSON.stringify({s:c,at:Date.now()}))}catch(x){}}}
-function apply(s,cached){S=s;if(!cached)saveCache(s);render();renderChas();renderWalk();renderWeek();renderCont();renderOpen();renderPool();applyRole();if($('qNum').value)quick();}
+function apply(s,cached){S=s;if(!cached)saveCache(s);render();try{renderDash();if(!D||!D._t||Date.now()-D._t>60000){if(D)D._t=Date.now();else D={_t:Date.now()};loadDash()}}catch(e){}renderChas();renderWalk();renderWeek();renderCont();renderOpen();renderPool();applyRole();if($('qNum').value)quick();}
 function render(){
 let n=0;
 boxes.forEach(b=>{
@@ -628,6 +660,64 @@ if(g.outgate&&g.ingate&&g.ingate<g.outgate){m.textContent='In-gate is before out
 const btn=$('gSave');btn.disabled=true;m.textContent='Saving…';
 run('setGate',g).then(s=>{apply(s);ok();e.target.reset();m.textContent='Saved '+num+(g.ingate?': returned to port, per diem stopped.':'.')}).catch(err=>{m.textContent=(err&&err.message)||'Not saved. Try again.'}).finally(()=>{btn.disabled=false});
 });
+
+// ---- manager dashboard (admin + yard) ----
+var D=null;try{D=JSON.parse(localStorage.getItem('yardD')||'null')}catch(e){}
+const canDash=()=>{const r=(S.me&&S.me.r)||[];return r.includes('admin')||r.includes('yard')};
+function loadDash(){if(!canDash()||!navigator.onLine)return;call('getDash',[]).then(d=>{d._t=Date.now();D=d;try{localStorage.setItem('yardD',JSON.stringify(d))}catch(e){}renderDash()}).catch(()=>{})}
+function kpi(label,val,sub,c){const d=document.createElement('div');d.className='kpi '+(c||'');const a=document.createElement('span');a.className='kl';a.textContent=label;const b=document.createElement('span');b.className='kv';b.textContent=val;const s=document.createElement('span');s.className='ks';s.textContent=sub||'';d.append(a,b,s);return d}
+function renderDash(){
+const sec=$('dashSec');if(!canDash()){sec.hidden=true;return}sec.hidden=false;
+const K=$('dKpis');K.textContent='';const A=[];
+const ch=S.chassis||{};const st=w=>CHASSIS.filter(([n])=>(ch[n]||{}).w===w).map(([n])=>n);
+const held=[...st('shop'),...st('hold'),...st('oos')],miss=st('missing'),rep=CHASSIS.filter(([n])=>(ch[n]||{}).w).length,serv=CHASSIS.length-held.length-miss.length;
+const radar=S.radar||{};const stale=CHASSIS.filter(([n])=>(ch[n]||{}).g||((radar[n]||{}).ageH>24)).map(([n])=>n);
+K.append(kpi('Leased chassis',serv+' / '+CHASSIS.length,held.length+' held · '+miss.length+" can't find",miss.length||serv<=14?'r':serv===15?'y':'g'));
+K.append(kpi('In yard now',String(st('yard').length),'chassis seen in yard · '+st('load').length+' out on loads',''));
+const cont=((S.cont&&S.cont.inYard)||[]).map(contInfo);const open=((S.cont&&S.cont.open)||[]).map(contInfo);
+const pdRun=[...cont,...open].filter(r=>r.cls==='late'),pdSoon=[...cont,...open].filter(r=>r.cls==='warn'),dem=cont.filter(r=>r.demLate);
+K.append(kpi('Containers',String(cont.length),'in yard · '+((S.cont&&S.cont.outToday)||0)+' out today · '+open.length+' waiting on in-gate',''));
+const bx=boxes.filter(b=>S.checked[b.id]).length,hr=new Date().getHours();
+K.append(kpi('Daily checks',Math.round(bx/total*100)+'%',bx+' / '+total+' items · '+rep+' / '+CHASSIS.length+' chassis reported',bx>=total&&rep>=CHASSIS.length?'g':hr>=10&&rep<CHASSIS.length?'r':'y'));
+const P=((S.pool&&S.pool.out)||[]).map(x=>{const days=x.outgate?Math.round((dayStart(Date.now())-dayStart(x.outgate))/DAY)+1:null;return Object.assign({},x,{days,cost:(x.rate!=null&&days!=null)?x.rate*days:0})});
+const pc=P.reduce((s,r)=>s+(r.cost||0),0),pLate=P.filter(r=>r.days>=3);
+K.append(kpi('Money at risk',pdRun.length+pdSoon.length+dem.length+pLate.length?String(pdRun.length+dem.length+pLate.length):'0',pdRun.length+' on per diem · '+pdSoon.length+' free time ending · '+dem.length+' demurrage · pool $'+pc.toFixed(0),pdRun.length||dem.length||pLate.length?'r':pdSoon.length?'y':'g'));
+const walk=S.walk||[],wd=walk.filter(r=>r.damaged).length,imp=(D&&D.impacts)||[],impToday=imp.filter(m=>Date.now()-m.ms<86400000);
+K.append(kpi('Damage & impacts',String(wd+impToday.length),wd+' damaged in walks today · '+impToday.length+' impact alerts 24h',wd||impToday.length?'r':'g'));
+// action queue
+miss.forEach(n=>A.push(['r',n+": can't find","Locate it now. Check Radar GPS, then call drivers. Escalate to Richard if not found in 30 min."]));
+impToday.forEach(m=>A.push(['r',(m.ch||'Chassis')+': possible collision '+m.when,'Call the driver, inspect before it moves, log photos in Yard walk, make a damage report.']));
+pdRun.forEach(r=>A.push(['r',r.container+': per diem running',r.status+(r.ssl?' · '+r.ssl:'')+'. Return it or get it billed.']));
+dem.forEach(r=>A.push(['r',r.container+': demurrage owed','Pulled '+r.demLate+'d after port LFD. Bill the customer.']));
+pLate.forEach(r=>A.push(['r',r.chassis+': pool chassis '+r.days+'d out','Return it ('+(r.pool||'pool')+'), est. $'+(r.cost||0).toFixed(2)+' so far.']));
+held.forEach(n=>A.push(['y',n+': '+((ch[n]||{}).w==='shop'?'at shop':(ch[n]||{}).w==='hold'?'defect hold':'out of service'),'Needs a repair owner and an ETA. Do not dispatch.']));
+pdSoon.forEach(r=>A.push(['y',r.container+': '+r.status,'Plan the return today.'+(r.ssl?' '+r.ssl:'')]));
+stale.forEach(n=>A.push(['y',n+': GPS not updating','Tracker late or marked stale. Look at it on the walk; tell Milestone if it stays dark.']));
+if(hr>=10&&rep<CHASSIS.length)A.push(['y','Chassis report not finished',(CHASSIS.length-rep)+' of '+CHASSIS.length+' chassis not reported yet today.']);
+const ul=$('dAct');ul.textContent='';
+if(!A.length){const li=document.createElement('li');li.className='empty';li.textContent='Nothing needs action right now.';ul.append(li)}
+A.sort((a,b)=>(a[0]==='r'?0:1)-(b[0]==='r'?0:1)).slice(0,15).forEach(([c,w,d])=>{const li=document.createElement('li');li.className=c;const a=document.createElement('span');a.className='aw';a.textContent=w;const b=document.createElement('span');b.className='ad';b.textContent=d;li.append(a,b);ul.append(li)});
+// trend
+const T=$('dTrend');T.textContent='';const days=(D&&D.days)||{};const ks=Object.keys(days).sort();
+if(ks.length){const hd=document.createElement('tr');hd.append(Object.assign(document.createElement('th'),{textContent:''}));ks.forEach(k=>{const d=new Date(k+'T12:00:00');hd.append(Object.assign(document.createElement('th'),{textContent:d.toLocaleDateString(undefined,{weekday:'short'})}))});T.append(hd);
+[['Checklist %',k=>S.week&&S.week[k]!=null?Math.round(S.week[k]/total*100)+'%':'—'],['Units walked',k=>days[k].walks],['Damage found',k=>days[k].dmg],['Gate in',k=>days[k].gin],['Gate out',k=>days[k].gout],['Impact alerts',k=>days[k].imp]].forEach(([l,f])=>{const tr=document.createElement('tr');tr.append(Object.assign(document.createElement('td'),{textContent:l}));ks.forEach(k=>tr.append(Object.assign(document.createElement('td'),{textContent:String(f(k))})));T.append(tr)})}
+else{const tr=document.createElement('tr');tr.append(Object.assign(document.createElement('td'),{textContent:'Loading 7-day history…'}));T.append(tr)}
+$('dAsof').textContent=D&&D.asof?'history as of '+D.asof:'today at a glance';
+// damage list
+const L=$('dDmg');L.textContent='';const dl2=(D&&D.damage)||[];
+if(!dl2.length){const li=document.createElement('li');li.className='empty';li.textContent='No damage or impact alerts in the last 14 days.';L.append(li)}
+dl2.forEach(x=>{const li=document.createElement('li');const n=document.createElement('span');n.className='dn';n.textContent=x.ch;const d=document.createElement('span');d.className='dd';d.textContent=x.last+' · '+(x.what||'damage')+(x.photos?' · '+x.photos+' photo(s)':' · no photos yet');
+const b=document.createElement('button');b.type='button';b.className='btn2';b.textContent=x.report?'Remake PDF':'Make PDF';b.addEventListener('click',()=>makeReport(x.ch,b));li.append(n,d,b);
+if(x.report){const a=document.createElement('a');a.href=x.report.url;a.target='_blank';a.rel='noopener';a.textContent='Open report ('+x.report.when+')';li.append(a)}L.append(li)});
+}
+function makeReport(n,btn){const m=$('dMsg');n=String(n||'').trim().toUpperCase().replace(/[\s-]/g,'');
+if(!/^[A-Z]{4}\d{6,7}$/.test(n)){m.textContent='Chassis # should be 4 letters and 6-7 numbers.';return}
+if(!navigator.onLine){m.textContent='Needs signal to build the PDF. Try again when you have signal.';return}
+if(btn)btn.disabled=true;m.textContent='Building the damage report for '+n+'… (about 20 seconds)';
+call('damageReport',[n]).then(r=>{m.textContent='';const a=document.createElement('a');a.href=r.url;a.target='_blank';a.rel='noopener';a.textContent='Open damage report '+r.id+' ('+r.photos+' photos, '+r.events+' timeline events)';m.append('Saved to the chassis folder (04 Damage & Incidents). ',a);loadDash()})
+.catch(e=>{m.textContent=(e&&e.message)||String(e)}).finally(()=>{if(btn)btn.disabled=false})}
+$('dGo').addEventListener('click',()=>makeReport($('dCh').value,$('dGo')));
+setInterval(loadDash,300000);
 // quick lookup
 function applyRole(){const me=S.me;const r=(me&&me.r)||[];const can=x=>r.includes('admin')||r.includes(x);
 const set=(sels,on)=>sels.forEach(s=>document.querySelectorAll(s+' input,'+s+' select,'+s+' textarea,'+s+' button').forEach(e=>e.disabled=!on));
