@@ -75,6 +75,7 @@ footer{color:var(--muted);font-size:13px}
 .chas select{font:inherit;font-size:13.5px;padding:4px 6px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink);max-width:100%}
 .chas select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .chas .rg{min-width:230px}.rloc a{color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--line)}.rloc a.home{color:var(--go,#1f7a3a)}.rloc small{display:block;color:var(--muted);font-size:12px;margin-top:2px}.rnone{color:var(--muted);font-size:12.5px}.stl{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);margin-top:4px}.rloc .flag{margin-left:0;margin-top:3px;display:inline-block}
+.cfold{display:block;font-size:12px;margin-top:4px;color:var(--ink);text-decoration:underline}
 .chas tr.bad td{background:color-mix(in srgb,var(--stop) 9%,transparent)}
 .chas .ct{font-family:var(--mono);font-size:12px;color:var(--ok);white-space:nowrap}
 .flag{font-family:var(--mono);font-size:11px;color:var(--stop);border:1px solid var(--stop);border-radius:2px;padding:0 4px;margin-left:6px;white-space:nowrap}
@@ -494,6 +495,7 @@ const m=document.createElement('small');m.textContent='as of '+r.asof+(r.st?' ·
 if(r.ageH!=null&&r.ageH>24){const f=document.createElement('span');f.className='flag';f.textContent='NO UPDATE '+Math.floor(r.ageH/24)+'d';box.append(f)}
 const nf=tr.querySelector('.cn .flag');if(nf)nf.hidden=true;}
 else{const s=document.createElement('span');s.className='rnone';s.textContent='No Radar pull yet';box.append(s)}
+{const fu=(S.folders||{})[n];if(fu){const fa=document.createElement('a');fa.href=fu;fa.target='_blank';fa.rel='noopener';fa.className='cfold';fa.textContent='Chassis folder & timeline';box.append(fa)}}
 tr.classList.toggle('bad',c.w==='missing'||!!c.g||!!(r&&r.ageH>24)); if(c.w)k++;});
 const pulled=Object.values(S.radar||{}).map(x=>x.pulled).filter(Boolean).sort().pop();$('radarPulled').textContent=pulled?'BlackBerry locations last pulled '+pulled+'. Updates about 7:40 AM and 4:40 PM every day.':'';
 $('chasCount').textContent=k+' / '+CHASSIS.length+' reported';
