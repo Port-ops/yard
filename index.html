@@ -706,12 +706,12 @@ let C=null;try{C=JSON.parse(localStorage.getItem('yardS')||'null')}catch(e){}
 if(C&&C.s){const s=C.s;if(s.today&&s.today!==ymd(now)){s.checked={}}apply(s,true);
 sync.textContent='Showing the yard log saved on this phone ('+new Date(C.at).toLocaleString([], {month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'})+'). Updating…';showQ()}
 else{render();renderChas();renderWalk();renderCont();renderOpen();renderPool();}
-const load=()=>run('getState').then(s=>{apply(s);sync.textContent='Connected to the 1 Stop Yard Log · updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});showQ();flushQ()})
+const load=()=>run('getState').then(s=>{apply(s);sync.textContent='LIVE · yard log updates every minute · last update '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});showQ();flushQ()})
 .catch(e=>{if(e&&/not recognized|Unknown code/i.test(e.message||'')){try{localStorage.removeItem('yardKey')}catch(x){}location.reload();return}
 sync.textContent=isNet(e)?'NO SIGNAL – showing what was saved on this phone. Entries you make are saved and sent when signal returns.':'Could not load the yard log. ('+((e&&e.message)||e)+')';showQ()});
 load();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine)load()});
-window.addEventListener('online',()=>load());setInterval(()=>{if(navigator.onLine&&!document.hidden)load()},300000);
+window.addEventListener('online',()=>load());setInterval(()=>{if(navigator.onLine&&!document.hidden)load()},60000);
 {const so=document.createElement('button');so.type='button';so.className='signout';so.textContent='Sign out of this phone';
 so.addEventListener('click',()=>{if(qGet().length&&!confirm('There are entries on this phone that have not sent yet. Sign out anyway and lose them?'))return;try{localStorage.removeItem('yardKey');localStorage.removeItem('yardS');localStorage.removeItem('yardQ')}catch(e){}location.reload()});
 document.querySelector('header').append(so)}
