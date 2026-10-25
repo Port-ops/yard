@@ -672,7 +672,7 @@ const K=$('dKpis');K.textContent='';const A=[];
 const ch=S.chassis||{};const st=w=>CHASSIS.filter(([n])=>(ch[n]||{}).w===w).map(([n])=>n);
 const held=[...st('shop'),...st('hold'),...st('oos')],miss=st('missing'),rep=CHASSIS.filter(([n])=>(ch[n]||{}).w).length,serv=CHASSIS.length-held.length-miss.length;
 const radar=S.radar||{};const stale=CHASSIS.filter(([n])=>(ch[n]||{}).g||((radar[n]||{}).ageH>24)).map(([n])=>n);
-K.append(kpi('Leased chassis',serv+' / '+CHASSIS.length,held.length+' held · '+miss.length+" can't find",miss.length||serv<=14?'r':serv===15?'y':'g'));
+const unrep=CHASSIS.length-rep;K.append(kpi('Leased chassis',serv+' / '+CHASSIS.length,held.length+' held · '+miss.length+" can't find"+(unrep?' · '+unrep+' not reported today':''),miss.length||serv<=14?'r':unrep?'':serv===15?'y':'g'));
 K.append(kpi('In yard now',String(st('yard').length),'chassis seen in yard · '+st('load').length+' out on loads',''));
 const cont=((S.cont&&S.cont.inYard)||[]).map(contInfo);const open=((S.cont&&S.cont.open)||[]).map(contInfo);
 const pdRun=[...cont,...open].filter(r=>r.cls==='late'),pdSoon=[...cont,...open].filter(r=>r.cls==='warn'),dem=cont.filter(r=>r.demLate);
