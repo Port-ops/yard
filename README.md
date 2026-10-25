@@ -1,2 +1,2 @@
-# 2FF Yard App
-Installable web app for the 2FF Logistics yard team (agency of America 1 Logistics). Sign-in requires a personal code.
+# Yard App
+Installable web app. © 2026 IronBridge Holding Group LLC — proprietary, see LICENSE. Sign-in requires a personal code.
