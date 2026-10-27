@@ -366,26 +366,54 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <div class="qres" id="qRes" hidden></div>
 </section>
 <section id="weekSec" hidden>
-<h2>Last 7 days <span class="t">checklist items done</span></h2>
+<h2>Monday–Sunday <span class="t">daily sheet done each day</span></h2>
 <div class="week" id="week"></div>
 </section>
+<section id="dowSec">
+<h2>This week <span class="t">Monday–Sunday</span></h2>
+<p class="help">One extra job each day on top of the daily sheet. Today's shows as a checkbox; the whole week is below.</p>
+<ul id="dowList">
+<li data-days="1"><label><input type="checkbox" id="w1"><span><b>Monday: safety walk + billing</b><small>Full fence line, lighting, fire extinguishers (gauge in the green), first aid kit, potholes. Then send Richard who owes for parking/storage this week and who paid.</small></span></label></li>
+<li data-days="2"><label><input type="checkbox" id="w2"><span><b>Tuesday: chassis paperwork</b><small>List every chassis whose annual inspection sticker expires in the next 30 days and send it to Julia. Every hold in the defect area has a repair date.</small></span></label></li>
+<li data-days="3"><label><input type="checkbox" id="w3"><span><b>Wednesday: tire and landing-gear sweep</b><small>Every chassis in the yard: tread, inflation, lugs, landing gear and crank handle. Tag and photograph anything bad.</small></span></label></li>
+<li data-days="4"><label><input type="checkbox" id="w4"><span><b>Thursday: reefers and hazmat area</b><small>Order genset fuel if any are under half. Hazmat spot clean, placards readable, spill kit stocked.</small></span></label></li>
+<li data-days="5"><label><input type="checkbox" id="w5"><span><b>Friday: weekend prep + weekly count</b><small>Monday departures staged. Boxes with a weekend last free day flagged to Lethaniel. Gate, locks, cameras checked. Send Richard the weekly count: in, out, on the ground, storage boxes, holds.</small></span></label></li>
+<li data-days="6"><label><input type="checkbox" id="w6"><span><b>Saturday: security check</b><small>On site or by camera: gate locked, fence intact, no unknown units, reefers running. Anything wrong → Lethaniel.</small></span></label></li>
+<li data-days="0"><label><input type="checkbox" id="w7"><span><b>Sunday: security check + plan Monday</b><small>On site or by camera: gate locked, reefers running. Look at Monday's moves, last free days and appointments.</small></span></label></li>
+</ul>
+<script>(function(){var d=String(new Date().getDay());[].slice.call(document.querySelectorAll('#dowList > li')).forEach(function(li){if(li.getAttribute('data-days').split(',').indexOf(d)<0)li.parentNode.removeChild(li)})})();</script>
+<div class="tbl"><table class="esc">
+<tr><td>Mon</td><td>Safety walk + billing</td></tr>
+<tr><td>Tue</td><td>Chassis paperwork</td></tr>
+<tr><td>Wed</td><td>Tire and landing-gear sweep</td></tr>
+<tr><td>Thu</td><td>Reefers and hazmat area</td></tr>
+<tr><td>Fri</td><td>Weekend prep + weekly count</td></tr>
+<tr><td>Sat</td><td>Security check</td></tr>
+<tr><td>Sun</td><td>Security check + plan Monday</td></tr>
+</table></div>
+</section>
+
 <section>
 <h2>Open the yard <span class="t">8:00–8:15</span></h2>
 <ul>
-<li><label><input type="checkbox" id="c1"><span><b>Gate, fence, lights, cameras</b><small>Gate locks and closes. Fence intact. Overnight lights worked. Cameras recording. Note anything off and tell Lethaniel.</small></span></label></li>
-<li><label><input type="checkbox" id="c2"><span><b>Check overnight arrivals and departures</b><small>Anything that moved after you left must be on the record. Anything not on the record gets logged now and flagged.</small></span></label></li>
-<li><label><input type="checkbox" id="c3"><span><b>Review today's moves with Lethaniel</b><small>Which containers and chassis leave today, which come in, any appointments or cutoffs.</small></span></label></li>
+<li><label><input type="checkbox" id="c1"><span><b>Gate, fence, lights, cameras</b><small>Gate locks and closes. Fence line intact. Overnight lights worked. Cameras recording. If anything is off, check the footage and tell Lethaniel.</small></span></label></li>
+<li><label><input type="checkbox" id="c2"><span><b>Check overnight arrivals and departures</b><small>Anything that moved after you left must be on the record. Anything not on the record gets logged now, photographed and flagged.</small></span></label></li>
+<li><label><input type="checkbox" id="c25"><span><b>Open the Yard App: Today › Needs attention</b><small>Clear or hand off every red item first: per diem running, free time ending today, chassis can't find, PINs waiting, boxes available to pull.</small></span></label></li>
+<li><label><input type="checkbox" id="c3"><span><b>Review today's moves with Lethaniel</b><small>Which containers and chassis leave today and come in, appointments and cutoffs, last free days, anything on the Watch list that is available to pull.</small></span></label></li>
 </ul>
 </section>
 <section>
 <h2>Morning yard walk <span class="t">8:15–9:00</span></h2>
 <ul>
-<li><label><input type="checkbox" id="c23"><span><b>Every unit logged in the yard walk log</b><small>Container #, chassis #, spot, tires, chassis. Damage gets photos.</small></span></label></li>
-<li><label><input type="checkbox" id="c4"><span><b>Every container: location and condition match the record</b><small>Container #, chassis #, owner, loaded or empty, seal #, row/spot.</small></span></label></li>
-<li><label><input type="checkbox" id="c5"><span><b>Chassis: tag anything defective</b><small>Defects go to the defect area with a <span class="tag">DO NOT DISPATCH – company safety hold</span> tag.</small></span></label></li>
+<li><label><input type="checkbox" id="c23"><span><b>Every unit logged in the yard walk log</b><small>Container #, chassis #, spot, loaded/empty, tires, chassis. Use the same spot names every day (row + position, e.g. Middle-Front 3). Damage gets photos.</small></span></label></li>
+<li><label><input type="checkbox" id="c4"><span><b>Every container: location and condition match the record</b><small>Container #, chassis #, owner, loaded or empty, seal #, spot. Anything showing <b>Not checked in</b> on Yard › In the yard gets checked in now.</small></span></label></li>
+<li><label><input type="checkbox" id="c26"><span><b>Reefers: running and in range</b><small>Plugged in or genset running. Genset fuel at 3/4 or more. Set point matches the paperwork, no alarm codes. Write the temp in the walk notes. Problem → Lethaniel right away.</small></span></label></li>
+<li><label><input type="checkbox" id="c27"><span><b>Hazmat boxes: placarded and parked right</b><small>Placards on all four sides. Parked in the hazmat spot away from the office, fuel and ignition sources. No leaks or smell. Never stack or block it in.</small></span></label></li>
+<li><label><input type="checkbox" id="c5"><span><b>Chassis: tag anything defective</b><small>Defects go to the defect area with a <span class="tag">DO NOT DISPATCH – company safety hold</span> tag. Missing handles, lights, tires and bad landing gear count.</small></span></label></li>
 <li><label><input type="checkbox" id="c6"><span><b>Parked trucks and trailers match the paid roster</b><small>Every unit has an active daily, weekly or monthly account. Unknown units get photographed and reported.</small></span></label></li>
+<li><label><input type="checkbox" id="c28"><span><b>Other companies' boxes have an account</b><small>Any box we did not pull (another trucking company) needs an owner, contact and storage rate on file. Unknown → photograph it and send it to Richard.</small></span></label></li>
 <li><label><input type="checkbox" id="c21"><span><b>Chassis location report done in BlackBerry Radar</b><small>All 17 chassis below have a location by 9:00. Anything "Can't find" goes to Lethaniel right away.</small></span></label></li>
-<li><label><input type="checkbox" id="c7"><span><b>Hazards</b><small>Leaks, spills, flat tires, blocked lanes, debris, standing water. Fix or flag.</small></span></label></li>
+<li><label><input type="checkbox" id="c7"><span><b>Hazards</b><small>Leaks, spills, flat tires, blocked lanes, debris, standing water, potholes. Fix it or flag it with a photo.</small></span></label></li>
 </ul>
 </section>
 <section>
@@ -527,8 +555,10 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <ul>
 <li><label><input type="checkbox" id="c8"><span><b>Log every gate in and gate out</b><small>Container #, chassis #, owner, loaded/empty, seal #. Date, time, driver, carrier, tractor, load or work order #. Who authorized it. Damage. Yard spot (in) or verified destination (out).</small></span></label></li>
 <li><label><input type="checkbox" id="c9"><span><b>Photos on every move</b><small>All sides, doors, container ID, chassis ID, seal. Each damage spot twice: one wide, one close. Keep originals. Never climb equipment or break a seal for a photo.</small></span></label></li>
-<li><label><input type="checkbox" id="c10"><span><b>Chassis safety check before any chassis leaves</b><small>Brakes · lights and reflective tape · wheels, rims, lugs, tires · air lines and glad-hands · kingpin · rails and frame · twist locks and pins · slider locks · annual inspection sticker within 12 months.</small></span></label></li>
+<li><label><input type="checkbox" id="c29"><span><b>Seal check in and out</b><small>Seal # on the box matches the paperwork when it comes in and when it leaves. Broken or wrong seal → stop the move and call (see Stop and call).</small></span></label></li>
+<li><label><input type="checkbox" id="c10"><span><b>Chassis safety check before any chassis leaves</b><small>Brakes · lights and reflective tape · wheels, rims, lugs, tires · air lines and glad-hands · kingpin · rails and frame · twist locks and pins · slider locks · landing gear and handle · annual inspection sticker within 12 months.</small></span></label></li>
 <li><label><input type="checkbox" id="c11"><span><b>Verified release on every outbound</b><small>Release comes from a known customer or carrier contact, not a number the driver hands you.</small></span></label></li>
+<li><label><input type="checkbox" id="c30"><span><b>Damage found → report the same day</b><small>Make the damage PDF (Reports › Dashboard › Damage reports) and give the repair to an owner with a date. Damage with no repair owner repeats.</small></span></label></li>
 <li><label><input type="checkbox" id="c12"><span><b>Vendors on site signed in</b><small>Mechanic, tire, tow and delivery vendors: name, company, time in/out, which unit they worked on.</small></span></label></li>
 <li><label><input type="checkbox" id="c13"><span><b>New parking customers set up before they park</b><small>Name, company, phone, unit #, plate, rate and payment received. No pay, no spot.</small></span></label></li>
 </ul>
@@ -551,9 +581,10 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <h2>Before end of day <span class="t">by 4:00 PM</span></h2>
 <ul>
 <li><label><input type="checkbox" id="c14"><span><b>Stage tomorrow's departures in order</b><small>1. Safety holds out of the way. 2. Last free day, cutoff and empty-return deadlines. 3. Confirmed appointments.</small></span></label></li>
-<li><label><input type="checkbox" id="c24"><span><b>Container board matches the yard</b><small>Every container on the ground is checked in. Everything that left today is checked out with where it went.</small></span></label></li>
+<li><label><input type="checkbox" id="c24"><span><b>Container board matches the yard</b><small>Every container on the ground is checked in (no <b>Not checked in</b> left on Yard › In the yard). Everything that left today is checked out with where it went.</small></span></label></li>
 <li><label><input type="checkbox" id="c15"><span><b>Defect area status</b><small>Each held chassis: repair requested, repair done, certificate received. Only Lethaniel or Julia releases a hold.</small></span></label></li>
 <li><label><input type="checkbox" id="c16"><span><b>Parking accounts past due</b><small>List anyone expired or unpaid and send it to Richard. Do not tow or lock out without his OK.</small></span></label></li>
+<li><label><input type="checkbox" id="c31"><span><b>Storage list to Richard</b><small>Yard › In the yard › <b>Download list</b>: every box with days stored and who it belongs to, so storage gets billed.</small></span></label></li>
 </ul>
 </section>
 <section>
@@ -730,9 +761,9 @@ run('addWalk',row,photos).then(s=>{apply(s);ok();e.target.reset();wMsg.textConte
 });
 function renderWeek(){
 const wk=$('week'); wk.textContent='';
-for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);const k=ymd(d);const v=S.week[k];
+const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));for(let j=0;j<7;j++){const d=new Date(mon);d.setDate(mon.getDate()+j);const i=Math.round((new Date(now).setHours(0,0,0,0)-new Date(d).setHours(0,0,0,0))/864e5);const k=ymd(d);const v=i<0?null:S.week[k];
 const el=document.createElement('div');el.className='day';const pct=v==null?null:Math.round(v/total*100);
-el.classList.add(pct===null?'none':pct>=100?'full':pct<70?'low':'mid'); if(i===0)el.classList.add('today');
+el.classList.add(pct===null?'none':pct>=100?'full':pct<70?'low':'mid'); if(i===0)el.classList.add('today'); if(i<0)el.style.opacity='.45';
 const dn=document.createElement('span');dn.className='dn';dn.textContent=d.toLocaleDateString(undefined,{weekday:'short'});
 const pc=document.createElement('span');pc.className='pc';pc.textContent=pct===null?'—':pct+'%';el.append(dn,pc);wk.append(el);}
 $('weekSec').hidden=false;
@@ -1137,11 +1168,11 @@ TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.inne
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
 const SUBS={today:[['att','Attention'],['feed','Port feed']],
-tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['contacts','Who to call'],['history','Last 7 days']],
+tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['containers','Check in / out'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard']]};
-const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'history',dashSec:'dash',scoreSec:'score'};
+const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
 const SUBH=[[/^Open the yard|^Morning yard walk/,'morning'],[/^All day|^Break/,'day'],[/^Before end of day|^Yard reconcile/,'end'],[/^Who to call/,'contacts'],
 [/^Containers in the yard/,'containers'],[/^Chassis location report/,'chassis'],[/^Yard walk log/,'walk']];
 [...wrap.children].filter(x=>x.dataset&&x.dataset.tab&&!x.dataset.sub).forEach(x=>{let k=SUBID[x.id];const h=((x.querySelector('h2')||{}).textContent||'').trim();
