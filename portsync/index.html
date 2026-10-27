@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Port Sync</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="../icon-192.png">
+<style>
+:root{--brand:#2e2d6f;--red:#e42430;--bg:#f3f4f2;--panel:#fff;--ink:#1d2326;--muted:#5d686d;--line:#d6dad8;--ok:#1a7f37}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15191b;--panel:#1d2225;--ink:#e7eaea;--muted:#9aa5aa;--line:#30383c;--ok:#7fd3a0}}
+:root[data-theme="dark"]{--bg:#15191b;--panel:#1d2225;--ink:#e7eaea;--muted:#9aa5aa;--line:#30383c;--ok:#7fd3a0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.top{background:#fff;border-bottom:4px solid var(--red)}
+.top .in{max-width:860px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+.top img{height:48px}
+.top b{display:block;font:700 22px/1.1 "Arial Narrow",system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#2e2d6f}
+.top span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5d686d}
+main{max-width:860px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:20px}
+h1{font:700 34px/1.1 "Arial Narrow",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+p.lead{margin:0;color:var(--muted);max-width:60ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px}
+.drag{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+a.bm{display:inline-flex;align-items:center;gap:10px;background:var(--brand);color:#fff;text-decoration:none;font-weight:700;font-size:18px;padding:14px 22px;border-radius:6px;border:2px dashed rgba(255,255,255,.5);cursor:grab;box-shadow:0 4px 14px rgba(46,45,111,.35)}
+a.bm:active{cursor:grabbing}
+.arrow{color:var(--muted);font-size:14px}
+ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
+kbd{font:600 13px ui-monospace,monospace;background:var(--bg);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.grid .card h3{margin:0 0 6px;font-size:16px}
+.grid .card p{margin:0;color:var(--muted);font-size:14px}
+.links{display:flex;flex-wrap:wrap;gap:10px}
+.links a{color:var(--brand);font-weight:600;text-decoration:none;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:10px 14px}
+@media (prefers-color-scheme: dark){.links a{color:#b4b3ff}}
+details{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 16px}
+summary{font-weight:600;cursor:pointer}
+code.copy{display:block;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;font-size:12px;word-break:break-all}
+button.cp{margin-top:8px;font:inherit;font-size:14px;background:var(--brand);color:#fff;border:0;border-radius:4px;padding:8px 14px;cursor:pointer}
+footer{text-align:center;font-size:12px;color:var(--muted)}
+</style></head><body>
+<div class="top"><div class="in"><img src="../logo.png" alt="2FF Logistics · America 1"><div><b>Port Sync</b><span>2FF Logistics · Yard App</span></div></div></div>
+<main>
+<div><h1>Port Sync</h1><p class="lead">Pulls our GPA gate moves (AOLQ) with chassis, plate and driver from each gate ticket into the Yard App. It also sets GPA "container available" alerts for boxes on the Watch list.</p></div>
+
+<div class="card">
+<b>Step 1: put the button on your bookmarks bar (one time)</b>
+<div class="drag" style="margin-top:12px">
+<a class="bm" id="bm" href="#" title="Drag me to your bookmarks bar">⚓ Port Sync</a>
+<span class="arrow">← drag this button up onto your bookmarks bar</span>
+</div>
+<p style="margin:12px 0 0;color:var(--muted);font-size:14px">Can't see the bookmarks bar? Press <kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>B</kbd> on a Mac (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>B</kbd> on Windows). Don't click the button on this page. It only works inside GPA WebAccess.</p>
+</div>
+
+<div class="card"><b>Step 2: every time you want fresh port data</b>
+<ol style="margin-top:10px">
+<li>Open <a href="https://webaccess.gaports.com/express/" target="_blank" rel="noopener">GPA WebAccess</a> and sign in yourself.</li>
+<li>Click <b>⚓ Port Sync</b> on your bookmarks bar.</li>
+<li>The first time on a computer, type your personal Yard App code. It's saved on that computer only.</li>
+<li>Wait for <b>Done</b> (about a minute). If boxes are on the Watch list, tap <b>Set GPA alerts</b> to have GPA email us when they're available.</li>
+</ol></div>
+
+<div class="grid">
+<div class="card"><h3>What it reads</h3><p>Our truck transactions for today (AOLQ) and each gate ticket (EIR): chassis, plate, seal, weight, time. Moves on plates that aren't ours are skipped.</p></div>
+<div class="card"><h3>What it changes</h3><p>Nothing at GPA except the Notify alerts you confirm. It never creates PINs. Everything it saves is logged with your name.</p></div>
+<div class="card"><h3>Coming soon</h3><p>When GPA's API credentials are active, sync runs by itself every 10 minutes and this button becomes a backup.</p></div>
+</div>
+
+<div class="links">
+<a href="https://webaccess.gaports.com/express/" target="_blank" rel="noopener">Open GPA WebAccess</a>
+<a href="../">Open Yard App</a>
+<a href="../beta/">Open Yard App (beta)</a>
+</div>
+
+<details><summary>Drag doesn't work? Make the bookmark by hand</summary>
+<ol style="margin-top:10px"><li>Right-click the bookmarks bar → <b>Add page…</b></li><li>Name: <b>Port Sync</b></li><li>URL: paste the line below</li></ol>
+<code class="copy" id="code"></code><button class="cp" type="button" id="cp">Copy</button>
+</details>
+
+<details><summary>Troubleshooting</summary>
+<ul style="margin:10px 0 0;padding-left:20px">
+<li><b>"Open GPA WebAccess, sign in…"</b>: you clicked it on another site. Go to WebAccess first.</li>
+<li><b>"WebAccess signed out"</b>: WebAccess timed out. Sign in again and click Port Sync.</li>
+<li><b>"Unknown code"</b>: your Yard App code was mistyped. Click Port Sync again and re-enter it.</li>
+<li><b>Tags not on our list</b>: a truck we don't have on file moved a box under AOLQ. Add it on the Port tab → Trucks.</li>
+</ul></details>
+<footer>© 2026 IronBridge Holding Group LLC · Licensed to 2FF Logistics LLC</footer>
+</main>
+<script>
+var BM="javascript:(function(){var s=document.createElement('script');s.src='https://yard.2f-logistics.com/portsync.js?'+Date.now();document.body.appendChild(s)})()";
+var a=document.getElementById('bm');a.setAttribute('href',BM);
+a.addEventListener('click',function(e){e.preventDefault();alert('Drag this button to your bookmarks bar, then click it while you are in GPA WebAccess.')});
+document.getElementById('code').textContent=BM;
+document.getElementById('cp').addEventListener('click',function(){var b=this;try{navigator.clipboard.writeText(BM).then(function(){b.textContent='Copied'},function(){b.textContent='Select and copy the line above'})}catch(e){b.textContent='Select and copy the line above'}});
+</script>
+</body></html>
