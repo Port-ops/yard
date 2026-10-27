@@ -242,6 +242,7 @@ ul.att li.more{text-align:center;display:block;color:var(--muted);font-size:13px
 .score tr.park td{color:var(--muted);font-style:italic}
 .bar2{display:inline-block;height:8px;background:var(--brand,var(--ink));border-radius:1px;vertical-align:middle;margin-left:6px;opacity:.75}
 .qres[hidden]{display:none!important}
+.stor td.m{font-family:var(--mono)}
 
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -1068,6 +1069,7 @@ const today=el('section');today.id='todaySec';today.dataset.tab='today';
 today.innerHTML='<p class="hello" id="tHello"></p><div class="chips" id="tChips"></div>';
 const today2=el('section');today2.id='todaySec2';today2.dataset.tab='today';
 today2.innerHTML='<h3 class="h3">Needs attention <span class="t" id="tAttN"></span></h3><ul class="att" id="tAtt"></ul>'+
+'<h3 class="h3">Containers in storage <span class="t" id="stN"></span></h3><div class="fchips" id="stF"></div><div class="tbl"><table class="score stor" id="stT"></table></div>'+
 '<h3 class="h3">Latest at the port <span class="t" id="tPortAsof"></span></h3><ul class="cboard pmv" id="tPort"></ul>';
 document.querySelector('header').after(today);
 const search=document.querySelector('section.quick');if(search){today.after(search);search.after(today2)}else today.after(today2);
@@ -1234,7 +1236,26 @@ function renderScore(){const PT=Y().PT||{rows:[],tags:[]};const T=$('sbT'),K=$('
     tr.append(el('td','',r.t.truck||r.t.tag),el('td','',r.park?'Parked':(r.t.driver||'—')),m,el('td','n',String(r.out)),el('td','n',String(r.in)),el('td','n',String(r.d)),el('td','',r.last?fmtDT(r.last):'no moves'));T.append(tr)});
   $('sbAsof').textContent='our trucks · last 7 days'+(PT.lastSync?' · synced '+fmtDT(PT.lastSync):'')}
 
-function all(){try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+
+// ---------- storage: every box sitting in our yard ----------
+let STF='all';
+function renderStorage(){const S=Y().S||{},ci=Y().contInfo||(x=>x);const T=$('stT'),F=$('stF');if(!T)return;T.textContent='';
+  const all=((S.cont&&S.cont.inYard)||[]).map(ci).map(r=>Object.assign(r,{sd:r.inAt?Math.max(0,Math.round((day0(Date.now())-day0(r.inAt))/DAY)):(r.daysIn||0)}));
+  const le=r=>/empty/i.test(r.le||'')?'Empty':/load|full/i.test(r.le||'')?'Loaded':'';
+  const groups=[['all','All'],['Loaded','Loaded'],['Empty','Empty'],['risk','Free time ending / per diem'],['30','30+ days']];
+  F.textContent='';groups.forEach(([k,l])=>{const n=k==='all'?all.length:k==='risk'?all.filter(r=>r.cls).length:k==='30'?all.filter(r=>r.sd>=30).length:all.filter(r=>le(r)===k).length;
+    const b=el('button',STF===k?'on':'',l+' ('+n+')');b.type='button';b.addEventListener('click',()=>{STF=k;renderStorage()});F.append(b)});
+  const rows=all.filter(r=>STF==='all'||(STF==='risk'?r.cls:STF==='30'?r.sd>=30:le(r)===STF)).sort((a,b)=>b.sd-a.sd);
+  const tot=all.reduce((a,r)=>a+r.sd,0);
+  $('stN').textContent=all.length?all.length+' in our yard · '+all.filter(r=>le(r)==='Loaded').length+' loaded · '+all.filter(r=>le(r)==='Empty').length+' empty · '+tot+' storage days total':'';
+  const hd=el('tr');['Container','Line','Customer / load','L/E','Spot','Chassis','Stored','Free time'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  if(!rows.length){const tr=el('tr');const td=el('td','',all.length?'None in this filter.':'No containers checked in to the yard right now. Check-ins on the Yard tab show here.');td.colSpan=8;tr.append(td);T.append(tr);return}
+  rows.forEach(r=>{const tr=el('tr');tr.style.cursor='pointer';tr.title='Show on the yard board';
+    const ft=el('td','',r.status||'');if(r.cls==='late')ft.style.color='var(--stop)';else if(r.cls==='warn')ft.style.color='var(--accent-ink)';
+    tr.append(el('td','m',r.container),el('td','',r.ssl||''),el('td','',r.load||''),el('td','',le(r)||r.le||''),el('td','',r.spot||''),el('td','',r.mount==='Grounded'?'Grounded':(r.chassis||'')),el('td','n',r.sd+'d'+(r.inAt?' · since '+fmtD(r.inAt):'')),ft);
+    tr.addEventListener('click',()=>go('yard','#contList li[data-c="'+r.container+'"]'));T.append(tr)})}
+
+function all(){try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
