@@ -1085,7 +1085,7 @@ const BYH=[[/^Search|Container lookup/,'today'],[/^Chassis location report/,'yar
   if(!t)for(const [re,tab] of BYH)if(re.test(h.trim())){t=tab;break}
   s.dataset.tab=t||'tasks'});
 [...wrap.children].filter(d=>d.tagName==='DIV'&&!d.dataset.tab).forEach(d=>d.dataset.tab='tasks');
-const h1=document.querySelector('header h1');if(h1){h1.textContent='Yard App';h1.append(el('span','betaflag','BETA'))}
+const h1=document.querySelector('header h1');if(h1){h1.textContent='Yard App';if(/\/beta\//.test(location.pathname))h1.append(el('span','betaflag','BETA'))}
 
 // ---------- 2. Today section ----------
 const today=el('section');today.id='todaySec';today.dataset.tab='today';
