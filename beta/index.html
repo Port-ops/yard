@@ -366,20 +366,18 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <div class="qres" id="qRes" hidden></div>
 </section>
 <section id="weekSec" hidden>
-<h2>Monday–Sunday <span class="t">daily sheet done each day</span></h2>
+<h2>This week <span class="t">daily sheet done each workday</span></h2>
 <div class="week" id="week"></div>
 </section>
 <section id="dowSec">
-<h2>This week <span class="t">Monday–Sunday</span></h2>
-<p class="help">One extra job each day on top of the daily sheet. Today's shows as a checkbox; the whole week is below.</p>
+<h2>This week <span class="t">Monday–Friday</span></h2>
+<p class="help">One extra job each workday on top of the daily sheet. Today's shows as a checkbox; the whole week is below. Saturday and Sunday are off.</p>
 <ul id="dowList">
 <li data-days="1"><label><input type="checkbox" id="w1"><span><b>Monday: safety walk + billing</b><small>Full fence line, lighting, fire extinguishers (gauge in the green), first aid kit, potholes. Then send Richard who owes for parking/storage this week and who paid.</small></span></label></li>
 <li data-days="2"><label><input type="checkbox" id="w2"><span><b>Tuesday: chassis paperwork</b><small>List every chassis whose annual inspection sticker expires in the next 30 days and send it to Julia. Every hold in the defect area has a repair date.</small></span></label></li>
 <li data-days="3"><label><input type="checkbox" id="w3"><span><b>Wednesday: tire and landing-gear sweep</b><small>Every chassis in the yard: tread, inflation, lugs, landing gear and crank handle. Tag and photograph anything bad.</small></span></label></li>
 <li data-days="4"><label><input type="checkbox" id="w4"><span><b>Thursday: reefers and hazmat area</b><small>Order genset fuel if any are under half. Hazmat spot clean, placards readable, spill kit stocked.</small></span></label></li>
 <li data-days="5"><label><input type="checkbox" id="w5"><span><b>Friday: weekend prep + weekly count</b><small>Monday departures staged. Boxes with a weekend last free day flagged to Lethaniel. Gate, locks, cameras checked. Send Richard the weekly count: in, out, on the ground, storage boxes, holds.</small></span></label></li>
-<li data-days="6"><label><input type="checkbox" id="w6"><span><b>Saturday: security check</b><small>On site or by camera: gate locked, fence intact, no unknown units, reefers running. Anything wrong → Lethaniel.</small></span></label></li>
-<li data-days="0"><label><input type="checkbox" id="w7"><span><b>Sunday: security check + plan Monday</b><small>On site or by camera: gate locked, reefers running. Look at Monday's moves, last free days and appointments.</small></span></label></li>
 </ul>
 <script>(function(){var d=String(new Date().getDay());[].slice.call(document.querySelectorAll('#dowList > li')).forEach(function(li){if(li.getAttribute('data-days').split(',').indexOf(d)<0)li.parentNode.removeChild(li)})})();</script>
 <div class="tbl"><table class="esc">
@@ -388,8 +386,8 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <tr><td>Wed</td><td>Tire and landing-gear sweep</td></tr>
 <tr><td>Thu</td><td>Reefers and hazmat area</td></tr>
 <tr><td>Fri</td><td>Weekend prep + weekly count</td></tr>
-<tr><td>Sat</td><td>Security check</td></tr>
-<tr><td>Sun</td><td>Security check + plan Monday</td></tr>
+<tr><td>Sat</td><td>Off (Brandon works Monday–Friday)</td></tr>
+<tr><td>Sun</td><td>Off</td></tr>
 </table></div>
 </section>
 
@@ -765,7 +763,7 @@ const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));for(let 
 const el=document.createElement('div');el.className='day';const pct=v==null?null:Math.round(v/total*100);
 el.classList.add(pct===null?'none':pct>=100?'full':pct<70?'low':'mid'); if(i===0)el.classList.add('today'); if(i<0)el.style.opacity='.45';
 const dn=document.createElement('span');dn.className='dn';dn.textContent=d.toLocaleDateString(undefined,{weekday:'short'});
-const pc=document.createElement('span');pc.className='pc';pc.textContent=pct===null?'—':pct+'%';el.append(dn,pc);wk.append(el);}
+const pc=document.createElement('span');pc.className='pc';pc.textContent=pct===null?'—':pct+'%';el.append(dn,pc);wk.append(el);if(d.getDay()===0||d.getDay()===6){el.className='day none';pc.textContent='off';el.style.opacity='.45'}}
 $('weekSec').hidden=false;
 }
 const DAY=86400000;
