@@ -152,6 +152,26 @@ footer{color:var(--muted);font-size:13px}
 .dmsg{font-size:13px;margin:0}
 @media (prefers-reduced-motion:reduce){.meter i{transition:none}}
 
+.pmv li{gap:4px}.pmv .dir{font-family:var(--mono);font-size:11px;border-radius:2px;padding:1px 6px;color:#fff;background:#5d686d}
+.pmv .dir.OUT{background:#b42318}.pmv .dir.IN{background:#1a7f37}
+.ttbl{width:100%;border-collapse:collapse;font-size:13.5px}.ttbl th,.ttbl td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.ttbl th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.ttbl td.m{font-family:var(--mono)}.tbl{overflow-x:auto}
+.ef{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.ef label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.ef input{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink)}
+.ef input.chg{border-color:var(--accent);background:rgba(255,191,0,.08)}
+.ehist li{font-size:13px}
+
+.pinf{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pinf label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.pinf input,.pinf select,.pint select{font:inherit;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink)}
+.pint{display:flex;gap:8px;flex-wrap:wrap}.pint button{flex:1 1 140px;font:inherit;font-weight:600;font-size:15px;padding:14px 10px;border:2px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);cursor:pointer}
+.pint button.on{border-color:var(--brand,var(--ink));background:var(--brand,var(--ink));color:var(--bg,#fff)}
+.pinrev{border:2px solid var(--accent);border-radius:6px;padding:12px;background:rgba(255,191,0,.08)}
+.pinrev dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:6px 0}.pinrev dt{color:var(--muted)}.pinrev dd{margin:0;font-family:var(--mono)}
+.pinl li .pin{font-family:var(--mono);font-size:20px;font-weight:600}
+
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
 :root[data-theme="dark"]{--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}
 html{padding-top:env(safe-area-inset-top,0px)}
@@ -201,6 +221,48 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <ul class="dmgl" id="dDmg"></ul>
 <div class="drow"><input id="dCh" list="chasList" placeholder="Any chassis # e.g. MCCZ341024" maxlength="11" autocomplete="off" aria-label="Chassis number for damage report"><button class="btn" type="button" id="dGo">Make damage report</button></div>
 <p class="dmsg" id="dMsg"></p>
+</section>
+<section id="portSec" hidden>
+<h2>Port moves <span class="t" id="pAsof">our trucks at GPA · last 7 days</span></h2>
+<p class="help">Every gate move at GPA by <b>our trucks only</b> (plates in the list below), with the chassis and plate from the GPA gate ticket (EIR). Updated by Port Sync and GPA Notify emails.</p>
+<div class="drow"><input id="pFind" placeholder="Filter: container, chassis, plate or unit" autocomplete="off" aria-label="Filter port moves"></div>
+<ul class="cboard pmv" id="pList"><li class="empty">Loading port moves…</li></ul>
+<div id="tagBox" hidden>
+<h3 style="margin:8px 0 0;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.04em">Our trucks &amp; drivers <span class="t" style="font-family:var(--mono);font-size:12px;text-transform:none" id="tagCount"></span></h3>
+<div class="tbl"><table class="ttbl" id="tagTbl"></table></div>
+<form class="drow" id="tagForm" autocomplete="off" style="margin-top:6px">
+<input id="tPlate" placeholder="Plate (GPA Truck ID)" maxlength="10" aria-label="Plate">
+<input id="tUnit" placeholder="Unit #" maxlength="12" aria-label="Unit number" style="text-transform:none">
+<input id="tDrv" placeholder="Driver" maxlength="40" aria-label="Driver" style="text-transform:none">
+<input id="tOwn" placeholder="Owner / operator" maxlength="60" aria-label="Owner" style="text-transform:none">
+<button class="btn" type="submit" id="tSave">Add / update truck</button>
+</form><p class="dmsg" id="tMsg"></p>
+</div>
+</section>
+<section id="pinSec" hidden>
+<h2>Port PINs <span class="t" id="pinMode">PIN out / PIN in</span></h2>
+<p class="help">Pick the move, fill in what GPA needs, review, then <b>Confirm</b>. Nothing goes to GPA until you confirm. The same container can't get two open PINs.</p>
+<div class="pint" id="pinTypes">
+<button type="button" data-t="DI">PIN OUT<br><small>Pull import (full)</small></button>
+<button type="button" data-t="DM">PIN OUT<br><small>Pull empty</small></button>
+<button type="button" data-t="RM">PIN IN<br><small>Return empty</small></button>
+<button type="button" data-t="RE">PIN IN<br><small>Drop export (full)</small></button>
+</div>
+<form id="pinForm" hidden autocomplete="off"><div class="pinf" id="pinFields"></div>
+<div class="actions"><button class="btn" type="submit">Review</button><span class="msg" id="pinMsg"></span></div></form>
+<div class="pinrev" id="pinRev" hidden><b>Check before sending</b><dl id="pinRevL"></dl>
+<div class="actions"><button class="btn" type="button" id="pinGo">Confirm &amp; request PIN</button><button class="btn2" type="button" id="pinBack">Edit</button><span class="msg" id="pinMsg2"></span></div></div>
+<h3 style="margin:8px 0 0;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.04em">PIN requests</h3>
+<ul class="cboard pinl" id="pinList"><li class="empty">No PIN requests yet.</li></ul>
+</section>
+<section id="editSec" hidden>
+<h2>Fix an entry <span class="t">every change is saved with who, when, old and new</span></h2>
+<p class="help">Made a mistake? Pick the container, change the field, tap <b>Save fix</b>. The old value is kept in the Edit Log, so nothing is lost.</p>
+<div class="drow"><input id="eFind" list="eList" placeholder="Container # e.g. ABCU1234567" maxlength="11" autocomplete="off" aria-label="Container to fix"><datalist id="eList"></datalist><button class="btn2" type="button" id="eLoad">Open</button></div>
+<form id="eForm" hidden autocomplete="off"><p class="count" id="eHead"></p><div class="ef" id="eFields"></div>
+<div class="actions"><button class="btn" type="submit" id="eSave">Save fix</button><button class="btn2" type="button" id="eCancel">Cancel</button><span class="msg" id="eMsg"></span></div></form>
+<h3 style="margin:8px 0 0;font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.04em">Recent fixes</h3>
+<ul class="cboard ehist" id="eHist"><li class="empty">No fixes yet.</li></ul>
 </section>
 <section class="quick">
 <h2>Container lookup <span class="t">type it as you walk</span></h2>
@@ -489,7 +551,7 @@ window.addEventListener('online',()=>{showQ();flushQ()});window.addEventListener
 const ok=()=>{sync.textContent='Saved to the 1 Stop Yard Log · '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})};
 const fail=e=>{sync.textContent='Not saved. Check your signal and try again. ('+(e&&e.message||e)+')'};
 function saveCache(s){try{localStorage.setItem('yardS',JSON.stringify({s,at:Date.now()}))}catch(e){try{const c=Object.assign({},s,{walk:[]});localStorage.setItem('yardS',JSON.stringify({s:c,at:Date.now()}))}catch(x){}}}
-function apply(s,cached){S=s;if(!cached)saveCache(s);render();try{renderDash();if(!D||!D._t||Date.now()-D._t>60000){if(D)D._t=Date.now();else D={_t:Date.now()};loadDash()}}catch(e){}renderChas();renderWalk();renderWeek();renderCont();renderOpen();renderPool();applyRole();if($('qNum').value)quick();}
+function apply(s,cached){S=s;if(!cached)saveCache(s);render();try{renderDash();if(!D||!D._t||Date.now()-D._t>60000){if(D)D._t=Date.now();else D={_t:Date.now()};loadDash()}}catch(e){}renderChas();renderWalk();renderWeek();renderCont();renderOpen();renderPool();applyRole();try{renderPort();loadPort();renderEdit();loadEdit();renderPins();loadPins()}catch(e){}if($('qNum').value)quick();}
 function render(){
 let n=0;
 boxes.forEach(b=>{
@@ -718,13 +780,107 @@ call('damageReport',[n]).then(r=>{m.textContent='';const a=document.createElemen
 .catch(e=>{m.textContent=(e&&e.message)||String(e)}).finally(()=>{if(btn)btn.disabled=false})}
 $('dGo').addEventListener('click',()=>makeReport($('dCh').value,$('dGo')));
 setInterval(loadDash,300000);
+// ---- port moves + trucks (any signed-in user; trucks list admin) ----
+var PT=null,PTt=0;try{PT=JSON.parse(localStorage.getItem('yardP')||'null')}catch(e){}
+const isAdmin=()=>((S.me&&S.me.r)||[]).includes('admin');
+function loadPort(force){if(!S.me||!navigator.onLine)return;if(!force&&Date.now()-PTt<60000)return;PTt=Date.now();
+call('getPort',[]).then(d=>{PT=d;try{localStorage.setItem('yardP',JSON.stringify(d))}catch(e){}renderPort()}).catch(()=>{})}
+function ago(ms){if(!ms)return 'never';const m=Math.round((Date.now()-ms)/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
+function renderPort(){const sec=$('portSec');if(!S.me){sec.hidden=true;return}sec.hidden=false;
+const d=PT||{rows:[],tags:[]};$('pAsof').textContent='Port Sync '+ago(d.lastSync)+' · Notify checked '+ago(d.lastNotify);
+const q=$('pFind').value.trim().toUpperCase();const units={};(d.tags||[]).forEach(t=>units[String(t.tag).toUpperCase()]=t);
+const L=$('pList');L.textContent='';
+const rows=(d.rows||[]).filter(r=>!q||[r.c,r.ch,r.tag,r.drv,r.line].join(' ').toUpperCase().includes(q));
+if(!rows.length){const li=document.createElement('li');li.className='empty';li.textContent=q?'No moves match.':'No port moves in the last 7 days yet. Run Port Sync from GPA WebAccess.';L.append(li)}
+rows.slice(0,80).forEach(r=>{const li=document.createElement('li');const top=document.createElement('div');top.className='top';
+const dir=document.createElement('span');dir.className='dir '+(r.dir||'');dir.textContent=r.dir==='OUT'?'OUT-GATE':r.dir==='IN'?'IN-GATE':(r.dir||'MOVE');
+const n=document.createElement('span');n.className='num';n.textContent=r.c||'(chassis only)';
+const t=document.createElement('span');t.className='pill';t.textContent=new Date(r.t).toLocaleString(undefined,{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'});
+top.append(dir,n,t);const meta=document.createElement('span');meta.className='meta';
+meta.textContent=[r.move,r.ch&&('Chassis '+r.ch),r.tag&&('Plate '+r.tag),r.drv,r.line,r.seal&&('Seal '+r.seal),r.yl].filter(Boolean).join(' · ');
+li.append(top,meta);L.append(li)});
+const tb=$('tagBox');tb.hidden=!(d.tags||[]).length;const adm=isAdmin();$('tagForm').hidden=!adm;
+const T=$('tagTbl');T.textContent='';const hd=document.createElement('tr');['Plate','Unit','Driver','Owner / operator',''].forEach(h=>hd.append(Object.assign(document.createElement('th'),{textContent:h})));T.append(hd);
+const moves={};(d.rows||[]).forEach(r=>{const k=String(r.tag||'').toUpperCase();moves[k]=(moves[k]||0)+1});
+(d.tags||[]).filter(t=>t.active!=='N').sort((a,b)=>String(a.truck).localeCompare(String(b.truck))).forEach(t=>{const tr=document.createElement('tr');
+[[t.tag,'m'],[t.truck,'m'],[t.driver,''],[t.owner,'']].forEach(([v,c])=>tr.append(Object.assign(document.createElement('td'),{textContent:v||'',className:c})));
+const td=document.createElement('td');if(adm){const b=document.createElement('button');b.type='button';b.className='btn2';b.textContent='Edit';
+b.addEventListener('click',()=>{$('tPlate').value=t.tag;$('tUnit').value=t.truck||'';$('tDrv').value=t.driver||'';$('tOwn').value=t.owner||'';$('tDrv').focus()});td.append(b)}tr.append(td);T.append(tr)});
+$('tagCount').textContent=(d.tags||[]).filter(t=>t.active!=='N').length+' trucks · '+((d.rows||[]).length)+' port moves this week · moves on other plates are not pulled in';}
+$('pFind').addEventListener('input',renderPort);
+$('tagForm').addEventListener('submit',e=>{e.preventDefault();const m=$('tMsg');const tag=$('tPlate').value.trim().toUpperCase();if(!tag){m.textContent='Plate is required.';return}
+$('tSave').disabled=true;m.textContent='Saving…';call('setTag',[{tag:tag,truck:$('tUnit').value.trim(),driver:$('tDrv').value.trim(),owner:$('tOwn').value.trim()}])
+.then(d=>{PT=d;renderPort();e.target.reset();m.textContent='Saved '+tag+'.'}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('tSave').disabled=false})});
+// ---- Port PIN manager (pin role or admin) ----
+var PN=null,PNt=0,PTYPE='';
+const canPin=()=>{const r=(S.me&&S.me.r)||[];return r.includes('admin')||r.includes('pin')};
+const PINF={DI:[['containerNbr','Container #','ABCU1234567']],RM:[['containerNbr','Empty container #','ABCU1234567'],['facility','Return terminal','GCT|OT']],
+RE:[['containerNbr','Container #','ABCU1234567'],['bookingNbr','Booking #',''],['lineScac','Line SCAC','MSCU'],['containerSize','Size','20|40|45'],['containerType','Type','DR|HC|RF|OT|FR|TK'],['containerHeight','Height','86|96'],['seal1','Seal # (optional)','']],
+DM:[['bookingNbr','Booking #',''],['lineScac','Line SCAC','MSCU'],['containerSize','Size','20|40|45'],['containerType','Type','DR|HC|RF'],['containerHeight','Height','86|96'],['delEmptyContainerQuantity','How many empties','1']]};
+const PNAME={DI:'PIN OUT · pull import (full)',DM:'PIN OUT · pull empty',RM:'PIN IN · return empty',RE:'PIN IN · drop export (full)'};
+function loadPins(force){if(!canPin()||!navigator.onLine)return;if(!force&&Date.now()-PNt<60000)return;PNt=Date.now();call('getPins',[]).then(d=>{PN=d;renderPins()}).catch(()=>{})}
+function renderPins(){const sec=$('pinSec');if(!canPin()){sec.hidden=true;return}sec.hidden=false;const d=PN||{rows:[]};
+$('pinMode').textContent=d.api?'connected to GPA · PINs come back here':'WebAccess hand-off until GPA API is on';
+const L=$('pinList');L.textContent='';if(!d.rows.length){L.append(Object.assign(document.createElement('li'),{className:'empty',textContent:'No PIN requests yet.'}));return}
+d.rows.slice(0,25).forEach(r=>{const li=document.createElement('li');const open=/created|recorded|handoff/.test(r.st),expired=r.exp&&r.exp<Date.now();
+if(r.st==='failed')li.className='late';else if(r.st==='handoff')li.className='warn';
+const top=document.createElement('div');top.className='top';const n=document.createElement('span');n.className='num';n.textContent=r.c||r.b;
+const pill=document.createElement('span');pill.className='pill';pill.textContent=expired&&open?'expired':r.st;top.append(n,pill);
+if(r.pin){const p=document.createElement('span');p.className='pin';p.textContent='PIN '+r.pin;top.append(p)}
+const meta=document.createElement('span');meta.className='meta';meta.textContent=[PNAME[r.type]||r.type,r.line,r.who,r.t&&new Date(r.t).toLocaleString(undefined,{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}),r.exp&&open&&!expired&&('good until '+new Date(r.exp).toLocaleString(undefined,{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'})),r.msg].filter(Boolean).join(' · ');
+li.append(top,meta);
+if(open&&!expired||r.st==='failed'){const o=document.createElement('div');o.className='out';
+if(r.st==='handoff'||r.st==='failed'){const a=document.createElement('a');a.href='https://webaccess.gaports.com/express/secure/Gate.jsp';a.target='_blank';a.rel='noopener';a.textContent='Open WebAccess';
+const i=document.createElement('input');i.inputMode='numeric';i.placeholder='PIN from WebAccess';i.maxLength=8;i.style.width='9em';
+const b=document.createElement('button');b.type='button';b.className='btn2';b.textContent='Save PIN';b.addEventListener('click',()=>{b.disabled=true;call('pinRecord',[r.id,i.value]).then(d=>{PN=d;renderPins()}).catch(e=>{b.disabled=false;alertPin(e)})});o.append(a,i,b)}
+const x=document.createElement('button');x.type='button';x.className='btn2';x.textContent='Cancel';x.addEventListener('click',()=>{x.disabled=true;call('pinCancel',[r.id,'']).then(d=>{PN=d;renderPins()}).catch(e=>{x.disabled=false;alertPin(e)})});o.append(x);li.append(o)}
+L.append(li)})}
+function alertPin(e){$('pinMsg2').textContent=$('pinMsg').textContent=(e&&e.message)||String(e)}
+document.querySelectorAll('#pinTypes button').forEach(b=>b.addEventListener('click',()=>{PTYPE=b.dataset.t;document.querySelectorAll('#pinTypes button').forEach(x=>x.classList.toggle('on',x===b));
+const F=$('pinFields');F.textContent='';PINF[PTYPE].forEach(([k,l,ph])=>{const lab=document.createElement('label');lab.textContent=l;let i;
+if(ph.includes('|')){i=document.createElement('select');ph.split('|').forEach(v=>i.append(Object.assign(document.createElement('option'),{value:v,textContent:v})))}else{i=document.createElement('input');i.placeholder=ph;if(k==='containerNbr'){i.maxLength=11;i.autocapitalize='characters'}}
+i.dataset.k=k;lab.append(i);F.append(lab)});$('pinForm').hidden=false;$('pinRev').hidden=true;$('pinMsg').textContent='';const f=F.querySelector('input');if(f)f.focus()}));
+$('pinForm').addEventListener('submit',e=>{e.preventDefault();const q={tranType:PTYPE};document.querySelectorAll('#pinFields [data-k]').forEach(i=>q[i.dataset.k]=i.value.trim().toUpperCase());
+if(q.containerNbr!==undefined&&!/^[A-Z]{4}\d{7}$/.test(q.containerNbr)){$('pinMsg').textContent='Container # should be 4 letters and 7 numbers.';return}
+const miss=PINF[PTYPE].filter(([k,l])=>!/optional/.test(l)&&!q[k]).map(([k,l])=>l);if(miss.length){$('pinMsg').textContent='Fill in: '+miss.join(', ');return}
+const dl=$('pinRevL');dl.textContent='';[['Move',PNAME[PTYPE]],['Trucking co','AOLQ'],...PINF[PTYPE].filter(([k])=>q[k]).map(([k,l])=>[l,q[k]])].forEach(([a,b])=>{dl.append(Object.assign(document.createElement('dt'),{textContent:a}),Object.assign(document.createElement('dd'),{textContent:b}))});
+window._pinQ=q;$('pinForm').hidden=true;$('pinRev').hidden=false;$('pinMsg2').textContent=''});
+$('pinBack').addEventListener('click',()=>{$('pinForm').hidden=false;$('pinRev').hidden=true});
+$('pinGo').addEventListener('click',()=>{const b=$('pinGo');b.disabled=true;$('pinMsg2').textContent='Requesting…';
+call('pinSubmit',[window._pinQ]).then(r=>{$('pinRev').hidden=true;$('pinMsg').textContent='';
+const m=r.mode==='api'?'GPA PIN '+r.pins+' created.':'Saved. Create it in WebAccess, then type the PIN on the request below.';$('pinMsg2').textContent=m;$('pinMsg').textContent=m;$('pinForm').hidden=false;$('pinForm').reset&&$('pinForm').reset();
+if(r.mode!=='api')window.open(r.webaccess,'_blank','noopener');loadPins(true)}).catch(e=>alertPin(e)).finally(()=>{b.disabled=false})});
+// ---- fix an entry (yard, gate, admin) ----
+var ED=null,EDt=0,ECUR=null;
+const canEdit=()=>{const r=(S.me&&S.me.r)||[];return r.includes('admin')||r.includes('yard')||r.includes('gate')};
+const EF=[['chassis','Chassis #','text','yard'],['spot','Yard spot','text','yard'],['seal','Seal #','text','yard'],['mounted','On chassis / grounded','text','yard'],['le','Loaded / empty','text','yard'],['ssl','Steamship line','text','yard gate'],['load','Customer / load #','text','yard gate'],['to','Going to','text','yard'],['ctype','Chassis type','text','yard'],['outgate','Out-gate (port)','date','gate'],['lfd','Port last free day','date','gate'],['pdEnd','Per diem free time ends','date','gate'],['ingate','In-gate (empty returned)','date','gate'],['notes','Notes','text','yard gate']];
+function loadEdit(force){if(!canEdit()||!navigator.onLine)return;if(!force&&Date.now()-EDt<60000)return;EDt=Date.now();call('getEditable',[]).then(d=>{ED=d;renderEdit()}).catch(()=>{})}
+function renderEdit(){const sec=$('editSec');if(!canEdit()){sec.hidden=true;return}sec.hidden=false;const d=ED||{rows:[],hist:[]};
+const dl=$('eList');dl.textContent='';(d.rows||[]).forEach(r=>dl.append(Object.assign(document.createElement('option'),{value:r.c,label:(r.st||'')+' · row '+r.row})));
+const H=$('eHist');H.textContent='';if(!(d.hist||[]).length){H.append(Object.assign(document.createElement('li'),{className:'empty',textContent:'No fixes yet.'}))}
+(d.hist||[]).slice(0,15).forEach(h=>{const li=document.createElement('li');li.textContent=(h.t?new Date(h.t).toLocaleString(undefined,{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+' · '+h.c+' · '+h.f+': "'+(h.o||'blank')+'" → "'+(h.n||'blank')+'" · '+String(h.who||'').split(' (')[0];H.append(li)})}
+function openEdit(){const num=$('eFind').value.trim().toUpperCase();const m=$('eMsg');const r=((ED&&ED.rows)||[]).find(x=>x.c===num);
+if(!r){$('eForm').hidden=true;m.textContent='';$('eHead').textContent='';alertIn('eFind',num?num+' is not in the last 40 records. Ask Richard to fix older ones.':'Type a container #.');return}
+ECUR=r;const role=(S.me&&S.me.r)||[];const F=$('eFields');F.textContent='';
+EF.forEach(([k,l,t,who])=>{const ok=role.includes('admin')||who.split(' ').some(w=>role.includes(w));if(!ok)return;
+const lab=document.createElement('label');lab.textContent=l;const i=document.createElement('input');i.type=t;i.dataset.k=k;i.value=r[k]==null?'':r[k];i.dataset.o=i.value;if(t==='text'&&k!=='notes')i.style.textTransform=k==='chassis'||k==='seal'?'uppercase':'none';
+i.addEventListener('input',()=>i.classList.toggle('chg',i.value!==i.dataset.o));lab.append(i);F.append(lab)});
+$('eHead').textContent=r.c+' · '+(r.st||'')+' · sheet row '+r.row;$('eForm').hidden=false;m.textContent=''}
+function alertIn(id,msg){$('eMsg').textContent=msg;$('eForm').hidden=false;$('eFields').textContent=''}
+$('eLoad').addEventListener('click',()=>{if(!ED){loadEdit(true);$('eMsg').textContent='Loading…';setTimeout(openEdit,2500);return}openEdit()});
+$('eCancel').addEventListener('click',()=>{$('eForm').hidden=true;ECUR=null});
+$('eForm').addEventListener('submit',e=>{e.preventDefault();if(!ECUR)return;const ch={};document.querySelectorAll('#eFields input').forEach(i=>{if(i.value!==i.dataset.o)ch[i.dataset.k]=i.value.trim()});
+const m=$('eMsg');if(!Object.keys(ch).length){m.textContent='Nothing changed.';return}
+$('eSave').disabled=true;m.textContent='Saving…';call('editContainer',[{row:ECUR.row,container:ECUR.c,changes:ch}])
+.then(r=>{m.textContent='Fixed '+ECUR.c+' ('+r.changed+' field'+(r.changed===1?'':'s')+'). Old values are in the Edit Log.';$('eForm').hidden=true;ECUR=null;loadEdit(true);try{run('getState').then(apply)}catch(x){}})
+.catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('eSave').disabled=false})});
 // quick lookup
 function applyRole(){const me=S.me;const r=(me&&me.r)||[];const can=x=>r.includes('admin')||r.includes(x);
 const set=(sels,on)=>sels.forEach(s=>document.querySelectorAll(s+' input,'+s+' select,'+s+' textarea,'+s+' button').forEach(e=>e.disabled=!on));
 set(['#walkForm','#cinForm','#contList','#chasBody'],can('yard'));set(['#gateForm','#openList','#poolForm','#poolList'],can('gate'));
 boxes.forEach(b=>b.disabled=!can('yard'));
 let tag=$('roleTag');if(!tag){tag=document.createElement('p');tag.id='roleTag';tag.className='count';sync.after(tag)}
-tag.textContent=me?('Signed in as '+me.n+(r.includes('admin')?' · full access':r.includes('yard')?' · yard entries':r.includes('gate')?' · gate dates & pool chassis':'')):'View only. Use your personal link from Richard to make entries.';}
+tag.textContent=me?('Signed in as '+me.n+(r.includes('admin')?' · full access':r.includes('yard')?' · yard entries':r.includes('gate')?' · gate dates & pool chassis'+(r.includes('pin')?' · port PINs':''):r.includes('pin')?' · port PINs':'')):'View only. Use your personal link from Richard to make entries.';}
 function renderPool(){
 const P=S.pool||{out:[],back:[]};const list=$('poolList');list.textContent='';
 const inYard={};((S.cont&&S.cont.inYard)||[]).forEach(c=>{if(c.chassis)inYard[c.chassis]=c.container});
