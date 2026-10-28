@@ -274,6 +274,7 @@ input.cdbad,textarea.cdbad{border-color:var(--stop)!important;outline-color:var(
 #flT a{color:var(--ink);text-decoration:underline}
 #flT a.home{color:#2e7d4f;font-weight:600}
 #gtT td.bad{color:#b3261e;font-weight:600}#gtT td.go{color:#2e7d4f;font-weight:600}#gtT td.muted{color:var(--mut,#5d686d)}#gtT a{color:var(--ink);text-decoration:underline}#gtT a.home{color:#2e7d4f;font-weight:600}
+#gdT td.bad{color:#b3261e;font-weight:600}#gdT td.go{color:#2e7d4f;font-weight:600}#gdT td.muted{color:var(--mut,#5d686d);font-style:italic}#gdT a{color:var(--ink);text-decoration:underline}
 
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -1146,7 +1147,7 @@ const fleetSec=mk('fleetSec','yard','fleet','<h2>Our chassis <span class="t" id=
 '<div class="fchips" id="flF"></div><div class="tbl"><table class="score" id="flT"></table></div>');
 scacSec.after(fleetSec);
 // ---------- Geotab: live truck + driver GPS ----------
-const gpsSec=mk('gpsSec','yard','gps','<h2>Truck GPS <span class="t" id="gtAsof">Geotab · live</span></h2>'+
+const gpsSec=mk('gpsSec','gps','trucks','<h2>Truck GPS <span class="t" id="gtAsof">Geotab · live</span></h2>'+
 '<p class="help">Where every truck is right now from Geotab, who is driving it and how fast. It refreshes every 5 minutes on Google\'s servers, so nobody\'s computer has to be on. Tap a location to open the map.</p>'+
 '<div class="fchips" id="gtF"></div><div class="tbl"><table class="score" id="gtT"></table></div>');
 fleetSec.after(gpsSec);
@@ -1170,7 +1171,7 @@ const sfWhen=t=>t?new Date(t).toLocaleString(undefined,{weekday:'short',month:'n
 function sfMsg(id,txt,cols){const T=$(id);if(!T)return;T.textContent='';if(T.tagName==='UL'){T.append(el('li','empty',txt));return}const tr=el('tr');const td=el('td','',txt);td.colSpan=cols||1;tr.append(td);T.append(tr)}
 function renderSafety(){if(!$('sfK'))return;
   if(!SF){['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,'Loading…',6));return}
-  if(SF.off){const m='Geotab is not connected yet. An admin connects it once in Yard › Truck GPS, then safety data shows here.';$('sfK').textContent='';sfMsg('sfTop',m);['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,m,6));sfMsg('sfCL',m);$('sfAsof').textContent='Geotab · not connected';return}
+  if(SF.off){const m='Geotab is not connected yet. An admin connects it once in GPS › Trucks, then safety data shows here.';$('sfK').textContent='';sfMsg('sfTop',m);['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,m,6));sfMsg('sfCL',m);$('sfAsof').textContent='Geotab · not connected';return}
   const D=SF.drivers||[],E=SF.events||[],sum=k=>D.reduce((n,x)=>n+(x[k]||0),0),miles=sum('miles');
   $('sfAsof').textContent='Geotab · last 7 days'+(SF.at?' · updated '+fmtDT(new Date(SF.at).getTime()):'')+(SF.err?' · last refresh failed':'');
   const K=$('sfK');K.textContent='';const chip=(v,l,c,go2)=>{const b=el('button',c);b.type='button';b.append(el('b','',String(v)),el('span','',l));if(go2)b.addEventListener('click',go2);K.append(b)};
@@ -1203,6 +1204,29 @@ function renderSafety(){if(!$('sfK'))return;
   if(!CL.children.length)CL.append(el('li','empty','No possible collisions this week.'));
   try{const n=sum('collision');const b=tabBtn&&tabBtn('safety');if(b){const g=b.querySelector('.bdg');if(g){g.textContent=n?String(n):'';g.className='bdg'+(n?' r':'')}}subBadge('safety','collisions',n,true);subBadge('safety','events',E.length>99?'99+':E.length,false)}catch(e){}}
 
+
+const gpsDrv=mk('gpsDrv','gps','drivers','<h2>Drivers <span class="t" id="gdAsof">who is driving what, where</span></h2><p class="help">Every driver signed in on a Geotab device, driving first. Trucks with nobody signed in are listed at the bottom. Their trips and safety events cannot be tied to a driver.</p><div class="tbl"><table class="score" id="gdT"></table></div>');
+const gpsMap=mk('gpsMap','gps','map','<h2>Map <span class="t">trucks and company chassis</span></h2><p class="help"><b style="color:#2e2d6f">●</b> truck (Geotab) &nbsp; <b style="color:#d97706">●</b> chassis (BlackBerry Radar). Tap a dot for details.</p><div id="gMap" style="height:62vh;min-height:360px;border:1px solid var(--line);border-radius:4px"></div>');
+gpsSec.after(gpsDrv);gpsDrv.after(gpsMap);
+let LMAP=null,LLAY=null,LLOAD=null;
+function leaflet(){if(window.L)return Promise.resolve();if(LLOAD)return LLOAD;LLOAD=new Promise((ok,no)=>{const c=document.createElement('link');c.rel='stylesheet';c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.append(c);
+  const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';sc.onload=ok;sc.onerror=no;document.head.append(sc)});return LLOAD}
+function mapVisible(){const m=$('gMap');return m&&m.offsetParent!==null}
+function renderMap(){if(!mapVisible())return;leaflet().then(()=>{const L=window.L;if(!LMAP){LMAP=L.map('gMap',{zoomControl:true}).setView([32.1441,-81.1833],9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(LMAP);LLAY=L.layerGroup().addTo(LMAP)}
+  setTimeout(()=>LMAP.invalidateSize(),50);LLAY.clearLayers();const pts=[];const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  ((GT&&GT.trucks)||[]).forEach(t=>{if(t.lat==null)return;const ll=[+t.lat,+t.lng];pts.push(ll);L.circleMarker(ll,{radius:8,color:'#fff',weight:2,fillColor:t.driving?'#2e7d4f':'#2e2d6f',fillOpacity:1}).bindPopup('<b>Truck '+esc(t.truck)+'</b><br>'+esc(t.driver||'No driver signed in')+'<br>'+(t.driving?'Driving '+t.mph+' mph':'Stopped')+'<br>'+esc((t.addr||'').replace(/, USA$/,''))).addTo(LLAY)});
+  const R=(Y().S&&Y().S.radar)||{};Object.keys(R).forEach(n=>{const r=R[n];const m=/(-?\d+\.\d+),\s*(-?\d+\.\d+)/.exec(r.ll||'');if(!m)return;const ll=[+m[1],+m[2]];pts.push(ll);L.circleMarker(ll,{radius:6,color:'#fff',weight:1.5,fillColor:'#d97706',fillOpacity:1}).bindPopup('<b>Chassis '+esc(n)+'</b><br>'+esc(String(r.loc||'').replace(/, United States$/,''))+'<br>'+esc(r.st||'')).addTo(LLAY)});
+  if(pts.length&&!LMAP._fit){LMAP.fitBounds(pts,{padding:[30,30],maxZoom:12});LMAP._fit=1}}).catch(()=>{const m=$('gMap');if(m)m.textContent='Map could not load (no internet?).'})}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.subbar[data-tab=gps] button,nav.tabbar button[data-k=gps]'))setTimeout(renderMap,60)});
+function renderDrivers(){const T=$('gdT');if(!T)return;T.textContent='';const L=(GT&&GT.trucks)||[];
+  const hd=el('tr');['Driver','Truck','Status','Location','Last update'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  if(!GT||GT.off){const tr=el('tr');const td=el('td','',GT&&GT.off?'Geotab is not connected yet.':'Loading…');td.colSpan=5;tr.append(td);T.append(tr);return}
+  const now=Date.now();const rows=L.slice().sort((a,b)=>(!!b.driver-!!a.driver)||(b.driving-a.driving)||String(a.driver||a.truck).localeCompare(String(b.driver||b.truck)));
+  rows.forEach(t=>{const tr=el('tr',t.driver?'':'idle');const h=t.at?(now-new Date(t.at).getTime())/3600000:999;const ago=h<1/60?'just now':h<1?Math.round(h*60)+' min ago':h<48?Math.round(h)+' hr ago':Math.round(h/24)+' days ago';
+    const td=el('td');const a=el('a','',(Math.abs(t.lat-32.1441)<0.004&&Math.abs(t.lng+81.1833)<0.004)?'At the yard (116 Gulfstream)':String(t.addr||'').replace(/, USA$/,''));a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(t.lat+','+t.lng);a.target='_blank';a.rel='noopener';td.append(a);
+    tr.append(el('td',t.driver?'':'muted',t.driver||'Nobody signed in'),el('td','',t.truck),el('td',t.driving?'go':'',t.driving?'Driving '+t.mph+' mph':'Stopped'),td,el('td',h>24?'bad':'',ago));T.append(tr)});
+  const n=L.filter(t=>t.driver).length;$('gdAsof').textContent=n+' drivers signed in · '+(L.length-n)+' trucks with nobody signed in'}
 let GT=null,GTt=0,GTF='all';
 // Admin-only: connect Geotab by typing the login once (sent over HTTPS to the server, checked with Geotab, never shown again)
 const gtConn=el('form','walk');gtConn.id='gtConn';gtConn.autocomplete='off';gtConn.hidden=true;
@@ -1213,7 +1237,7 @@ gpsSec.append(gtConn);
 gtConn.addEventListener('submit',e=>{e.preventDefault();const m=$('gtM'),u=$('gtU').value.trim(),pw=$('gtP').value;if(!u||!pw){m.textContent='Both are required.';return}
   m.textContent='Checking with Geotab…';Y().call('setGeotabLogin',[{user:u,pass:pw}]).then(r=>{$('gtP').value='';m.textContent='Connected. '+((r&&r.result)||'');GTt=0;SFt=0;loadTrucks(true);loadSafety(true)}).catch(err=>{$('gtP').value='';m.textContent=(err&&err.message)||'Not connected.'})});
 
-function loadTrucks(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-GTt<60000)return;GTt=Date.now();
+function loadTrucks(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-GTt<60000)return;GTt=Date.now();
   Y().call('getTrucks',[]).then(d=>{GT=d;renderGps()}).catch(e=>{GT={err:(e&&e.message)||'Could not load',trucks:[]};renderGps()})}
 function renderGps(){const T=$('gtT'),F=$('gtF');if(!T)return;T.textContent='';F.textContent='';
   if(!GT){T.append(el('tr','',''));T.firstChild.append(el('td','','Loading…'));return}
@@ -1232,6 +1256,7 @@ function renderGps(){const T=$('gtT'),F=$('gtF');if(!T)return;T.textContent='';F
     const h=age(t),ago=h<1/60?'just now':h<1?Math.round(h*60)+' min ago':h<48?Math.round(h)+' hr ago':Math.round(h/24)+' days ago';
     tr.append(el('td','',t.truck+(t.plate?' · '+t.plate:'')),el('td',t.driver?'':'muted',t.driver||'no driver logged in'),td,
       el('td',t.driving?'go':'',t.driving?'Driving '+t.mph+' mph':'Stopped'),el('td',h>24?'bad':'',ago));T.append(tr)});
+  try{renderDrivers();renderMap()}catch(e){}
   $('gtAsof').textContent=L.length+' trucks · Geotab'+(GT.at?' · updated '+fmtDT(new Date(GT.at).getTime()):'')+(GT.err&&L.length?' · last refresh failed':'')}
 
 let FLF='all';
@@ -1361,8 +1386,8 @@ const IC={today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d
 tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg>',
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
-reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['reports','Reports'],['safety','Safety']];
+reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['reports','Reports'],['gps','GPS'],['safety','Safety']];
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
@@ -1370,9 +1395,10 @@ document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
 const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
-yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['gps','Truck GPS'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
+yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
+gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
 safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
 const SUBH=[[/^Open the yard|^Morning yard walk/,'morning'],[/^All day|^Break/,'day'],[/^Before end of day|^Yard reconcile/,'end'],[/^Who to call/,'contacts'],
@@ -1402,7 +1428,7 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
 // hide tabs that are empty for this person
-function tabVis(){const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),safety:can('safety')};['tasks','yard','reports','safety'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),gps:can('safety'),safety:can('safety')};['tasks','yard','reports','gps','safety'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)';
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
