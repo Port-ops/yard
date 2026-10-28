@@ -1494,6 +1494,10 @@ function erAddForm(){const B=erSec.querySelector('#erBox');B.hidden=false;B.text
   B.append(row);const a=el('div','actions'),ok=el('button','btn','Add'),no=el('button','btn2','Cancel'),m=el('span','msg');ok.type=no.type='button';a.append(ok,no,m);B.append(a);
   no.addEventListener('click',()=>{B.hidden=true});
   ok.addEventListener('click',()=>{const o={};Object.keys(f).forEach(k=>o[k]=f[k].value);if(o.pulled)o.pulled=new Date(o.pulled+'T12:00:00').toISOString();erRun('erAdd',o,m)})}
+const erM=n=>'$'+Math.round(n).toLocaleString();
+function erPd(r){if(r.until==null)return el('td','muted','—');if(!r.rated)return el('td','muted',r.pdDays>0?r.pdDays+' day(s) · rate not set':'rate not set');
+  if(r.pdDays>0)return el('td','bad',erM(r.pdCost)+' · '+r.pdDays+' day'+(r.pdDays>1?'s':'')+(r.pdNext!=null&&erOpen(r)?' · '+erM(r.pdNext)+' if back tomorrow':''));
+  return el('td',erOpen(r)&&r.pdNext?'warn':'go',erOpen(r)?(r.pdNext?'$0 · '+erM(r.pdNext)+' if not back today':'$0'):'$0')}
 function renderER(){const T=erSec.querySelector('#erT'),F=erSec.querySelector('#erF'),S=erSec.querySelector('#erSum'),M=erSec.querySelector('#erMiss');if(!T)return;
   const R=(ER&&ER.rows)||[],O=R.filter(erOpen);
   if(ER)erSec.querySelector('#erAsof').textContent='per diem watch · updated '+fmtDT(new Date(ER.at).getTime());
@@ -1510,13 +1514,13 @@ function renderER(){const T=erSec.querySelector('#erT'),F=erSec.querySelector('#
   const q=String(erSec.querySelector('#erQ').value||'').trim().toUpperCase();
   let rows=(FL.find(x=>x[0]===ERF)||FL[0])[2].filter(r=>!q||[r.c,r.line,r.load,r.tm,r.drv,r.rdrv,r.to,r.at,r.tag,r.notes].join(' ').toUpperCase().includes(q));
   rows=rows.slice().sort((a,b)=>(erOpen(b)-erOpen(a))||((a.left==null?999:a.left)-(b.left==null?999:b.left))||((a.pulled||0)-(b.pulled||0)));
-  S.textContent=ER?O.length+' open · '+O.filter(risk).length+' need a return plan by tomorrow · '+O.filter(over).length+' past free time · '+O.filter(r=>r.until==null).length+' free time unknown':'';
-  T.textContent='';const h=el('tr');['Status','Container','Line','Customer / load #','TruckMate #','Pulled','Days out','Free until','Empty at','Return plan','Returned',ER&&ER.edit?'Do next':''].forEach(x=>h.append(el('th','',x)));T.append(h);
-  if(!rows.length){const tr=el('tr'),td=el('td','',ER?'Nothing here.':'Loading…');td.colSpan=12;tr.append(td);T.append(tr)}
+  S.textContent=ER?(ER.pdTotal||ER.pdTomorrow?'Per diem so far '+erM(ER.pdTotal||0)+' · '+erM(ER.pdTomorrow||0)+' if nothing goes back by tomorrow · ':'')+O.length+' open · '+O.filter(risk).length+' need a return plan by tomorrow · '+O.filter(over).length+' past free time · '+O.filter(r=>r.until==null).length+' free time unknown':'';
+  T.textContent='';const h=el('tr');['Status','Container','Line','Customer / load #','TruckMate #','Pulled','Days out','Free until','Per diem','Empty at','Return plan','Returned',ER&&ER.edit?'Do next':''].forEach(x=>h.append(el('th','',x)));T.append(h);
+  if(!rows.length){const tr=el('tr'),td=el('td','',ER?'Nothing here.':'Loading…');td.colSpan=13;tr.append(td);T.append(tr)}
   rows.forEach(r=>{const tr=el('tr',risk(r)||over(r)?'risk':'');const out=r.pulled?Math.floor(((r.ret||Date.now())-r.pulled)/86400000):'';
     const fu=r.until==null?el('td','muted','unknown'):el('td',!erOpen(r)?'':r.left<0?'bad':r.left<=1?'warn':'go',erD(r.until)+(erOpen(r)?(r.left<0?' · '+(-r.left)+'d over':r.left===0?' · TODAY':r.left===1?' · tomorrow':' · '+r.left+'d left'):''));
     tr.append(el('td',r.st==='Returned'?'go':'',r.st),el('td','',r.c+(r.size?' · '+r.size:'')),el('td','',r.line||''),el('td','',r.load||''),el('td','',r.tm||''),
-      el('td','',erD(r.pulled)+(r.drv?' · '+r.drv:'')),el('td','n',String(out)),fu,el('td','',r.ready?erD(r.ready)+' · '+(r.at||''):r.deliv?'delivered '+erD(r.deliv):''),
+      el('td','',erD(r.pulled)+(r.drv?' · '+r.drv:'')),el('td','n',String(out)),fu,erPd(r),el('td','',r.ready?erD(r.ready)+' · '+(r.at||''):r.deliv?'delivered '+erD(r.deliv):''),
       el('td','',r.plan?erD(r.plan)+' · '+[r.to,r.rdrv].filter(Boolean).join(' · '):''),el('td','',r.ret?erD(r.ret)+' · '+(r.rmove||''):''));
     const td=el('td');if(ER&&ER.edit){const B=(act,l)=>{const b=el('button','btn2',l||ERACT[act][0]);b.type='button';b.addEventListener('click',()=>erForm(r,act));td.append(b)};
       if(erOpen(r)){if(/^Out/.test(r.st))B('delivered');if(!r.ready)B('ready');B('plan',r.plan?'Change plan':'Plan return');B('returned');B('info');B('closed')}else B('reopen','Reopen')}
