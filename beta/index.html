@@ -1125,12 +1125,17 @@ const today=el('section');today.id='todaySec';today.dataset.tab='today';
 today.innerHTML='<p class="hello" id="tHello"></p><div class="chips" id="tChips"></div>';
 const mk=(id,tab,sub,html)=>{const x=el('section');x.id=id;x.dataset.tab=tab;x.dataset.sub=sub;x.innerHTML=html;return x};
 const attSec=mk('attSec','today','att','<h2>Needs attention <span class="t" id="tAttN"></span></h2><ul class="att" id="tAtt"></ul>');
-const storSec=mk('storSec','yard','inyard','<h2>In the yard <span class="t" id="stN"></span></h2><p class="help">Every box at 116 Gulfstream right now: checked in, or seen on today\'s yard walk. Chassis and driver fill in from the GPA gate ticket when one of our trucks pulled it.</p><div class="drow"><input id="scQ" placeholder="SCAC finder: container #" maxlength="11" autocomplete="off" autocapitalize="characters"><button class="btn" type="button" id="scGo">Find SCAC</button></div><p class="msg" id="scR" style="margin:0"></p><div class="drow"><input id="stQ" placeholder="Filter: container, spot, chassis, driver, line" autocomplete="off" style="text-transform:none"><button class="btn2" type="button" id="stCsv">Download list</button></div><div class="fchips" id="stF"></div><ul class="cboard" id="stL"></ul>');
+const storSec=mk('storSec','yard','inyard','<h2>In the yard <span class="t" id="stN"></span></h2><p class="help">Every box at 116 Gulfstream right now: checked in, or seen on today\'s yard walk. Chassis and driver fill in from the GPA gate ticket when one of our trucks pulled it.</p><div class="drow"><input id="stQ" placeholder="Filter: container, spot, chassis, driver, line" autocomplete="off" style="text-transform:none"><button class="btn2" type="button" id="stCsv">Download list</button></div><div class="fchips" id="stF"></div><ul class="cboard" id="stL"></ul>');
 const feedSec=mk('feedSec','today','feed','<h2>Latest at the port <span class="t" id="tPortAsof"></span></h2><ul class="cboard pmv" id="tPort"></ul>');
 today.dataset.sub='*';
 document.querySelector('header').after(today);
 const search=document.querySelector('section.quick');if(search){search.dataset.sub='*';today.after(search);search.after(attSec)}else today.after(attSec);attSec.after(feedSec);
 {const cl=$('contList');const cs=cl&&cl.closest('section');if(cs)cs.before(storSec);else wrap.append(storSec)}
+const scacSec=mk('scacSec','yard','scac','<h2>SCAC finder <span class="t">who pulled the container out of GPA</span></h2>'+
+'<p class="help">Type or paste one or more container numbers. You get the trucking company\'s SCAC, the out-gate time and the truck. <b>AOLQ</b> means one of our trucks. Anything new is looked up at GPA the next time Port Sync runs from WebAccess (every box on the yard walk is looked up automatically).</p>'+
+'<div class="drow"><textarea id="scQ" rows="2" placeholder="e.g. MSNU9771396, TXGU7815718" autocapitalize="characters" style="text-transform:uppercase;flex:1;font:inherit;font-family:var(--mono);padding:8px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink)"></textarea><button class="btn" type="button" id="scGo">Find SCAC</button></div>'+
+'<div id="scR"></div><div class="fchips" id="scF"></div><div class="tbl"><table class="score" id="scT"></table></div>');
+storSec.after(scacSec);
 const sres=el('div','sres');sres.id='sRes';if(search)search.append(sres);
 
 // Reports: port scoreboard
@@ -1155,7 +1160,7 @@ const pin0=$('pinSec');if(pin0)pin0.after(watchSec);else wrap.append(watchSec);
 // ---------- Reference data from Supabase: storage accounts + line free days ----------
 let REF=null,REFt=0;try{REF=JSON.parse(localStorage.getItem('yardRef')||'null')}catch(e){}
 function loadRef(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-REFt<120000)return;REFt=Date.now();
-  Y().call('getYardRef',[]).then(d=>{REF=d;try{localStorage.setItem('yardRef',JSON.stringify(d))}catch(e){}renderBill();try{renderStorage();renderToday()}catch(e){}}).catch(()=>{})}
+  Y().call('getYardRef',[]).then(d=>{REF=d;try{localStorage.setItem('yardRef',JSON.stringify(d))}catch(e){}renderBill();try{renderStorage();renderToday();renderScac()}catch(e){}}).catch(()=>{})}
 const freeDaysFor=line=>{if(!REF||!line)return null;const L=String(line).toUpperCase().trim();const f=(REF.freeDays||[]).find(x=>String(x.line).toUpperCase()===L||L.indexOf(String(x.line).toUpperCase())===0);return f?f.free_days:null};
 // estimated free-time end when no date was entered: port out-gate + the line's free days (only if Richard set them)
 function estPd(r){if(r.pdEnd||!r.pulled)return null;const fd=freeDaysFor(r.ssl||r.line);if(fd==null)return null;return day0(r.pulled)+fd*DAY}
@@ -1208,10 +1213,22 @@ const scacTxt=x=>!x?'':x.st==='found'?('SCAC '+x.scac+(x.scac==='AOLQ'?' (us)':'
 let SCREQ=false;
 function scacAuto(){if(SCREQ||!REF||!can('yard')||!Y().call)return;const S=Y().S||{};const want=[...new Set([...((S.cont&&S.cont.inYard)||[]).map(x=>x.container),...(S.walk||[]).map(w=>String(w.container||'').toUpperCase().trim())])].filter(c=>/^[A-Z]{4}\d{7}$/.test(c)&&cdCheck(c).ok&&!scacOf(c));
   SCREQ=true;if(!want.length)return;Y().call('scacRequest',[want]).then(d=>{REF=d;try{localStorage.setItem('yardRef',JSON.stringify(d))}catch(e){}renderStorage()}).catch(()=>{SCREQ=false})}
-function scacFind(){const c=$('scQ').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,''),m=$('scR');if(!c){m.textContent='';return}
-  const q=cdCheck(c);if(!/^[A-Z]{4}\d{7}$/.test(c)||!q.ok){m.textContent='⚠ '+(q.why||'Container # is 4 letters + 7 numbers.');return}
-  const x=scacOf(c);if(x&&x.st==='found'){m.textContent=c+' → '+scacTxt(x);return}
-  m.textContent='Looking up '+c+'…';Y().call('scacRequest',[[c]]).then(d=>{REF=d;const y=scacOf(c);m.textContent=c+' → '+(y&&y.st==='found'?scacTxt(y):'queued. GPA only allows lookups from a signed-in WebAccess, so it fills in the next time Port Sync runs (or click Port Sync in WebAccess now).');renderStorage()}).catch(e=>{m.textContent=(e&&e.message)||String(e)})}
+let SCF='all';
+function scacFind(){const raw=$('scQ').value.toUpperCase(),R0=$('scR');R0.textContent='';const list=[...new Set(raw.split(/[^A-Z0-9]+/).filter(Boolean))];if(!list.length)return;
+  const bad=list.filter(c=>!cdCheck(c).ok),good=list.filter(c=>cdCheck(c).ok);
+  const ul=el('ul','cboard');R0.append(ul);
+  const show=()=>{ul.textContent='';list.forEach(c=>{const x=scacOf(c),q=cdCheck(c);const li=el('li',!q.ok?'late':x&&x.st==='found'?'':'warn');const top=el('div','top');top.append(el('span','num',c));
+    if(!q.ok)top.append(el('span','pill bad2','check number'));else if(x&&x.st==='found')top.append(el('span','pill',x.scac==='AOLQ'?'AOLQ · us':'SCAC '+x.scac));else top.append(el('span','pill',x&&x.st==='not_found'?'not found':'queued'));
+    li.append(top,el('span','meta',!q.ok?q.why:x&&x.st==='found'?[x.when&&('Out-gate '+x.when),x.truck&&('Truck '+x.truck),x.line].filter(Boolean).join(' · '):x&&x.st==='not_found'?'GPA has no out-gate for it at GCT (wrong number, other terminal, or still at the port).':'Looked up at GPA the next time Port Sync runs from WebAccess.'));ul.append(li)})};
+  show();if(!good.length||!Y().call)return;const need=good.filter(c=>{const x=scacOf(c);return !x||x.st!=='found'});if(!need.length)return;
+  Y().call('scacRequest',[need]).then(d=>{REF=d;try{localStorage.setItem('yardRef',JSON.stringify(d))}catch(e){}show();renderScac();renderStorage()}).catch(e=>{R0.append(el('p','msg',(e&&e.message)||String(e)))})}
+function renderScac(){const T=$('scT'),F=$('scF');if(!T)return;const M=(REF&&REF.scac)||{};const all=Object.keys(M).map(c=>Object.assign({c},M[c]));
+  const G=[['all','All'],['found','Found'],['pending','Queued'],['not_found','Not found'],['other','Other companies']];F.textContent='';
+  G.forEach(([k,l])=>{const n=all.filter(x=>k==='all'||(k==='other'?x.st==='found'&&x.scac&&x.scac!=='AOLQ':x.st===k)).length;const b=el('button',SCF===k?'on':'',l+' ('+n+')');b.type='button';b.addEventListener('click',()=>{SCF=k;renderScac()});F.append(b)});
+  const rows=all.filter(x=>SCF==='all'||(SCF==='other'?x.st==='found'&&x.scac&&x.scac!=='AOLQ':x.st===SCF)).sort((a,b)=>String(a.scac||'~').localeCompare(String(b.scac||'~'))||a.c.localeCompare(b.c));
+  T.textContent='';const hd=el('tr');['Container','SCAC','Out-gate','Truck','Line','Status'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  if(!rows.length){const tr=el('tr');const td=el('td','',REF?'No lookups yet.':'Loading…');td.colSpan=6;tr.append(td);T.append(tr)}
+  rows.forEach(x=>{const tr=el('tr',x.st==='found'?'':'idle');tr.append(el('td','m',x.c),el('td','',x.scac?(x.scac==='AOLQ'?'AOLQ (us)':x.scac):''),el('td','',x.when||''),el('td','',x.truck||''),el('td','',x.line||''),el('td','',x.st==='found'?'found':x.st==='pending'?'queued':'not found'));T.append(tr)})}
 // Port tab: filter chips above the moves list
 const pl=$('pList');let PF='all';
 if(pl){const fc=el('div','fchips');fc.id='pChips';[['all','All'],['today','Today'],['OUT','Out-gates'],['IN','In-gates']].forEach(([k,l])=>{const b=el('button',k==='all'?'on':'',l);b.type='button';b.dataset.k=k;
@@ -1231,7 +1248,7 @@ document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
 const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
-yard:[['inyard','In the yard'],['containers','Check in / out'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
+yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
@@ -1453,7 +1470,7 @@ function renderStorage(){const L=$('stL'),F=$('stF');if(!L)return;const {boxes,b
       cdWarn($('ciNum'));go('yard',$('cinForm'))});o.append(b);li.append(o)}
     li.style.cursor='pointer';li.addEventListener('click',e=>{if(e.target.closest('button'))return;$('qNum').value=r.c;$('qNum').dispatchEvent(new Event('input'));go('today',search)});
     L.append(li)})}
-$('stQ').addEventListener('input',renderStorage);$('scGo').addEventListener('click',scacFind);$('scQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();scacFind()}});
+$('stQ').addEventListener('input',renderStorage);$('scGo').addEventListener('click',scacFind);$('scQ').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();scacFind()}});
 $('stCsv').addEventListener('click',()=>{const {boxes}=yardBoxes();const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const lines=[['Container','Spot','Loaded/Empty','Chassis','Chassis (GPA ticket)','Line','Customer/load','Pulled','Pulled by','Plate','Days out','Checked in','Notes'].map(esc).join(',')].concat(boxes.map(r=>[r.c,r.spot,r.le,r.chassis,r.portCh,r.ssl,r.load,r.gate?new Date(r.gate.t).toLocaleString():(r.pulled?new Date(r.pulled).toLocaleDateString():''),r.gate&&r.gate.drv,r.gate&&r.gate.tag,r.days,r.checked?'yes':'no',r.notes].map(esc).join(',')));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));a.download='in-the-yard-'+new Date().toISOString().slice(0,10)+'.csv';document.body.append(a);a.click();a.remove()});
@@ -1487,7 +1504,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{loadRef();renderBill();scacAuto()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
