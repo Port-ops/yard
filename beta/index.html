@@ -1419,17 +1419,18 @@ const gmSec=mk('gmSec','port','moves','<h2>GPA gate moves <span class="t" id="gm
 '<div class="fchips" id="gmF"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"><input id="gmQ" placeholder="Search container, chassis, tag, driver, PIN, booking" autocomplete="off" style="flex:1;min-width:200px;padding:7px"><button class="btn2" type="button" id="gmRef">Refresh</button></div>'+
 '<div id="gmSum" class="t"></div><div class="tbl"><table class="score" id="gmT"></table></div>');
 {const g0=$('gpaSec')||$('tagSec')||$('portSec');if(g0)g0.before(gmSec);else wrap.append(gmSec)}
-let GM=null,GMD=1,GMT='all';
+let GM=null,GMD=1,GMT='all',GMO=false;
 const GMTY={DI:'Pick up import (full out)',DM:'Pick up empty',RE:'Return export (full in)',RM:'Return empty',DC:'Chassis out',RC:'Chassis in'};
 function loadGM(fresh){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;const s=gmSec.querySelector('#gmSum');s.textContent='Loading from GPA…';
   Y().call('gpaGateMoves',[{days:GMD,fresh:!!fresh}]).then(d=>{GM=d;renderGM()}).catch(e=>{s.textContent=(e&&e.message)||'Could not load GPA gate moves.'})}
 function renderGM(){const T=gmSec.querySelector('#gmT'),F=gmSec.querySelector('#gmF'),S=gmSec.querySelector('#gmSum');if(!T)return;
   F.textContent='';[[1,'Today'],[3,'3 days'],[7,'7 days']].forEach(([d,l])=>{const b=el('button',GMD===d?'on':'',l);b.type='button';b.addEventListener('click',()=>{GMD=d;loadGM()});F.append(b)});
-  const R=(GM&&GM.rows)||[];const ty=[...new Set(R.map(r=>r.type))];[['all','All types']].concat(ty.map(t=>[t,t])).forEach(([k,l])=>{const b=el('button',GMT===k?'on':'',l+(k==='all'?'':' ('+R.filter(r=>r.type===k).length+')'));b.type='button';b.addEventListener('click',()=>{GMT=k;renderGM()});F.append(b)});
+  const R=(GM&&GM.rows)||[];const RO=R.filter(r=>GMO||r.ours);const ty=[...new Set(RO.map(r=>r.type))];[['all','All types']].concat(ty.map(t=>[t,t])).forEach(([k,l])=>{const b=el('button',GMT===k?'on':'',l+(k==='all'?'':' ('+RO.filter(r=>r.type===k).length+')'));b.type='button';b.addEventListener('click',()=>{GMT=k;renderGM()});F.append(b)});
   if(GM)gmSec.querySelector('#gmAsof').textContent='from GPA · '+fmtDT(new Date(GM.at).getTime());
   const q=String(gmSec.querySelector('#gmQ').value||'').trim().toUpperCase();
-  const rows=R.filter(r=>(GMT==='all'||r.type===GMT)&&(!q||[r.cont,r.chassis,r.tag,r.driver,r.truck,r.pin,r.trans,r.booking,r.bol,r.line].join(' ').toUpperCase().includes(q)));
-  const done=rows.filter(r=>r.outT).length;S.textContent=GM?rows.length+' transaction(s) · '+done+' completed · '+(rows.length-done)+' still in the terminal'+(rows.some(r=>!r.ours)?' · grey = truck tag not on our list':''):'';
+  const rows=R.filter(r=>(GMO||r.ours)&&(GMT==='all'||r.type===GMT)&&(!q||[r.cont,r.chassis,r.tag,r.driver,r.truck,r.pin,r.trans,r.booking,r.bol,r.line].join(' ').toUpperCase().includes(q)));
+  const done=rows.filter(r=>r.outT).length;S.textContent=GM?rows.length+' transaction(s) · '+done+' completed · '+(rows.length-done)+' still in the terminal'+(GMO?' · grey = another America 1 agent':''):'';
+  {const oth=R.filter(r=>!r.ours).length;if(oth&&can('admin')){const b=el('button',GMO?'on':'',(GMO?'Hide':'Show')+' other America 1 agents ('+oth+')');b.type='button';b.addEventListener('click',()=>{GMO=!GMO;renderGM()});F.append(b)}}
   T.textContent='';const h=el('tr');['Entered','Exited','Type','Container','Size','Chassis','Truck tag','Driver','Line','PIN / Trans #','Status','Booking / B/L','Seals','Cargo wt','Terminal'].forEach(x=>h.append(el('th','',x)));T.append(h);
   if(!rows.length){const tr=el('tr');const td=el('td','',GM?'No gate moves.':'Loading…');td.colSpan=15;tr.append(td);T.append(tr)}
   const d2=s=>s?String(s).replace(/:\d\d$/,'').replace(/^\d{4}-(\d\d)-(\d\d) /,'$1/$2 '):'';
