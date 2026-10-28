@@ -1429,8 +1429,7 @@ function renderGM(){const T=gmSec.querySelector('#gmT'),F=gmSec.querySelector('#
   if(GM)gmSec.querySelector('#gmAsof').textContent='from GPA · '+fmtDT(new Date(GM.at).getTime());
   const q=String(gmSec.querySelector('#gmQ').value||'').trim().toUpperCase();
   const rows=R.filter(r=>(GMO||r.ours)&&(GMT==='all'||r.type===GMT)&&(!q||[r.cont,r.chassis,r.tag,r.driver,r.truck,r.pin,r.trans,r.booking,r.bol,r.line].join(' ').toUpperCase().includes(q)));
-  const done=rows.filter(r=>r.outT).length;S.textContent=GM?rows.length+' transaction(s) · '+done+' completed · '+(rows.length-done)+' still in the terminal'+(GMO?' · grey = another America 1 agent':''):'';
-  {const oth=R.filter(r=>!r.ours).length;if(oth&&can('admin')){const b=el('button',GMO?'on':'',(GMO?'Hide':'Show')+' other America 1 agents ('+oth+')');b.type='button';b.addEventListener('click',()=>{GMO=!GMO;renderGM()});F.append(b)}}
+  const done=rows.filter(r=>r.outT).length;S.textContent=GM?rows.length+' transaction(s) · '+done+' completed · '+(rows.length-done)+' still in the terminal'+' · our truck tags only':'';
   T.textContent='';const h=el('tr');['Entered','Exited','Type','Container','Size','Chassis','Truck tag','Driver','Line','PIN / Trans #','Status','Booking / B/L','Seals','Cargo wt','Terminal'].forEach(x=>h.append(el('th','',x)));T.append(h);
   if(!rows.length){const tr=el('tr');const td=el('td','',GM?'No gate moves.':'Loading…');td.colSpan=15;tr.append(td);T.append(tr)}
   const d2=s=>s?String(s).replace(/:\d\d$/,'').replace(/^\d{4}-(\d\d)-(\d\d) /,'$1/$2 '):'';
