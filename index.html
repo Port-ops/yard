@@ -1539,7 +1539,7 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
 // hide tabs that are empty for this person
-function tabVis(){const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),gps:true,safety:true};['tasks','yard','reports','gps','safety'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),gps:!lim,safety:!lim,port:!lim};['tasks','yard','reports','gps','safety','port'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)';
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
