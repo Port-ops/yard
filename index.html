@@ -1152,6 +1152,56 @@ const watchSec=mk('watchSec','port','watch','<h2>Watch for availability <span cl
 '<div class="fchips" id="wF"></div><ul class="cboard" id="wList"><li class="empty">Loading…</li></ul>'+
 '<details class="help" style="margin-top:4px"><summary>Set a GPA alert by hand instead</summary><ol style="margin:6px 0 0 18px;padding:0"><li>GPA WebAccess: <b>Today &gt; Notify</b>.</li><li>Container: the box #. Notify Me When: the availability/release event. Notification By: email.</li><li>Address: <b>admin@2f-logistics.com</b> (the app reads it). Submit.</li><li>Alerts only fire for events that have not happened yet.</li></ol></details>');
 const pin0=$('pinSec');if(pin0)pin0.after(watchSec);else wrap.append(watchSec);
+// ---------- Reference data from Supabase: storage accounts + line free days ----------
+let REF=null,REFt=0;try{REF=JSON.parse(localStorage.getItem('yardRef')||'null')}catch(e){}
+function loadRef(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-REFt<120000)return;REFt=Date.now();
+  Y().call('getYardRef',[]).then(d=>{REF=d;try{localStorage.setItem('yardRef',JSON.stringify(d))}catch(e){}renderBill();try{renderStorage();renderToday()}catch(e){}}).catch(()=>{})}
+const freeDaysFor=line=>{if(!REF||!line)return null;const L=String(line).toUpperCase().trim();const f=(REF.freeDays||[]).find(x=>String(x.line).toUpperCase()===L||L.indexOf(String(x.line).toUpperCase())===0);return f?f.free_days:null};
+// estimated free-time end when no date was entered: port out-gate + the line's free days (only if Richard set them)
+function estPd(r){if(r.pdEnd||!r.pulled)return null;const fd=freeDaysFor(r.ssl||r.line);if(fd==null)return null;return day0(r.pulled)+fd*DAY}
+const acctFor=r=>{if(!REF)return null;const t=String(r.load||'').toUpperCase();const A=REF.accounts||[];
+  return A.find(a=>a.scac&&new RegExp('\\b'+a.scac+'\\b').test(t))||A.find(a=>a.company&&t.indexOf(String(a.company).toUpperCase())>=0)||null};
+const billSec=mk('billSec','reports','billing','<h2>Storage billing <span class="t" id="bAsof">boxes other companies store with us</span></h2>'+
+'<p class="help">Every box in the yard whose customer/load says <b>Storage: &lt;company or SCAC&gt;</b>, matched to a storage account. Days are counted from the port out-gate (when it arrived) to today. No account or no rate = <b>not billable yet</b>. Fix that below.</p>'+
+'<div class="chips" id="bK"></div><div class="tbl"><table class="score" id="bT"></table></div>'+
+'<h3 class="h3">Storage accounts <span class="t">Richard sets the rate</span></h3><div class="tbl"><table class="score" id="bA"></table></div>'+
+'<form id="bForm" class="walk" autocomplete="off" hidden><input type="hidden" id="bId"><div class="drow"><input id="bCo" placeholder="Company" style="text-transform:none"><input id="bScac" placeholder="SCAC (e.g. WSSH)" maxlength="6"></div>'+
+'<div class="drow"><input id="bRate" placeholder="Rate per box per day ($)" inputmode="decimal"><input id="bContact" placeholder="Contact" style="text-transform:none"></div>'+
+'<div class="drow"><input id="bPhone" placeholder="Phone" style="text-transform:none"><input id="bEmail" placeholder="Billing email" style="text-transform:none"></div>'+
+'<div class="actions"><button class="btn" type="submit">Save account</button><button class="btn2" type="button" id="bNew">New account</button><span class="msg" id="bMsg"></span></div></form>'+
+'<h3 class="h3">Free days per steamship line <span class="t">used to estimate when per diem starts</span></h3><div class="tbl"><table class="score" id="fT"></table></div>'+
+'<form id="fForm" class="drow" autocomplete="off" hidden><input id="fLine" placeholder="Line (e.g. MSC)" maxlength="10"><input id="fDays" placeholder="Free days" inputmode="numeric" maxlength="2"><button class="btn" type="submit">Save</button><span class="msg" id="fMsg"></span></form>');
+{const sb0=$('scoreSec');if(sb0)sb0.after(billSec);else wrap.append(billSec)}
+function renderBill(){const sec=$('billSec');if(!sec)return;const adm=can('admin')&&((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin');
+  $('bForm').hidden=!adm;$('fForm').hidden=!adm;
+  const S=Y().S||{},rows=((S.cont&&S.cont.inYard)||[]).filter(r=>/^storage/i.test(String(r.load||'')));
+  const today=day0(Date.now()),mon=today-((new Date().getDay()+6)%7)*DAY;
+  const by={};rows.forEach(r=>{const a=acctFor(r);const k=a?'a'+a.id:'?'+String(r.load).replace(/^storage:?\s*/i,'').split(' ')[0];const since=r.pulled?day0(r.pulled):(r.inAt?day0(r.inAt):today);
+    const days=Math.max(1,Math.round((today-since)/DAY)+1),wk=Math.max(0,Math.round((today-Math.max(since,mon))/DAY)+1);(by[k]=by[k]||{a,label:a?a.company:String(r.load).replace(/^storage:?\s*/i,''),boxes:[],days:0,wk:0}).boxes.push(r.container);by[k].days+=days;by[k].wk+=wk});
+  const G=Object.values(by).sort((x,y)=>y.boxes.length-x.boxes.length);let due=0,unb=0;
+  const T=$('bT');T.textContent='';const hd=el('tr');['Account','Boxes','Box-days to date','Box-days this week','Rate/day','This week','To date'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  if(!G.length){const tr=el('tr');const td=el('td','','No storage boxes in the yard. A box shows here when its customer/load starts with "Storage:".');td.colSpan=7;tr.append(td);T.append(tr)}
+  G.forEach(g=>{const rate=g.a&&g.a.rate_per_day!=null?+g.a.rate_per_day:null;if(rate==null)unb+=g.boxes.length;else due+=rate*g.wk;
+    const tr=el('tr',rate==null?'idle':'');tr.title=g.boxes.join(', ');tr.append(el('td','',g.label+(g.a?'':' (no account)')),el('td','n',String(g.boxes.length)),el('td','n',String(g.days)),el('td','n',String(g.wk)),
+      el('td','n',rate==null?'not set':'$'+rate.toFixed(2)),el('td','n',rate==null?'not billable yet':'$'+(rate*g.wk).toFixed(2)),el('td','n',rate==null?'—':'$'+(rate*g.days).toFixed(2)));T.append(tr)});
+  const K=$('bK');K.textContent='';const chip=(v,l,c)=>{const b=el('button',c);b.type='button';b.append(el('b','',String(v)),el('span','',l));K.append(b)};
+  chip(rows.length,'storage boxes in the yard','');chip('$'+due.toFixed(0),'billable this week (Mon–today)',due?'g':'');chip(unb,'boxes not billable yet (no account/rate)',unb?'r':'g');
+  const A=$('bA');A.textContent='';const ha=el('tr');['Company','SCAC','Rate/day','Contact','Email',''].forEach(h=>ha.append(el('th','',h)));A.append(ha);
+  ((REF&&REF.accounts)||[]).forEach(a=>{const tr=el('tr');tr.append(el('td','',a.company),el('td','',a.scac||''),el('td','n',a.rate_per_day!=null?'$'+(+a.rate_per_day).toFixed(2):'not set'),el('td','',[a.contact,a.phone].filter(Boolean).join(' · ')),el('td','',a.email||''));
+    const td=el('td');if(adm){const b=el('button','btn2','Edit');b.type='button';b.addEventListener('click',()=>{$('bId').value=a.id;$('bCo').value=a.company||'';$('bScac').value=a.scac||'';$('bRate').value=a.rate_per_day!=null?a.rate_per_day:'';$('bContact').value=a.contact||'';$('bPhone').value=a.phone||'';$('bEmail').value=a.email||'';$('bCo').focus()});td.append(b)}tr.append(td);A.append(tr)});
+  if(!((REF&&REF.accounts)||[]).length){const tr=el('tr');const td=el('td','',REF?'No storage accounts yet.':'Loading…');td.colSpan=6;tr.append(td);A.append(tr)}
+  const F=$('fT');F.textContent='';const hf=el('tr');['Line','Free days','Counted as','Set by'].forEach(h=>hf.append(el('th','',h)));F.append(hf);
+  ((REF&&REF.freeDays)||[]).forEach(f=>{const tr=el('tr');tr.append(el('td','',f.line),el('td','n',String(f.free_days)),el('td','',f.counts||''),el('td','',f.updated_by||''));F.append(tr)});
+  if(!((REF&&REF.freeDays)||[]).length){const tr=el('tr');const td=el('td','','None set. Until a line has free days, boxes with no free-time date get no per diem estimate.');td.colSpan=4;tr.append(td);F.append(tr)}
+  $('bAsof').textContent='boxes other companies store with us'+(REF&&REF.lastSync?' · database synced '+fmtDT(new Date(REF.lastSync).getTime()):'')}
+$('bForm').addEventListener('submit',e=>{e.preventDefault();const m=$('bMsg');const a={id:$('bId').value,company:$('bCo').value.trim(),scac:$('bScac').value.trim(),rate_per_day:$('bRate').value.trim().replace(/[$,]/g,''),contact:$('bContact').value.trim(),phone:$('bPhone').value.trim(),email:$('bEmail').value.trim()};
+  if(!a.company){m.textContent='Company is required.';return}if(a.rate_per_day&&!/^\d+(\.\d{1,2})?$/.test(a.rate_per_day)){m.textContent='Rate should be a number like 25 or 25.50.';return}
+  m.textContent='Saving…';Y().call('setStorageAccount',[a]).then(d=>{REF=d;e.target.reset();$('bId').value='';m.textContent='Saved '+a.company+'.';renderBill()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
+$('bNew').addEventListener('click',()=>{$('bForm').reset();$('bId').value='';$('bCo').focus()});
+$('fForm').addEventListener('submit',e=>{e.preventDefault();const m=$('fMsg');const line=$('fLine').value.trim().toUpperCase(),d=$('fDays').value.trim();
+  if(!line){m.textContent='Line?';return}if(d!==''&&!/^\d{1,2}$/.test(d)){m.textContent='Days 0–30, or blank to remove.';return}
+  m.textContent='Saving…';Y().call('setLineFreeDays',[{line,free_days:d}]).then(x=>{REF=x;e.target.reset();m.textContent='Saved.';renderBill();renderStorage();renderToday()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
+
 // Port tab: filter chips above the moves list
 const pl=$('pList');let PF='all';
 if(pl){const fc=el('div','fchips');fc.id='pChips';[['all','All'],['today','Today'],['OUT','Out-gates'],['IN','In-gates']].forEach(([k,l])=>{const b=el('button',k==='all'?'on':'',l);b.type='button';b.dataset.k=k;
@@ -1173,7 +1223,7 @@ const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['containers','Check in / out'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
-reports:[['dash','Dashboard'],['score','Scoreboard']]};
+reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
 const SUBH=[[/^Open the yard|^Morning yard walk/,'morning'],[/^All day|^Break/,'day'],[/^Before end of day|^Yard reconcile/,'end'],[/^Who to call/,'contacts'],
 [/^Containers in the yard/,'containers'],[/^Chassis location report/,'chassis'],[/^Yard walk log/,'walk']];
@@ -1214,6 +1264,7 @@ function attention(){const S=Y().S||{},A=[],ci=Y().contInfo||(x=>x);
     if(r.cls==='late')A.push(['r',r.container+': per diem running',r.status+(r.ssl?' · '+r.ssl:'')+(list==='contList'?' · in our yard':' · '+(r.st||'out')),tab,sel(list,r.container)]);
     else if(r.cls==='warn')A.push(['y',r.container+': '+r.status,'Plan the return today'+(r.ssl?' · '+r.ssl:''),tab,sel(list,r.container)]);
     if(r.demLate)A.push(['r',r.container+': demurrage owed','Pulled '+r.demLate+'d after port LFD. Bill the customer.',tab,sel(list,r.container)]);
+    if(!r.pdEnd&&r.cls!=='late'){const e=estPd(r);if(e!=null){const left=Math.round((e-day0(Date.now()))/DAY);if(left<0)A.push(['r',r.container+': per diem running '+(-left)+'d (est.)','No free-time date entered; estimated from '+(r.ssl||'line')+' free days. Confirm with the line.',tab,sel(list,r.container)]);else if(left<=1)A.push(['y',r.container+': free time ends '+(left?'tomorrow':'today')+' (est.)','Estimated from '+(r.ssl||'line')+' free days. Plan the return.',tab,sel(list,r.container)])}}
     if(list==='openList'&&r.st==='Out from port'&&r.daysOut>=1)A.push(['y',r.container+': out from port '+r.daysOut+'d','Not checked in to the yard yet. Where is it?','port',sel(list,r.container)])});
   ((S.pool&&S.pool.out)||[]).forEach(x=>{const d=x.outgate?Math.round((day0(Date.now())-day0(x.outgate))/DAY)+1:0;if(d>=3)A.push(['r',x.chassis+': pool chassis '+d+'d out','Return it'+(x.pool?' to '+x.pool:'')+'. Rental is running.','port','#poolList li[data-c="'+x.chassis+'"]'])});
   const ch=S.chassis||{};Object.keys(ch).forEach(n=>{const w=(ch[n]||{}).w;if(w==='missing')A.push(['r',n+": chassis can't be found",'Check Radar GPS, call drivers, escalate in 30 min.','yard','#chasBody tr[data-n="'+n+'"]']);
@@ -1357,7 +1408,7 @@ document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('#pi
 // ---------- In the yard: check-ins + today's yard walk + GPA gate tickets ----------
 let STF='all';
 function yardBoxes(){const S=Y().S||{},ci=Y().contInfo||(x=>x),PT=Y().PT||{rows:[]},by={};
-  ((S.cont&&S.cont.inYard)||[]).map(ci).forEach(r=>{by[r.container]={c:r.container,ssl:r.ssl,load:r.load,le:r.le,spot:r.spot,chassis:r.mount==='Grounded'?'Grounded':r.chassis,inAt:r.inAt,pulled:r.pulled,status:r.status,cls:r.cls,checked:true,notes:''}});
+  ((S.cont&&S.cont.inYard)||[]).map(ci).forEach(r=>{by[r.container]={c:r.container,ssl:r.ssl,load:r.load,le:r.le,spot:r.spot,chassis:r.mount==='Grounded'?'Grounded':r.chassis,inAt:r.inAt,pulled:r.pulled,status:r.status,cls:r.cls,pdEnd:r.pdEnd,checked:true,notes:''}});
   (S.walk||[]).forEach(w=>{const c=String(w.container||'').toUpperCase().trim();if(!c)return;const x=by[c]||(by[c]={c,checked:false});
     x.walk=w.time;if(w.spot)x.spot=x.spot||w.spot;if(w.load)x.le=x.le||w.load;if(w.chassis)x.chassis=x.chassis||w.chassis;if(w.notes)x.notes=[x.notes,w.notes].filter(Boolean).join(' · ');if(w.damaged)x.damaged=true});
   const outs={};(PT.rows||[]).filter(r=>r.dir==='OUT'&&r.c).forEach(r=>{if(!outs[r.c]||outs[r.c].t<r.t)outs[r.c]=r});
@@ -1380,7 +1431,7 @@ function renderStorage(){const L=$('stL'),F=$('stF');if(!L)return;const {boxes,b
     if(r.days!=null)top.append(el('span','days',r.days+'d'));
     if(le(r))top.append(el('span','pill',le(r)));if(r.spot)top.append(el('span','pill','spot '+r.spot));if(spec(r))top.append(el('span','pill warn2','reefer/hazmat'));if(r.status&&r.cls)top.append(el('span','pill',r.status));
     const ch=r.chassis&&!/^no/i.test(r.chassis)?'Chassis '+r.chassis:r.portCh?'Chassis '+r.portCh+' (GPA ticket)':'No chassis # recorded';
-    li.append(top,el('span','meta',[ch,r.ssl,r.load,r.gate&&('Pulled '+fmtDT(r.gate.t)+' by '+(r.gate.drv||('plate '+r.gate.tag))),r.checked?'checked in'+(r.inAt?' '+fmtD(r.inAt):''):'on yard walk '+(r.walk||'')+' · not checked in',r.damaged?'DAMAGE noted':'',r.notes].filter(Boolean).join(' · ')));
+    li.append(top,el('span','meta',[ch,r.ssl,r.load,r.gate&&('Pulled '+fmtDT(r.gate.t)+' by '+(r.gate.drv||('plate '+r.gate.tag))),(!r.pdEnd&&estPd(r)!=null)?'Free time ends ~'+fmtD(estPd(r))+' (est. from '+(r.ssl||'line')+' free days)':(!r.pdEnd?'no free-time date':''),r.checked?'checked in'+(r.inAt?' '+fmtD(r.inAt):''):'on yard walk '+(r.walk||'')+' · not checked in',r.damaged?'DAMAGE noted':'',r.notes].filter(Boolean).join(' · ')));
     {const cq=cdCheck(r.c);if(!cq.ok)top.append(el('span','pill bad2','check number'));}
     if(!r.checked&&can('yard')){const o=el('div','out');const b=el('button','btn2','Check it in');b.type='button';b.addEventListener('click',()=>{
       const set=(id,v)=>{const x=$(id);if(x&&v!=null&&v!=='')x.value=v};set('ciNum',r.c);set('ciSsl',r.ssl);set('ciLoad',r.load);set('ciSpot',r.spot);
@@ -1425,7 +1476,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{loadRef();renderBill()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
