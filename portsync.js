@@ -149,6 +149,27 @@
       })();
     }).catch(function (e) { if (!/Unknown action/i.test(e.message || e)) { var x = document.createElement('div'); x.style.color = '#b42318'; x.textContent = 'SCAC finder: ' + (e.message || e); box.appendChild(x); } });
   }
+  // ---- Overweight: read each open load's container weight (container + cargo) from GPA Container Details ----
+  function portWeight(c) {
+    return page('/express/displayReport.do?param=ContainerDetail').then(function (d) {
+      var f = [].slice.call(d.forms).filter(function (x) { return /containerSearch/.test(x.getAttribute('action') || ''); })[0]; if (!f) return { c: c, w: 0 };
+      var fd = new URLSearchParams(); [].slice.call(f.elements).forEach(function (e) { if (e.name && e.type !== 'submit') fd.append(e.name, e.name === 'equipmentID' ? c : e.value); });
+      return page('/express/containerSearch.do', fd).then(function (r) { var t = r.body.textContent.replace(/\s+/g, ' '), m = /Weight:\s*(\d+)/.exec(t), cat = /Category:\s*([A-Z]+)/.exec(t);
+        return { c: c, w: m ? +m[1] : 0, cat: cat ? cat[1] : '' }; });
+    }).catch(function () { return { c: c, w: 0 }; });
+  }
+  function weightStep() {
+    api('owPending').then(function (list) {
+      if (!list || !list.length) return;
+      var S = document.createElement('div'); S.style.marginTop = '8px'; box.appendChild(S);
+      var res = [], i = 0;
+      (function next() {
+        if (i >= list.length) { api('owPortWeights', [res]).then(function (r) { S.innerHTML = '<b style="color:#2e2d6f">Weight check</b><br>' + ((r && r.lines) || []).join('<br>'); }).catch(function (e) { S.textContent = 'Weight check: ' + (e.message || e); }); return; }
+        var c = list[i++]; S.innerHTML = '<b style="color:#2e2d6f">Weight check</b><br>Reading port weight for ' + c + ' (' + i + '/' + list.length + ')…';
+        portWeight(c).then(function (r) { res.push(r); setTimeout(next, 400); });
+      })();
+    }).catch(function (e) { if (!/Unknown action/i.test(e.message || e)) { var x = document.createElement('div'); x.style.color = '#b42318'; x.textContent = 'Weight check: ' + (e.message || e); box.appendChild(x); } });
+  }
   var days = Number(window.PORTSYNC_DAYS || 1), end = new Date(), start = new Date(Date.now() - (days - 1) * 86400000);
   say('Reading AOLQ gate moves ' + (days > 1 ? 'for ' + days + ' days' : 'for today') + '…');
   var fd = new URLSearchParams({ startDate: gpaDay(start), endDate: gpaDay(end), nbr: '', trkcid_Lov: 'AOLQ', trkcid: 'AOLQ', trkid: '', eqid: '', submitted: 'true', param: 'TruckTransactions' });
@@ -182,7 +203,7 @@
         var r = (j && (j.result || j.data || j)) || {};
         say('<span style="color:#1a7f37;font-weight:600">Done.</span> ' + moves.length + ' AOLQ moves read: ' + (r.added || 0) + ' new, ' + (r.updated || 0) + ' updated, ' + (r.skipped || 0) + ' skipped (not our trucks).' +
           (r.flagged && r.flagged.length ? '<div style="color:#b42318;margin-top:6px"><b>Tags not on our list:</b><br>' + r.flagged.join('<br>') + '</div>' : '') + '<div id="ps_w"></div>');
-        watchStep(k); scacStep();
+        watchStep(k); scacStep(); weightStep();
       });
   }).catch(function (e) { say('<span style="color:#b42318">' + (e.message || e) + '</span>'); });
   }
