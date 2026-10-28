@@ -273,6 +273,7 @@ input.cdbad,textarea.cdbad{border-color:var(--stop)!important;outline-color:var(
 #flT td.bad{color:#b3261e;font-weight:600}
 #flT a{color:var(--ink);text-decoration:underline}
 #flT a.home{color:#2e7d4f;font-weight:600}
+#gtT td.bad{color:#b3261e;font-weight:600}#gtT td.go{color:#2e7d4f;font-weight:600}#gtT td.muted{color:var(--mut,#5d686d)}#gtT a{color:var(--ink);text-decoration:underline}#gtT a.home{color:#2e7d4f;font-weight:600}
 
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -1144,6 +1145,32 @@ const fleetSec=mk('fleetSec','yard','fleet','<h2>Our chassis <span class="t" id=
 '<p class="help">Every company chassis with where BlackBerry Radar last saw it. Tap a location to open the map. <b>Last ping</b> older than 24 hours means the tracker has not reported, so the location may be out of date. <b>Yard status</b> is what Brandon last marked on the Chassis tab.</p>'+
 '<div class="fchips" id="flF"></div><div class="tbl"><table class="score" id="flT"></table></div>');
 scacSec.after(fleetSec);
+// ---------- Geotab: live truck + driver GPS ----------
+const gpsSec=mk('gpsSec','yard','gps','<h2>Truck GPS <span class="t" id="gtAsof">Geotab · live</span></h2>'+
+'<p class="help">Where every truck is right now from Geotab, who is driving it and how fast. It refreshes every 5 minutes on Google\'s servers, so nobody\'s computer has to be on. Tap a location to open the map.</p>'+
+'<div class="fchips" id="gtF"></div><div class="tbl"><table class="score" id="gtT"></table></div>');
+fleetSec.after(gpsSec);
+let GT=null,GTt=0,GTF='all';
+function loadTrucks(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-GTt<60000)return;GTt=Date.now();
+  Y().call('getTrucks',[]).then(d=>{GT=d;renderGps()}).catch(e=>{GT={err:(e&&e.message)||'Could not load',trucks:[]};renderGps()})}
+function renderGps(){const T=$('gtT'),F=$('gtF');if(!T)return;T.textContent='';F.textContent='';
+  if(!GT){T.append(el('tr','',''));T.firstChild.append(el('td','','Loading…'));return}
+  if(GT.off){const tr=el('tr');const td=el('td','','Geotab is not connected yet. Richard adds the Geotab login on the server once, then trucks show here.');tr.append(td);T.append(tr);$('gtAsof').textContent='Geotab · not connected';return}
+  const L=(GT.trucks||[]),now=Date.now(),age=t=>t.at?(now-new Date(t.at).getTime())/3600000:999;
+  const home=t=>Math.abs(t.lat-32.1441)<0.004&&Math.abs(t.lng+81.1833)<0.004;
+  const G=[['all','All'],['driving','Driving'],['stopped','Stopped'],['home','At the yard'],['off','No signal 24h+']];
+  const pass=(t,k)=>k==='all'||(k==='driving'?t.driving:k==='stopped'?!t.driving:k==='home'?home(t):age(t)>24);
+  G.forEach(([k,l])=>{const b=el('button',GTF===k?'on':'',l+' ('+L.filter(t=>pass(t,k)).length+')');b.type='button';b.addEventListener('click',()=>{GTF=k;renderGps()});F.append(b)});
+  const hd=el('tr');['Truck','Driver','Location','Status','Last update'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  const list=L.filter(t=>pass(t,GTF));
+  if(!list.length){const tr=el('tr');const td=el('td','',GT.err?'Geotab error: '+GT.err:'No trucks in this filter.');td.colSpan=5;tr.append(td);T.append(tr)}
+  list.forEach(t=>{const tr=el('tr');const td=el('td');const a=el('a',home(t)?'home':'',home(t)?'At the yard (116 Gulfstream)':(t.addr||(t.lat!=null?(+t.lat).toFixed(4)+', '+(+t.lng).toFixed(4):'No location')).replace(/, (USA|United States)$/,''));
+    a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(t.lat+','+t.lng);a.target='_blank';a.rel='noopener';td.append(a);
+    const h=age(t),ago=h<1/60?'just now':h<1?Math.round(h*60)+' min ago':h<48?Math.round(h)+' hr ago':Math.round(h/24)+' days ago';
+    tr.append(el('td','',t.truck+(t.plate?' · '+t.plate:'')),el('td',t.driver?'':'muted',t.driver||'no driver logged in'),td,
+      el('td',t.driving?'go':'',t.driving?'Driving '+t.mph+' mph':'Stopped'),el('td',h>24?'bad':'',ago));T.append(tr)});
+  $('gtAsof').textContent=L.length+' trucks · Geotab'+(GT.at?' · updated '+fmtDT(new Date(GT.at).getTime()):'')+(GT.err&&L.length?' · last refresh failed':'')}
+
 let FLF='all';
 const FLW={yard:'In yard',load:'Out on a load',shop:'At shop',hold:'Defect hold',oos:'Out of service',missing:"Can't find"};
 function renderFleet(){const T=$('flT'),F=$('flF');if(!T)return;const S=Y().S||{},R=S.radar||{},CH=S.chassis||{};
@@ -1280,7 +1307,7 @@ document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
 const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
-yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
+yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['gps','Truck GPS'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
@@ -1536,7 +1563,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{renderFleet()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{renderFleet()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
