@@ -1150,6 +1150,59 @@ const gpsSec=mk('gpsSec','yard','gps','<h2>Truck GPS <span class="t" id="gtAsof"
 '<p class="help">Where every truck is right now from Geotab, who is driving it and how fast. It refreshes every 5 minutes on Google\'s servers, so nobody\'s computer has to be on. Tap a location to open the map.</p>'+
 '<div class="fchips" id="gtF"></div><div class="tbl"><table class="score" id="gtT"></table></div>');
 fleetSec.after(gpsSec);
+// ---------- SAFETY tab (Geotab exception events + miles, last 7 days) ----------
+const SFC=[['collision','Possible collisions'],['speeding','Speeding'],['braking','Harsh braking'],['accel','Harsh acceleration'],['corner','Harsh cornering'],['seatbelt','Seat belt']];
+const SFL=Object.fromEntries(SFC);
+const GTURL='https://my.geotab.com/us1logistics/';
+const sfHelp='<p class="help">From Geotab, last 7 days, refreshed every hour on Google\'s servers. Events per 1,000 miles is the fair way to compare drivers who drive different amounts.</p>';
+const sfOv=mk('sfOv','safety','overview','<h2>Safety overview <span class="t" id="sfAsof">Geotab · last 7 days</span></h2>'+sfHelp+'<div class="chips" id="sfK"></div><h3 class="h3">Needs a coaching talk first</h3><ul class="cboard" id="sfTop"></ul><p class="help" id="sfNote"></p>');
+const sfRisk=mk('sfRisk','safety','risk','<h2>Driver risk <span class="t">ranked, worst first</span></h2><p class="help">Every driver with miles or events this week. Score = safety events per 1,000 miles. "No driver logged in" means the driver did not sign in on the Geotab device, so events cannot be pinned on a person. Fix that first.</p><div class="fchips" id="sfRV"></div><div class="tbl"><table class="score" id="sfRT"></table></div>');
+const sfEv=mk('sfEv','safety','events','<h2>Safety events <span class="t">newest first</span></h2><div class="fchips" id="sfEF"></div><div class="tbl"><table class="score" id="sfET"></table></div>');
+const sfSp=mk('sfSp','safety','speed','<h2>Speeding <span class="t">who, how often, how long</span></h2><p class="help">Speeding events by driver with total minutes over the limit this week. The exact speed trace for each event is in Geotab (Safety › Speed Profile).</p><div class="tbl"><table class="score" id="sfST"></table></div><p><a class="btn2" target="_blank" rel="noopener" href="'+GTURL+'#speedProfile">Open Speed Profile in Geotab</a></p>');
+const sfCo=mk('sfCo','safety','collisions','<h2>Possible collisions <span class="t">accelerometer alerts</span></h2><p class="help">Geotab flags a possible collision from a hard impact. Call the driver right away, then open the event in Geotab for the collision reconstruction (speed, g-force and location before and after). Julia logs anything real as an accident.</p><ul class="cboard" id="sfCL"></ul><p><a class="btn2" target="_blank" rel="noopener" href="'+GTURL+'#collisionReconstruction">Open Collision Reconstruction in Geotab</a></p>');
+{let a=gpsSec;[sfOv,sfRisk,sfEv,sfSp,sfCo].forEach(x=>{a.after(x);a=x})}
+let SF=null,SFt=0,SFE='all',SFV='drivers';
+function loadSafety(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-SFt<300000)return;SFt=Date.now();
+  Y().call('getSafety',[]).then(d=>{SF=d;renderSafety()}).catch(e=>{SF={err:(e&&e.message)||'Could not load',drivers:[],trucks:[],events:[]};renderSafety()})}
+const sfTot=x=>SFC.reduce((n,[k])=>n+(x[k]||0),0);
+const sfRate=x=>x.miles>=50?Math.round(sfTot(x)/x.miles*10000)/10:null;
+const sfWhen=t=>t?new Date(t).toLocaleString(undefined,{weekday:'short',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+function sfMsg(id,txt,cols){const T=$(id);if(!T)return;T.textContent='';if(T.tagName==='UL'){T.append(el('li','empty',txt));return}const tr=el('tr');const td=el('td','',txt);td.colSpan=cols||1;tr.append(td);T.append(tr)}
+function renderSafety(){if(!$('sfK'))return;
+  if(!SF){['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,'Loading…',6));return}
+  if(SF.off){const m='Geotab is not connected yet. Richard adds the Geotab login on the server once, then safety data shows here.';$('sfK').textContent='';sfMsg('sfTop',m);['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,m,6));sfMsg('sfCL',m);$('sfAsof').textContent='Geotab · not connected';return}
+  const D=SF.drivers||[],E=SF.events||[],sum=k=>D.reduce((n,x)=>n+(x[k]||0),0),miles=sum('miles');
+  $('sfAsof').textContent='Geotab · last 7 days'+(SF.at?' · updated '+fmtDT(new Date(SF.at).getTime()):'')+(SF.err?' · last refresh failed':'');
+  const K=$('sfK');K.textContent='';const chip=(v,l,c,go2)=>{const b=el('button',c);b.type='button';b.append(el('b','',String(v)),el('span','',l));if(go2)b.addEventListener('click',go2);K.append(b)};
+  chip(miles.toLocaleString(),'miles driven','');
+  SFC.forEach(([k,l])=>{const n=sum(k);chip(n,l,n?(k==='collision'||k==='seatbelt'?'r':'y'):'g',()=>{SFE=k;go('safety');sub('safety','events');renderSafety()})});
+  const nd=D.find(x=>x.name==='No driver logged in');
+  $('sfNote').textContent=(nd&&(nd.miles||sfTot(nd))?nd.miles.toLocaleString()+' miles and '+sfTot(nd)+' events had no driver signed in on the Geotab device. ':'')+(SF.err?'Last refresh error: '+SF.err:'');
+  const rank=D.filter(x=>x.name!=='No driver logged in').map(x=>Object.assign({},x,{rate:sfRate(x),tot:sfTot(x)})).sort((a,b)=>(b.collision-a.collision)||((b.rate??-1)-(a.rate??-1))||(b.tot-a.tot));
+  const top=$('sfTop');top.textContent='';rank.filter(x=>x.tot).slice(0,3).forEach(x=>{const li=el('li');li.append(el('b','',x.name),el('div','muted',SFC.filter(([k])=>x[k]).map(([k,l])=>x[k]+' '+l.toLowerCase()).join(' · ')+' · '+x.miles.toLocaleString()+' mi'+(x.rate!=null?' · '+x.rate+' per 1,000 mi':'')));top.append(li)});
+  if(!top.children.length)top.append(el('li','empty','No safety events this week.'));
+  // risk table
+  const RV=$('sfRV');RV.textContent='';[['drivers','By driver'],['trucks','By truck']].forEach(([k,l])=>{const b=el('button',SFV===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{SFV=k;renderSafety()});RV.append(b)});
+  const rows=(SFV==='drivers'?D:(SF.trucks||[])).map(x=>Object.assign({},x,{rate:sfRate(x),tot:sfTot(x)})).filter(x=>x.miles||x.tot).sort((a,b)=>(b.collision-a.collision)||((b.rate??-1)-(a.rate??-1))||(b.tot-a.tot));
+  const RT=$('sfRT');RT.textContent='';const hr=el('tr');[SFV==='drivers'?'Driver':'Truck','Miles','Per 1,000 mi','Collisions','Speeding','Braking','Accel','Cornering','Seat belt'].forEach(h=>hr.append(el('th','',h)));RT.append(hr);
+  rows.forEach(x=>{const tr=el('tr');tr.append(el('td','',x.name),el('td','n',x.miles.toLocaleString()),el('td','n'+(x.rate!=null&&x.rate>=10?' bad':''),x.rate==null?(x.tot?'under 50 mi':'—'):String(x.rate)));
+    ['collision','speeding','braking','accel','corner','seatbelt'].forEach(k=>tr.append(el('td','n'+(x[k]&&(k==='collision'||k==='seatbelt')?' bad':''),x[k]?String(x[k]):'')));RT.append(tr)});
+  if(!rows.length)sfMsg('sfRT','No miles or events this week.',9);
+  // events
+  const EF=$('sfEF');EF.textContent='';[['all','All']].concat(SFC).forEach(([k,l])=>{const n=k==='all'?E.length:E.filter(e=>e.cat===k).length;const b=el('button',SFE===k?'on':'',l+' ('+n+')');b.type='button';b.addEventListener('click',()=>{SFE=k;renderSafety()});EF.append(b)});
+  const ET=$('sfET');ET.textContent='';const he=el('tr');['When','Event','Driver','Truck','How long'].forEach(h=>he.append(el('th','',h)));ET.append(he);
+  E.filter(e=>SFE==='all'||e.cat===SFE).slice(0,200).forEach(e=>{const tr=el('tr');tr.append(el('td','',sfWhen(e.at)),el('td',e.cat==='collision'||e.cat==='seatbelt'?'bad':'',e.rule||SFL[e.cat]),el('td',e.driver?'':'muted',e.driver||'not signed in'),el('td','',e.truck||''),el('td','n',e.min?(e.min<1?Math.round(e.min*60)+' sec':e.min+' min'):''));ET.append(tr)});
+  if(ET.children.length<2)sfMsg('sfET','No events in this filter.',5),ET.prepend(he);
+  if(SF.total>E.length)ET.append((()=>{const tr=el('tr');const td=el('td','muted','Showing the newest '+E.length+' of '+SF.total+'. All of them are in Geotab.');td.colSpan=5;tr.append(td);return tr})());
+  // speeding
+  const ST=$('sfST');ST.textContent='';const hs=el('tr');['Driver','Speeding events','Minutes over','Miles','Per 1,000 mi'].forEach(h=>hs.append(el('th','',h)));ST.append(hs);
+  D.filter(x=>x.speeding).sort((a,b)=>b.speedMin-a.speedMin||b.speeding-a.speeding).forEach(x=>{const tr=el('tr');tr.append(el('td','',x.name),el('td','n',String(x.speeding)),el('td','n',String(x.speedMin)),el('td','n',x.miles.toLocaleString()),el('td','n',x.miles>=50?String(Math.round(x.speeding/x.miles*10000)/10):'—'));ST.append(tr)});
+  if(ST.children.length<2){const tr=el('tr');const td=el('td','','No speeding events this week.');td.colSpan=5;tr.append(td);ST.append(tr)}
+  // collisions
+  const CL=$('sfCL');CL.textContent='';E.filter(e=>e.cat==='collision').forEach(e=>{const li=el('li','r');li.append(el('b','',(e.driver||'Driver not signed in')+' · truck '+(e.truck||'?')),el('div','muted',sfWhen(e.at)+' · '+e.rule));CL.append(li)});
+  if(!CL.children.length)CL.append(el('li','empty','No possible collisions this week.'));
+  try{const n=sum('collision');const b=tabBtn&&tabBtn('safety');if(b){const g=b.querySelector('.bdg');if(g){g.textContent=n?String(n):'';g.className='bdg'+(n?' r':'')}}subBadge('safety','collisions',n,true);subBadge('safety','events',E.length>99?'99+':E.length,false)}catch(e){}}
+
 let GT=null,GTt=0,GTF='all';
 function loadTrucks(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-GTt<60000)return;GTt=Date.now();
   Y().call('getTrucks',[]).then(d=>{GT=d;renderGps()}).catch(e=>{GT={err:(e&&e.message)||'Could not load',trucks:[]};renderGps()})}
@@ -1298,8 +1351,8 @@ const IC={today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d
 tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg>',
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
-reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>'};
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['reports','Reports']];
+reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['reports','Reports'],['safety','Safety']];
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
@@ -1309,7 +1362,8 @@ const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['gps','Truck GPS'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
-reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']]};
+reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
+safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
 const SUBH=[[/^Open the yard|^Morning yard walk/,'morning'],[/^All day|^Break/,'day'],[/^Before end of day|^Yard reconcile/,'end'],[/^Who to call/,'contacts'],
 [/^Containers in the yard/,'containers'],[/^Chassis location report/,'chassis'],[/^Yard walk log/,'walk']];
@@ -1338,7 +1392,7 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
 // hide tabs that are empty for this person
-function tabVis(){const R={tasks:can('yard'),yard:can('yard'),reports:can('yard')};['tasks','yard','reports'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),safety:can('safety')};['tasks','yard','reports','safety'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)';
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
@@ -1563,7 +1617,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{renderFleet()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{renderFleet()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
