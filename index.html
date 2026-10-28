@@ -1200,6 +1200,22 @@ function renderCoaching(){const T=$('ccT');if(!T)return;
     tr.append(el('td','',c.date),el('td','',c.driver),el('td','',c.topic),el('td','',[c.notes,c.action&&('→ '+c.action)].filter(Boolean).join(' ')),el('td',c.ack==='Yes'?'go':'bad',c.ack==='Yes'?'Yes':'No'),fu,el('td','',c.by));T.append(tr)});
   $('ccAsof').textContent=L.length+' talks logged'+(due.length?' · '+due.length+' follow-ups open':'');
   try{subBadge('safety','coach',due.length,false)}catch(e){}}
+
+// ---- Chassis photos (mandatory at pickup and before drop; checked from the driver RingCentral groups) ----
+const cpSec=mk('cpSec','safety','photos','<h2>Chassis photos <span class="t" id="cpAsof">pickup and drop, every move</span></h2>'+
+'<p class="help">Drivers must post at least 6 photos in their 2FF RingCentral group: 4 corners, both sides, the rear (lights, mudflaps) and the chassis number plate. They post at <b>every port pickup</b> (#pickup) and <b>before every drop</b> (#drop). The app checks each port gate move every 15 minutes. If photos are missing it reminds the driver right away, and after 30 minutes it alerts 2FF Safety Alerts. Coach every MISSED.</p>'+
+'<div class="fchips" id="cpF"></div><div class="tbl"><table class="score" id="cpT"></table></div>');
+let CP=null,CPt=0,CPF='missed';
+function loadCP(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-CPt<300000)return;CPt=Date.now();Y().call('getChassisPhotos',[]).then(d=>{CP=d;renderCP()}).catch(()=>{})}
+function renderCP(){const T=$('cpT');if(!T)return;const R=(CP&&CP.rows)||[];
+  $('cpAsof').textContent=CP&&CP.at?'checked '+fmtDT(new Date(CP.at).getTime())+(CP.err?' · error: '+CP.err:''):'pickup and drop, every move';
+  const miss=R.filter(r=>r.status==='MISSED'||r.status==='NO GROUP');
+  const F=$('cpF');F.textContent='';[['missed','Missed ('+miss.length+')'],['all','All ('+R.length+')']].forEach(([k,l])=>{const b=el('button',CPF===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{CPF=k;renderCP()});F.append(b)});
+  T.textContent='';const h=el('tr');['Gate time','Move','Container','Chassis','Driver','Photos','Status',''].forEach(x=>h.append(el('th','',x)));T.append(h);
+  const rows=CPF==='missed'?miss:R;if(!rows.length){const tr=el('tr');const td=el('td','',CP?'Nothing here.':'Loading…');td.colSpan=8;tr.append(td);T.append(tr)}
+  rows.forEach(r=>{const tr=el('tr');const td=el('td');if(r.status==='MISSED'&&r.driver){const b=el('button','btn2','Coach');b.type='button';b.addEventListener('click',()=>{coachDriver(r.driver,'Other');setTimeout(()=>{$('ccNotes').value='No chassis photos: '+r.cont+(r.chassis?' / '+r.chassis:'')+', '+r.ev+' '+fmtDT(new Date(r.t).getTime())+'. Only '+r.n+' photos.'},120)});td.append(b)}
+    tr.append(el('td','',r.t?fmtDT(new Date(r.t).getTime()):''),el('td','',r.ev),el('td','',r.cont),el('td','',r.chassis||''),el('td','',r.driver||''),el('td','n',String(r.n||0)+' / '+((CP&&CP.min)||6)),el('td',r.status==='OK'?'go':r.status==='MISSED'||r.status==='NO GROUP'?'bad':'warn',r.status),td);T.append(tr)});
+  try{subBadge('safety','photos',miss.filter(r=>Date.now()-new Date(r.t).getTime()<3*86400000).length,true)}catch(e){}}
 $('ccForm').addEventListener('submit',e=>{e.preventDefault();const m=$('ccMsg');const o={driver:$('ccDrv').value.trim(),date:$('ccDate').value,topic:$('ccTop').value,notes:$('ccNotes').value.trim(),action:$('ccAct').value.trim(),ack:$('ccAck').checked,follow:$('ccFollow').value};
   if(!o.driver||!o.topic){m.textContent='Driver and topic are required.';return}m.textContent='Saving…';
   Y().call('coachAdd',[o]).then(d=>{CC=d;['ccNotes','ccAct','ccFollow'].forEach(i=>$(i).value='');$('ccAck').checked=false;m.textContent='Logged for '+o.driver+'.';renderCoaching()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
@@ -1494,7 +1510,7 @@ yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / 
 port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
-safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching']]};
+safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching'],['photos','Chassis photos']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
 const SUBH=[[/^Open the yard|^Morning yard walk/,'morning'],[/^All day|^Break/,'day'],[/^Before end of day|^Yard reconcile/,'end'],[/^Who to call/,'contacts'],
 [/^Containers in the yard/,'containers'],[/^Chassis location report/,'chassis'],[/^Yard walk log/,'walk']];
@@ -1748,7 +1764,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{renderFleet()}catch(e){console.error(e)}try{loadOW();renderOW()}catch(e){console.error(e)}try{loadCoaching();renderCoaching();loadHealth()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{renderFleet()}catch(e){console.error(e)}try{loadOW();renderOW()}catch(e){console.error(e)}try{loadCoaching();renderCoaching();loadHealth()}catch(e){console.error(e)}try{loadCP();renderCP()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
