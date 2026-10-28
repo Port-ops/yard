@@ -276,6 +276,7 @@ input.cdbad,textarea.cdbad{border-color:var(--stop)!important;outline-color:var(
 #gtT td.bad{color:#b3261e;font-weight:600}#gtT td.go{color:#2e7d4f;font-weight:600}#gtT td.muted{color:var(--mut,#5d686d)}#gtT a{color:var(--ink);text-decoration:underline}#gtT a.home{color:#2e7d4f;font-weight:600}
 #gdT td.bad{color:#b3261e;font-weight:600}#gdT td.go{color:#2e7d4f;font-weight:600}#gdT td.muted{color:var(--mut,#5d686d);font-style:italic}#gdT a{color:var(--ink);text-decoration:underline}
 #ccT td.bad{color:#b3261e;font-weight:600}#ccT td.go{color:#2e7d4f;font-weight:600}#sfCoach label.chk{display:flex;gap:8px;align-items:center;margin:6px 0}
+#owT td.bad,#blT td.bad,#pvT td.bad{color:#b3261e;font-weight:600}#owT td.go{color:#2e7d4f;font-weight:600}#pvT td.warn{color:#8a6100;font-weight:600}
 
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -1348,6 +1349,56 @@ const watchSec=mk('watchSec','port','watch','<h2>Watch for availability <span cl
 '<div class="fchips" id="wF"></div><ul class="cboard" id="wList"><li class="empty">Loading…</li></ul>'+
 '<details class="help" style="margin-top:4px"><summary>Set a GPA alert by hand instead</summary><ol style="margin:6px 0 0 18px;padding:0"><li>GPA WebAccess: <b>Today &gt; Notify</b>.</li><li>Container: the box #. Notify Me When: the availability/release event. Notification By: email.</li><li>Address: <b>admin@2f-logistics.com</b> (the app reads it). Submit.</li><li>Alerts only fire for events that have not happened yet.</li></ol></details>');
 const pin0=$('pinSec');if(pin0)pin0.after(watchSec);else wrap.append(watchSec);
+// ---------- Port › Overweight: OW loads from RingCentral, FL blanket check-out, annual permits by truck ----------
+const owSec=mk('owSec','port','ow','<h2>Overweight permits <span class="t" id="owAsof">loads, Florida blankets, annuals</span></h2>'+
+'<p class="help">Every load Prince posts in a driver\'s RingCentral group that says <b>overweight</b> or is over 42,000 lbs cargo (40\') / 36,000 (20\') lands here automatically. The driver is told right away to pick up the permit before 4:30 PM, and the office gets an alert. Florida = hand out a blanket (check it out below). NC/SC/AL/TN with no annual on that truck = order a trip permit from US 1 right away (they need up to 24 h).</p>'+
+'<div id="owConn"></div><div class="fchips" id="owF"></div><div class="tbl"><table class="score" id="owT"></table></div>'+
+'<details class="help"><summary>Add an overweight load by hand</summary><form id="owAdd" class="walk" autocomplete="off"><div class="drow"><input id="oaC" placeholder="Container #" style="text-transform:uppercase"><input id="oaD" placeholder="Driver" style="text-transform:none"></div><div class="drow"><input id="oaL" placeholder="Cargo lbs" inputmode="numeric"><input id="oaS" placeholder="State (FL, NC…)" maxlength="2"><input id="oaDt" placeholder="Delivery date"></div><div class="actions"><button class="btn" type="submit">Add</button><span class="msg" id="oaM"></span></div></form></details>'+
+'<h3 class="h3">Florida blankets <span class="t" id="blS">pass-around originals</span></h3><div class="tbl"><table class="score" id="blT"></table></div>'+
+'<h3 class="h3">Annual permits by truck <span class="t">GA (every truck), NC / SC / AL / TN</span></h3><div class="fchips" id="pvF"></div><div class="tbl"><table class="score" id="pvT"></table></div>'+
+'<form id="pvForm" class="walk" autocomplete="off"><div class="drow"><input id="pvTk" placeholder="Truck (13-033)" style="text-transform:uppercase"><select id="pvSt"><option>GA</option><option>FL</option><option>NC</option><option>SC</option><option>AL</option><option>TN</option></select><input id="pvN" placeholder="Permit #" style="text-transform:none"></div><div class="drow"><input id="pvI" type="date" title="Issued"><input id="pvE" type="date" title="Expires"><button class="btn" type="submit">Save permit</button></div><span class="msg" id="pvM"></span></form>');
+{const ws=$('watchSec');if(ws)ws.after(owSec);else wrap.append(owSec)}
+let OW=null,OWt=0,OWF='open',PV=null,PVF='all';
+const owAdm=()=>((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin');
+function loadOW(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-OWt<120000)return;OWt=Date.now();
+  Y().call('getOW',[]).then(d=>{OW=d;renderOW()}).catch(()=>{});Y().call('getPermits',[]).then(d=>{PV=d;renderOW()}).catch(()=>{})}
+function owSetStatus(r,st){const permit=st==='Ready at office'?(prompt('Permit # (optional)',r.permit||'')||''):r.permit;Y().call('owSet',[{id:r.id,status:st,permit}]).then(d=>{OW=d;renderOW()}).catch(e=>alert((e&&e.message)||'Not saved'))}
+function renderOW(){const T=$('owT');if(!T)return;
+  const C=$('owConn');C.textContent='';
+  if(OW&&!OW.on){const p=el('p','help');p.innerHTML='<b>Not reading RingCentral yet.</b> '+(owAdm()?'Connect the RingCentral API below (one time).':'Richard connects it once.');C.append(p);
+    if(owAdm()){const f=el('form','walk');f.autocomplete='off';f.innerHTML='<div class="drow"><input id="rcI" placeholder="RingCentral Client ID" style="text-transform:none"><input id="rcS" type="password" placeholder="Client secret" autocomplete="new-password" style="text-transform:none"></div><input id="rcJ" type="password" placeholder="JWT credential" autocomplete="new-password" style="text-transform:none"><div class="actions"><button class="btn" type="submit">Connect RingCentral</button><span class="msg" id="rcM"></span></div>';
+      f.addEventListener('submit',e=>{e.preventDefault();const m=$('rcM');m.textContent='Checking with RingCentral…';Y().call('setRcApiLogin',[{clientId:$('rcI').value,clientSecret:$('rcS').value,jwt:$('rcJ').value}]).then(r=>{$('rcS').value='';$('rcJ').value='';m.textContent='Connected: '+r.groups+' driver groups. '+(r.scan||'');OWt=0;loadOW(true)}).catch(err=>{$('rcS').value='';$('rcJ').value='';m.textContent=(err&&err.message)||'Not connected.'})});C.append(f)}}
+  else if(OW){const p=el('p','help','Reading the 2FF driver groups every 10 min'+(OW.scanAt?' · last read '+fmtDT(new Date(OW.scanAt).getTime()):'')+(OW.err?' · last error: '+OW.err:''));C.append(p)}
+  const R=(OW&&OW.rows)||[],open=R.filter(r=>r.status==='Permit needed'||r.status==='Ready at office');
+  const F=$('owF');F.textContent='';[['open','Open ('+open.length+')'],['all','All ('+R.length+')']].forEach(([k,l])=>{const b=el('button',OWF===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{OWF=k;renderOW()});F.append(b)});
+  T.textContent='';const hd=el('tr');['Found','Driver','Container','Lbs','To','Deliver','Needs','Status',''].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  const rows=OWF==='open'?open:R;if(!rows.length){const tr=el('tr');const td=el('td','',OW?'No open overweight loads.':'Loading…');td.colSpan=9;tr.append(td);T.append(tr)}
+  rows.forEach(r=>{const tr=el('tr');const td=el('td');const B=(l,st)=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',()=>owSetStatus(r,st));td.append(b,document.createTextNode(' '))};
+    if(r.status==='Permit needed'){B('Ready','Ready at office');B('Not needed','Not needed')}else if(r.status==='Ready at office')B('Picked up','Picked up');
+    tr.append(el('td','',r.found?fmtDT(new Date(r.found).getTime()):''),el('td','',r.driver),el('td','',r.cont),el('td','n',r.lbs?Number(r.lbs).toLocaleString():''),el('td','',(r.state||'')+(r.addr?' · '+String(r.addr).slice(0,40):'')),el('td','',[r.date,r.appt].filter(Boolean).join(' ')),
+      el('td','',String(r.why||'').replace(/^.*needs: /,'')),el('td',r.status==='Permit needed'?'bad':r.status==='Picked up'||/Covered/.test(r.status)?'go':'',r.status+(r.permit?' · #'+r.permit:'')),td);T.append(tr)});
+  try{subBadge('port','ow',R.filter(r=>r.status==='Permit needed').length,true)}catch(e){}
+  // FL blankets
+  const BT=$('blT');BT.textContent='';const bh=el('tr');['Blanket','Permit #','Expires','With','Since',''].forEach(h=>bh.append(el('th','',h)));BT.append(bh);
+  const BL=(PV&&PV.blankets)||[];const today=new Date().toISOString().slice(0,10);
+  BL.forEach(b=>{const tr=el('tr',b.status==='In office'?'':'idle');const td=el('td');
+    if(b.status==='In office'){const ti=el('input');ti.placeholder='Truck or driver';ti.style.width='9em';ti.style.textTransform='none';const go=el('button','btn2','Check out');go.type='button';go.addEventListener('click',()=>{const v=ti.value.trim();if(!v)return ti.focus();const isT=/^\d{2}-\d{3}/.test(v);Y().call('blanketMove',[{row:b.row,action:'out',truck:isT?v:'',driver:isT?'':v}]).then(d=>{PV=d;renderOW()}).catch(e=>alert(e.message))});td.append(ti,document.createTextNode(' '),go)}
+    else{const back=el('button','btn2','Back in office');back.type='button';back.addEventListener('click',()=>Y().call('blanketMove',[{row:b.row,action:'in'}]).then(d=>{PV=d;renderOW()}));td.append(back)}
+    if(owAdm()){const ed=el('button','btn2','Edit #');ed.type='button';ed.style.marginLeft='6px';ed.addEventListener('click',()=>{const n=prompt('Permit # for '+b.name,b.num||'');if(n===null)return;const x=prompt('Expires (YYYY-MM-DD)',b.exp||'');Y().call('blanketMove',[{row:b.row,action:'edit',num:n,exp:x||''}]).then(d=>{PV=d;renderOW()})});td.append(ed)}
+    const days=b.since?Math.floor((Date.now()-new Date(b.since).getTime())/86400000):0;
+    tr.append(el('td','',b.name),el('td','',b.num||'—'),el('td',b.exp&&b.exp<today?'bad':'',b.exp||'—'),el('td','',b.status==='In office'?'In office':[b.truck,b.driver].filter(Boolean).join(' · ')),el('td',days>=3?'bad':'',b.since?fmtDT(new Date(b.since).getTime())+(days?' ('+days+'d)':''):''),td);BT.append(tr)});
+  const inO=BL.filter(b=>b.status==='In office').length;$('blS').textContent=BL.length?inO+' of '+BL.length+' in the office':'pass-around originals';
+  // annual permits
+  const INV=(PV&&PV.inv)||[];const PF=$('pvF');PF.textContent='';['all','GA','FL','NC','SC','AL','TN'].forEach(k=>{const n=k==='all'?INV.length:INV.filter(x=>x.state===k).length;const b=el('button',PVF===k?'on':'',(k==='all'?'All':k)+' ('+n+')');b.type='button';b.addEventListener('click',()=>{PVF=k;renderOW()});PF.append(b)});
+  const PT=$('pvT');PT.textContent='';const ph=el('tr');['Truck','State','Permit #','Issued','Expires','Notes',''].forEach(h=>ph.append(el('th','',h)));PT.append(ph);
+  const soon=new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+  INV.filter(x=>PVF==='all'||x.state===PVF).sort((a,b)=>String(a.truck).localeCompare(String(b.truck))||String(a.state).localeCompare(String(b.state))).forEach(x=>{const tr=el('tr');const td=el('td');
+    const d=el('button','btn2','Remove');d.type='button';d.addEventListener('click',()=>{if(!confirm('Remove '+x.truck+' '+x.state+' permit?'))return;Y().call('permitSave',[{row:x.row,del:true,truck:x.truck,state:x.state}]).then(r=>{PV=r;renderOW()})});td.append(d);
+    tr.append(el('td','',x.truck),el('td','',x.state),el('td','',x.num||'—'),el('td','',x.issued||''),el('td',x.exp&&x.exp<today?'bad':x.exp&&x.exp<=soon?'warn':'',x.exp?x.exp+(x.exp<today?' EXPIRED':x.exp<=soon?' (soon)':''):'—'),el('td','',x.notes||''),td);PT.append(tr)});
+  if(!INV.length){const tr=el('tr');const td=el('td','',PV?'No annual permits entered yet.':'Loading…');td.colSpan=7;tr.append(td);PT.append(tr)}}
+$('pvForm').addEventListener('submit',e=>{e.preventDefault();const m=$('pvM');Y().call('permitSave',[{truck:$('pvTk').value.trim().toUpperCase(),state:$('pvSt').value,num:$('pvN').value.trim(),issued:$('pvI').value,exp:$('pvE').value}]).then(d=>{PV=d;['pvTk','pvN','pvI','pvE'].forEach(i=>$(i).value='');m.textContent='Saved.';renderOW()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
+$('owAdd').addEventListener('submit',e=>{e.preventDefault();const m=$('oaM');Y().call('owAdd',[{cont:$('oaC').value,driver:$('oaD').value,lbs:$('oaL').value,state:$('oaS').value,date:$('oaDt').value}]).then(d=>{OW=d;e.target.reset();m.textContent='Added.';renderOW()}).catch(err=>{m.textContent=(err&&err.message)||'Not added.'})});
+
 // ---------- Reference data from Supabase: storage accounts + line free days ----------
 let REF=null,REFt=0;try{REF=JSON.parse(localStorage.getItem('yardRef')||'null')}catch(e){}
 function loadRef(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-REFt<120000)return;REFt=Date.now();
@@ -1440,7 +1491,7 @@ document.body.append(nav);document.body.classList.add('tabs');
 const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
-port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
+port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
 safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching']]};
@@ -1697,7 +1748,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{renderFleet()}catch(e){console.error(e)}try{loadCoaching();renderCoaching();loadHealth()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{renderFleet()}catch(e){console.error(e)}try{loadOW();renderOW()}catch(e){console.error(e)}try{loadCoaching();renderCoaching();loadHealth()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
