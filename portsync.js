@@ -125,6 +125,30 @@
       });
     }).catch(function (e) { if (/Unknown action/i.test(e.message || e)) return; W.innerHTML = '<div style="color:#b42318;margin-top:8px">Port Watch: ' + (e.message || e) + '</div>'; });
   }
+
+  // ---- SCAC finder: for containers the Yard App asked about, read GPA Container History (read-only) and report who pulled them ----
+  function eqHistory(c) {
+    var fd = new URLSearchParams({ method: 'querySubmit', fldName: 'equipmentID', equipmentID: '', bookingID: '', nbr: '', equipmentClass: 'CTR', eqNbr: c, param: 'EqHistory', submitted: 'true' });
+    return page('/express/displayReport.do', fd).then(function (d) {
+      [].slice.call(d.querySelectorAll('script,style')).forEach(function (x) { x.remove(); });
+      var s = (d.body ? d.body.textContent : '').replace(/\s+/g, ' ');
+      var re = /(FULL_OUT|EMPTY_OUT)([A-Z]{2,5})\s?(\d{1,2}\/\d{1,2}\/\d{2,4} [\d:]+ [AP]M)\s?(?:SCAC:\s?([A-Z]{2,5}))?/g, m = re.exec(s);
+      if (!m) return { c: c, scac: '', note: /Number:\s?[A-Z]{4}\d{7}/.test(s) ? 'No out-gate at GCT in GPA history' : 'Not found at GPA' };
+      return { c: c, scac: m[4] || '', event: m[1], line: m[2], when: m[3], facility: 'GCT', note: m[4] ? '' : 'Out-gate found but no SCAC shown' };
+    }).catch(function (e) { return { c: c, scac: '', note: 'Lookup failed: ' + (e.message || e) }; });
+  }
+  function scacStep() {
+    api('scacPending').then(function (list) {
+      if (!list || !list.length) return;
+      var W = document.getElementById('ps_w'); var S = document.createElement('div'); S.style.marginTop = '8px'; if (W) W.after(S); else box.appendChild(S);
+      var res = [], i = 0;
+      (function next() {
+        if (i >= list.length) { api('scacResults', [res]).then(function () { var f = res.filter(function (r) { return r.scac; }).length; S.innerHTML = '<b style="color:#2e2d6f">SCAC finder</b><br>' + f + ' of ' + res.length + ' container(s) found: ' + res.map(function (r) { return r.c + (r.scac ? ' → ' + r.scac : ' → ' + (r.note || 'not found')); }).join('<br>'); }).catch(function (e) { S.textContent = 'SCAC finder: ' + (e.message || e); }); return; }
+        var c = list[i++]; S.innerHTML = '<b style="color:#2e2d6f">SCAC finder</b><br>Looking up ' + c + ' (' + i + '/' + list.length + ')…';
+        eqHistory(c).then(function (r) { res.push(r); setTimeout(next, 400); });
+      })();
+    }).catch(function (e) { if (!/Unknown action/i.test(e.message || e)) { var x = document.createElement('div'); x.style.color = '#b42318'; x.textContent = 'SCAC finder: ' + (e.message || e); box.appendChild(x); } });
+  }
   var days = Number(window.PORTSYNC_DAYS || 1), end = new Date(), start = new Date(Date.now() - (days - 1) * 86400000);
   say('Reading AOLQ gate moves ' + (days > 1 ? 'for ' + days + ' days' : 'for today') + '…');
   var fd = new URLSearchParams({ startDate: gpaDay(start), endDate: gpaDay(end), nbr: '', trkcid_Lov: 'AOLQ', trkcid: 'AOLQ', trkid: '', eqid: '', submitted: 'true', param: 'TruckTransactions' });
@@ -158,7 +182,7 @@
         var r = (j && (j.result || j.data || j)) || {};
         say('<span style="color:#1a7f37;font-weight:600">Done.</span> ' + moves.length + ' AOLQ moves read: ' + (r.added || 0) + ' new, ' + (r.updated || 0) + ' updated, ' + (r.skipped || 0) + ' skipped (not our trucks).' +
           (r.flagged && r.flagged.length ? '<div style="color:#b42318;margin-top:6px"><b>Tags not on our list:</b><br>' + r.flagged.join('<br>') + '</div>' : '') + '<div id="ps_w"></div>');
-        watchStep(k);
+        watchStep(k); scacStep();
       });
   }).catch(function (e) { say('<span style="color:#b42318">' + (e.message || e) + '</span>'); });
   }

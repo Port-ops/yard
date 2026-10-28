@@ -1125,7 +1125,7 @@ const today=el('section');today.id='todaySec';today.dataset.tab='today';
 today.innerHTML='<p class="hello" id="tHello"></p><div class="chips" id="tChips"></div>';
 const mk=(id,tab,sub,html)=>{const x=el('section');x.id=id;x.dataset.tab=tab;x.dataset.sub=sub;x.innerHTML=html;return x};
 const attSec=mk('attSec','today','att','<h2>Needs attention <span class="t" id="tAttN"></span></h2><ul class="att" id="tAtt"></ul>');
-const storSec=mk('storSec','yard','inyard','<h2>In the yard <span class="t" id="stN"></span></h2><p class="help">Every box at 116 Gulfstream right now: checked in, or seen on today\'s yard walk. Chassis and driver fill in from the GPA gate ticket when one of our trucks pulled it.</p><div class="drow"><input id="stQ" placeholder="Filter: container, spot, chassis, driver, line" autocomplete="off" style="text-transform:none"><button class="btn2" type="button" id="stCsv">Download list</button></div><div class="fchips" id="stF"></div><ul class="cboard" id="stL"></ul>');
+const storSec=mk('storSec','yard','inyard','<h2>In the yard <span class="t" id="stN"></span></h2><p class="help">Every box at 116 Gulfstream right now: checked in, or seen on today\'s yard walk. Chassis and driver fill in from the GPA gate ticket when one of our trucks pulled it.</p><div class="drow"><input id="scQ" placeholder="SCAC finder: container #" maxlength="11" autocomplete="off" autocapitalize="characters"><button class="btn" type="button" id="scGo">Find SCAC</button></div><p class="msg" id="scR" style="margin:0"></p><div class="drow"><input id="stQ" placeholder="Filter: container, spot, chassis, driver, line" autocomplete="off" style="text-transform:none"><button class="btn2" type="button" id="stCsv">Download list</button></div><div class="fchips" id="stF"></div><ul class="cboard" id="stL"></ul>');
 const feedSec=mk('feedSec','today','feed','<h2>Latest at the port <span class="t" id="tPortAsof"></span></h2><ul class="cboard pmv" id="tPort"></ul>');
 today.dataset.sub='*';
 document.querySelector('header').after(today);
@@ -1159,10 +1159,10 @@ function loadRef(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))retu
 const freeDaysFor=line=>{if(!REF||!line)return null;const L=String(line).toUpperCase().trim();const f=(REF.freeDays||[]).find(x=>String(x.line).toUpperCase()===L||L.indexOf(String(x.line).toUpperCase())===0);return f?f.free_days:null};
 // estimated free-time end when no date was entered: port out-gate + the line's free days (only if Richard set them)
 function estPd(r){if(r.pdEnd||!r.pulled)return null;const fd=freeDaysFor(r.ssl||r.line);if(fd==null)return null;return day0(r.pulled)+fd*DAY}
-const acctFor=r=>{if(!REF)return null;const t=String(r.load||'').toUpperCase();const A=REF.accounts||[];
+const acctFor=r=>{if(!REF)return null;const sx=REF.scac&&REF.scac[r.container];const t=String(r.load||'').toUpperCase()+(sx&&sx.scac?' '+sx.scac:'');const A=REF.accounts||[];
   return A.find(a=>a.scac&&new RegExp('\\b'+a.scac+'\\b').test(t))||A.find(a=>a.company&&t.indexOf(String(a.company).toUpperCase())>=0)||null};
 const billSec=mk('billSec','reports','billing','<h2>Storage billing <span class="t" id="bAsof">boxes other companies store with us</span></h2>'+
-'<p class="help">Every box in the yard whose customer/load says <b>Storage: &lt;company or SCAC&gt;</b>, matched to a storage account. Days are counted from the port out-gate (when it arrived) to today. No account or no rate = <b>not billable yet</b>. Fix that below.</p>'+
+'<p class="help">Every box in the yard pulled from the port by <b>another trucking company</b> (SCAC finder) or marked <b>Storage: &lt;company&gt;</b>, matched to a storage account by SCAC. Days are counted from the port out-gate (when it arrived) to today. No account or no rate = <b>not billable yet</b>. Fix that below.</p>'+
 '<div class="chips" id="bK"></div><div class="tbl"><table class="score" id="bT"></table></div>'+
 '<h3 class="h3">Storage accounts <span class="t">Richard sets the rate</span></h3><div class="tbl"><table class="score" id="bA"></table></div>'+
 '<form id="bForm" class="walk" autocomplete="off" hidden><input type="hidden" id="bId"><div class="drow"><input id="bCo" placeholder="Company" style="text-transform:none"><input id="bScac" placeholder="SCAC (e.g. WSSH)" maxlength="6"></div>'+
@@ -1174,10 +1174,10 @@ const billSec=mk('billSec','reports','billing','<h2>Storage billing <span class=
 {const sb0=$('scoreSec');if(sb0)sb0.after(billSec);else wrap.append(billSec)}
 function renderBill(){const sec=$('billSec');if(!sec)return;const adm=can('admin')&&((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin');
   $('bForm').hidden=!adm;$('fForm').hidden=!adm;
-  const S=Y().S||{},rows=((S.cont&&S.cont.inYard)||[]).filter(r=>/^storage/i.test(String(r.load||'')));
+  const S=Y().S||{},rows=((S.cont&&S.cont.inYard)||[]).filter(r=>{const x=scacOf(r.container);return /^storage/i.test(String(r.load||''))||(x&&x.st==='found'&&x.scac&&x.scac!=='AOLQ')});
   const today=day0(Date.now()),mon=today-((new Date().getDay()+6)%7)*DAY;
-  const by={};rows.forEach(r=>{const a=acctFor(r);const k=a?'a'+a.id:'?'+String(r.load).replace(/^storage:?\s*/i,'').split(' ')[0];const since=r.pulled?day0(r.pulled):(r.inAt?day0(r.inAt):today);
-    const days=Math.max(1,Math.round((today-since)/DAY)+1),wk=Math.max(0,Math.round((today-Math.max(since,mon))/DAY)+1);(by[k]=by[k]||{a,label:a?a.company:String(r.load).replace(/^storage:?\s*/i,''),boxes:[],days:0,wk:0}).boxes.push(r.container);by[k].days+=days;by[k].wk+=wk});
+  const by={};rows.forEach(r=>{const a=acctFor(r);const sx=scacOf(r.container);const k=a?'a'+a.id:'?'+((sx&&sx.scac)||String(r.load).replace(/^storage:?\s*/i,'').split(' ')[0]);const since=r.pulled?day0(r.pulled):(r.inAt?day0(r.inAt):today);
+    const days=Math.max(1,Math.round((today-since)/DAY)+1),wk=Math.max(0,Math.round((today-Math.max(since,mon))/DAY)+1);(by[k]=by[k]||{a,label:a?a.company:((sx&&sx.scac)?'SCAC '+sx.scac:String(r.load).replace(/^storage:?\s*/i,'')),boxes:[],days:0,wk:0}).boxes.push(r.container);by[k].days+=days;by[k].wk+=wk});
   const G=Object.values(by).sort((x,y)=>y.boxes.length-x.boxes.length);let due=0,unb=0;
   const T=$('bT');T.textContent='';const hd=el('tr');['Account','Boxes','Box-days to date','Box-days this week','Rate/day','This week','To date'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
   if(!G.length){const tr=el('tr');const td=el('td','','No storage boxes in the yard. A box shows here when its customer/load starts with "Storage:".');td.colSpan=7;tr.append(td);T.append(tr)}
@@ -1202,6 +1202,16 @@ $('fForm').addEventListener('submit',e=>{e.preventDefault();const m=$('fMsg');co
   if(!line){m.textContent='Line?';return}if(d!==''&&!/^\d{1,2}$/.test(d)){m.textContent='Days 0–30, or blank to remove.';return}
   m.textContent='Saving…';Y().call('setLineFreeDays',[{line,free_days:d}]).then(x=>{REF=x;e.target.reset();m.textContent='Saved.';renderBill();renderStorage();renderToday()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
 
+// ---------- SCAC finder ----------
+const scacOf=c=>REF&&REF.scac?REF.scac[String(c||'').toUpperCase()]:null;
+const scacTxt=x=>!x?'':x.st==='found'?('SCAC '+x.scac+(x.scac==='AOLQ'?' (us)':'')+(x.when?' · out '+x.when:'')+(x.truck?' · truck '+x.truck:'')):x.st==='pending'?'SCAC lookup queued (fills in at next Port Sync)':'SCAC not found at GPA';
+let SCREQ=false;
+function scacAuto(){if(SCREQ||!REF||!can('yard')||!Y().call)return;const S=Y().S||{};const want=[...new Set([...((S.cont&&S.cont.inYard)||[]).map(x=>x.container),...(S.walk||[]).map(w=>String(w.container||'').toUpperCase().trim())])].filter(c=>/^[A-Z]{4}\d{7}$/.test(c)&&cdCheck(c).ok&&!scacOf(c));
+  SCREQ=true;if(!want.length)return;Y().call('scacRequest',[want]).then(d=>{REF=d;try{localStorage.setItem('yardRef',JSON.stringify(d))}catch(e){}renderStorage()}).catch(()=>{SCREQ=false})}
+function scacFind(){const c=$('scQ').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,''),m=$('scR');if(!c){m.textContent='';return}
+  const q=cdCheck(c);if(!/^[A-Z]{4}\d{7}$/.test(c)||!q.ok){m.textContent='⚠ '+(q.why||'Container # is 4 letters + 7 numbers.');return}
+  const x=scacOf(c);if(x&&x.st==='found'){m.textContent=c+' → '+scacTxt(x);return}
+  m.textContent='Looking up '+c+'…';Y().call('scacRequest',[[c]]).then(d=>{REF=d;const y=scacOf(c);m.textContent=c+' → '+(y&&y.st==='found'?scacTxt(y):'queued. GPA only allows lookups from a signed-in WebAccess, so it fills in the next time Port Sync runs (or click Port Sync in WebAccess now).');renderStorage()}).catch(e=>{m.textContent=(e&&e.message)||String(e)})}
 // Port tab: filter chips above the moves list
 const pl=$('pList');let PF='all';
 if(pl){const fc=el('div','fchips');fc.id='pChips';[['all','All'],['today','Today'],['OUT','Out-gates'],['IN','In-gates']].forEach(([k,l])=>{const b=el('button',k==='all'?'on':'',l);b.type='button';b.dataset.k=k;
@@ -1332,6 +1342,7 @@ function timeline(c){const S=Y().S||{},PT=Y().PT||{rows:[]},PN=Y().PN||{rows:[]}
   const pdEnd=rec&&rec.pdEnd,lfd=rec&&rec.lfd;
   if(outT){const end=inT||Date.now();const days=Math.round((day0(end)-day0(outT))/DAY);const pdDays=pdEnd?Math.max(0,Math.round((day0(end)-day0(pdEnd))/DAY)):null;
     const s=el('div','sum');s.append(el('b','',days+' days'),' out '+(inT?'(returned '+fmtD(inT)+')':'so far')+(pdEnd?' · free time ended '+fmtD(pdEnd)+' · ':' · no free-time date entered')+(pdDays!=null?(pdDays?pdDays+' day(s) of per diem':'no per diem'):''));box.append(s)}
+  try{const sx=scacOf(c);if(sx)box.append(el('div','sum',scacTxt(sx)))}catch(e){}
   const ol=el('ol');ev.forEach(e=>{const li=el('li',e.k);li.append(el('div','tw',fmtDT(e.t)),el('div','tt',e.tt));if(e.d)li.append(el('div','td',e.d));ol.append(li)});box.append(ol);
   // per diem / detention dispute proof (BlueCargo-style): exact EIR times, plate, driver, chassis
   const eo=gm.find(r=>r.dir==='OUT'),ei=gm.slice().reverse().find(r=>r.dir==='IN');
@@ -1431,7 +1442,7 @@ function renderStorage(){const L=$('stL'),F=$('stF');if(!L)return;const {boxes,b
     if(r.days!=null)top.append(el('span','days',r.days+'d'));
     if(le(r))top.append(el('span','pill',le(r)));if(r.spot)top.append(el('span','pill','spot '+r.spot));if(spec(r))top.append(el('span','pill warn2','reefer/hazmat'));if(r.status&&r.cls)top.append(el('span','pill',r.status));
     const ch=r.chassis&&!/^no/i.test(r.chassis)?'Chassis '+r.chassis:r.portCh?'Chassis '+r.portCh+' (GPA ticket)':'No chassis # recorded';
-    li.append(top,el('span','meta',[ch,r.ssl,r.load,r.gate&&('Pulled '+fmtDT(r.gate.t)+' by '+(r.gate.drv||('plate '+r.gate.tag))),(!r.pdEnd&&estPd(r)!=null)?'Free time ends ~'+fmtD(estPd(r))+' (est. from '+(r.ssl||'line')+' free days)':(!r.pdEnd?'no free-time date':''),r.checked?'checked in'+(r.inAt?' '+fmtD(r.inAt):''):'on yard walk '+(r.walk||'')+' · not checked in',r.damaged?'DAMAGE noted':'',r.notes].filter(Boolean).join(' · ')));
+    li.append(top,el('span','meta',[ch,r.ssl,r.load,r.gate&&('Pulled '+fmtDT(r.gate.t)+' by '+(r.gate.drv||('plate '+r.gate.tag))),(!r.gate&&scacOf(r.c))?scacTxt(scacOf(r.c)):'',(!r.pdEnd&&estPd(r)!=null)?'Free time ends ~'+fmtD(estPd(r))+' (est. from '+(r.ssl||'line')+' free days)':(!r.pdEnd?'no free-time date':''),r.checked?'checked in'+(r.inAt?' '+fmtD(r.inAt):''):'on yard walk '+(r.walk||'')+' · not checked in',r.damaged?'DAMAGE noted':'',r.notes].filter(Boolean).join(' · ')));
     {const cq=cdCheck(r.c);if(!cq.ok)top.append(el('span','pill bad2','check number'));}
     if(!r.checked&&can('yard')){const o=el('div','out');const b=el('button','btn2','Check it in');b.type='button';b.addEventListener('click',()=>{
       const set=(id,v)=>{const x=$(id);if(x&&v!=null&&v!=='')x.value=v};set('ciNum',r.c);set('ciSsl',r.ssl);set('ciLoad',r.load);set('ciSpot',r.spot);
@@ -1442,7 +1453,7 @@ function renderStorage(){const L=$('stL'),F=$('stF');if(!L)return;const {boxes,b
       cdWarn($('ciNum'));go('yard',$('cinForm'))});o.append(b);li.append(o)}
     li.style.cursor='pointer';li.addEventListener('click',e=>{if(e.target.closest('button'))return;$('qNum').value=r.c;$('qNum').dispatchEvent(new Event('input'));go('today',search)});
     L.append(li)})}
-$('stQ').addEventListener('input',renderStorage);
+$('stQ').addEventListener('input',renderStorage);$('scGo').addEventListener('click',scacFind);$('scQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();scacFind()}});
 $('stCsv').addEventListener('click',()=>{const {boxes}=yardBoxes();const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const lines=[['Container','Spot','Loaded/Empty','Chassis','Chassis (GPA ticket)','Line','Customer/load','Pulled','Pulled by','Plate','Days out','Checked in','Notes'].map(esc).join(',')].concat(boxes.map(r=>[r.c,r.spot,r.le,r.chassis,r.portCh,r.ssl,r.load,r.gate?new Date(r.gate.t).toLocaleString():(r.pulled?new Date(r.pulled).toLocaleDateString():''),r.gate&&r.gate.drv,r.gate&&r.gate.tag,r.days,r.checked?'yes':'no',r.notes].map(esc).join(',')));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));a.download='in-the-yard-'+new Date().toISOString().slice(0,10)+'.csv';document.body.append(a);a.click();a.remove()});
@@ -1476,7 +1487,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{loadRef();renderBill()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{loadRef();renderBill();scacAuto()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
