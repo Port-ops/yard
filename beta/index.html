@@ -1162,8 +1162,18 @@ const sfEv=mk('sfEv','safety','events','<h2>Safety events <span class="t">newest
 const sfSp=mk('sfSp','safety','speed','<h2>Speeding <span class="t">who, how often, how long</span></h2><p class="help">Speeding events by driver with total minutes over the limit this week. The exact speed trace for each event is in Geotab (Safety › Speed Profile).</p><div class="tbl"><table class="score" id="sfST"></table></div><p><a class="btn2" target="_blank" rel="noopener" href="'+GTURL+'">Open Geotab (Safety › Speed Profile)</a></p>');
 const sfCo=mk('sfCo','safety','collisions','<h2>Possible collisions <span class="t">accelerometer alerts</span></h2><p class="help">Geotab flags a possible collision from a hard impact. Call the driver right away, then open the event in Geotab for the collision reconstruction (speed, g-force and location before and after). Julia logs anything real as an accident.</p><ul class="cboard" id="sfCL"></ul><p><a class="btn2" target="_blank" rel="noopener" href="'+GTURL+'">Open Geotab (Safety › Collision Reconstruction)</a></p>');
 {let a=gpsSec;[sfOv,sfRisk,sfEv,sfSp,sfCo].forEach(x=>{a.after(x);a=x})}
+
+// Admin: send collision + speeding alerts to the RingCentral team "2FF Safety Alerts"
+const sfAl=el('form','walk');sfAl.id='sfAl';sfAl.autocomplete='off';sfAl.hidden=true;
+sfAl.innerHTML='<h3 class="h3">RingCentral alerts <span class="t" id="sfAlS">checking…</span></h3><p class="help">Posts to the RingCentral team <b>2FF Safety Alerts</b> (Richard, Yanix, Lethaniel): right away on any possible collision, and when a truck is driving at or over the speed below. Checked every 5 minutes on Google\'s servers.</p>'+
+'<div class="drow"><input id="sfAlU" placeholder="Team incoming-webhook address (https://hooks.glip.com/webhook/…)" autocomplete="off" autocapitalize="none" style="text-transform:none;flex:3"><input id="sfAlM" placeholder="mph" inputmode="numeric" maxlength="2" style="flex:1" value="75"></div>'+
+'<div class="actions"><button class="btn" type="submit">Save and send a test</button><span class="msg" id="sfAlMsg"></span></div>';
+sfOv.append(sfAl);
+function loadAlertState(){if(!((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin')||!Y().call)return;sfAl.hidden=false;Y().call('getSafetyAlertState',[]).then(a=>{$('sfAlS').textContent=a.on?'ON · speeding at '+a.mph+'+ mph'+(a.err?' · last error: '+a.err:''):'OFF';$('sfAlM').value=a.mph}).catch(()=>{$('sfAlS').textContent=''})}
+sfAl.addEventListener('submit',e=>{e.preventDefault();const m=$('sfAlMsg');m.textContent='Testing…';Y().call('setSafetyHook',[{url:$('sfAlU').value.trim(),mph:$('sfAlM').value.trim()}]).then(()=>{$('sfAlU').value='';m.textContent='Connected. Check the 2FF Safety Alerts team for the test message.';loadAlertState()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
+let SFAL=0;
 let SF=null,SFt=0,SFE='all',SFV='drivers';
-function loadSafety(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-SFt<300000)return;SFt=Date.now();
+function loadSafety(force){if(!SFAL&&Y().S&&Y().S.me){SFAL=1;try{loadAlertState()}catch(e){}}if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-SFt<300000)return;SFt=Date.now();
   Y().call('getSafety',[]).then(d=>{SF=d;renderSafety()}).catch(e=>{SF={err:(e&&e.message)||'Could not load',drivers:[],trucks:[],events:[]};renderSafety()})}
 const sfTot=x=>SFC.reduce((n,[k])=>n+(x[k]||0),0);
 const sfRate=x=>x.miles>=50?Math.round(sfTot(x)/x.miles*10000)/10:null;
