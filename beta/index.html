@@ -1361,6 +1361,59 @@ const ds=$('dashSec');if(ds)ds.after(sb);else wrap.append(sb);
 const tagSec=mk('tagSec','port','trucks','<h2>Our trucks &amp; drivers <span class="t">plates we pull port moves for</span></h2>');
 const tb0=$('tagBox');if(tb0){const h=tb0.querySelector('h3');if(h){const c=h.querySelector('#tagCount');if(c){c.remove();tagSec.querySelector('h2 .t').replaceWith(c);c.className='t'}h.remove()}tagSec.append(tb0)}
 const ps0=$('portSec');if(ps0)ps0.after(tagSec);
+// ---------- GPA live lookup (Port > Gate moves): every GPA REST endpoint ----------
+const gpaSec=mk('gpaSec','port','moves','<h2>GPA live lookup <span class="t">straight from the Georgia Ports system</span></h2>'+
+'<p class="help">Our truck moves now come in from GPA automatically every 10 minutes (no WebAccess needed). Use these to look anything up live.</p>'+
+'<div class="gpaGrid">'+
+'<form id="gLk" class="gpaCard"><b>Container status &amp; history</b><input id="gLkC" placeholder="Container # e.g. MSCU1234567" autocomplete="off"><button class="btn2" type="submit">Look up</button><div id="gLkR" class="gpaRes"></div></form>'+
+'<form id="gTk" class="gpaCard"><b>EIR / gate ticket</b><input id="gTkC" placeholder="Container # (or PIN, or chassis #)" autocomplete="off"><input id="gTkT" placeholder="Truck tag (plate)" autocomplete="off"><select id="gTkBy"><option value="cont">by container</option><option value="pin">by PIN</option><option value="chassis">by chassis</option></select><button class="btn2" type="submit">Get ticket</button><div id="gTkR" class="gpaRes"></div></form>'+
+'<form id="gBk" class="gpaCard"><b>Export booking</b><input id="gBkN" placeholder="Booking #" autocomplete="off"><input id="gBkL" placeholder="Line SCAC e.g. MSCU, ONEY, HLCU" autocomplete="off"><button class="btn2" type="submit">Look up</button><div id="gBkR" class="gpaRes"></div></form>'+
+'<form id="gVs" class="gpaCard"><b>Vessel schedule (next 28 days)</b><input id="gVsF" placeholder="Filter: vessel, line or terminal" autocomplete="off"><button class="btn2" type="submit">Load</button><div id="gVsR" class="gpaRes"></div></form>'+
+'<form id="gPn" class="gpaCard" hidden><b>Create a PIN at GPA</b><select id="gPnT"><option value="DI">DI · pick up import (full out)</option><option value="DM">DM · pick up empty</option><option value="RE">RE · return export (full in)</option><option value="RM">RM · return empty</option></select>'+
+'<input id="gPnC" placeholder="Container #" autocomplete="off"><input id="gPnB" placeholder="Booking # (DM, RE)" autocomplete="off"><input id="gPnL" placeholder="Line SCAC (DM, RE)" autocomplete="off">'+
+'<input id="gPnS" placeholder="Size/Type/Height e.g. 40/DR/96 (DM, RE)" autocomplete="off"><input id="gPnQ" placeholder="How many empties (DM)" inputmode="numeric"><input id="gPnF" placeholder="Facility (RM) e.g. GCT" autocomplete="off" value="GCT"><input id="gPnSe" placeholder="Seal (RE, optional)" autocomplete="off">'+
+'<button class="btn2" type="submit">Review</button><div id="gPnR" class="gpaRes"></div></form>'+
+'</div>');
+{const st=document.createElement('style');st.textContent='.gpaGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}.gpaCard{display:flex;flex-direction:column;gap:6px;border:1px solid #d6d9e0;border-radius:6px;padding:10px;background:#fff}.gpaCard input,.gpaCard select{padding:7px;font-size:15px}.gpaRes{font-size:13px;overflow:auto;max-height:420px}.gpaRes table{border-collapse:collapse;width:100%}.gpaRes td,.gpaRes th{border-bottom:1px solid #e3e5ea;padding:3px 5px;text-align:left;vertical-align:top}.gpaRes .bad{color:#b42318;font-weight:600}.gpaRes .go{color:#127a3e;font-weight:600}';document.head.append(st)}
+{const t0=$('tagSec')||$('portSec');if(t0)t0.after(gpaSec);else wrap.append(gpaSec)}
+const gQ=id=>gpaSec.querySelector('#'+id);
+const gUp=s=>String(s||'').trim().toUpperCase();
+const gT=(rows,head)=>{const t=el('table');if(head){const h=el('tr');head.forEach(x=>h.append(el('th','',x)));t.append(h)}rows.forEach(r=>{const tr=el('tr');r.forEach(x=>{const td=el('td');if(x&&x.nodeType)td.append(x);else td.textContent=x==null?'':String(x);tr.append(td)});t.append(tr)});return t};
+const gD=s=>s?String(s).replace(/:\d\d(-\d{4})?$/,'').replace(/^(\d{4})-(\d\d)-(\d\d) /,'$2/$3 '):'';
+const gBusy=(r,txt)=>{r.textContent=txt||'Asking GPA…'};
+const gErr=(r,e)=>{r.textContent='';r.append(el('span','bad',(e&&e.message)||String(e)))};
+const gLb=n=>n?Math.round(n).toLocaleString()+' lbs':'';
+gQ('gLk').addEventListener('submit',e=>{e.preventDefault();const r=gQ('gLkR'),c=gUp(gQ('gLkC').value).replace(/[^A-Z0-9]/g,'');gBusy(r);
+  Y().call('gpaLookup',[{cont:c}]).then(d=>{r.textContent='';const a=d.avail;
+    if(a){const holds=[a.lineStatus!=='RELEASED'?'Line: '+a.lineStatus:'',a.customsStatus!=='RELEASED'?'Customs: '+a.customsStatus:'',a.hasOtherHolds?'Other holds':'',a.inbondStatus?'In-bond: '+a.inbondStatus:''].filter(Boolean);
+      r.append(el('div',a.available?'go':'bad',a.available?'AVAILABLE for pickup':'NOT available'+(holds.length?' · '+holds.join(' · '):'')));
+      r.append(gT([['Where',(a.locType==='Y'?'In the yard':a.locType||'')+' · '+(a.facilityId||'')],['Last free day',gD(d.lfd)||'—'],['Dwell',a.dwell!=null?a.dwell+' days':''],['Vessel',(a.vessel||'')+' · '+(a.lineId||'')],['Discharged',gD(a.discharged)],['Out-gated',gD(a.outgate)||'not yet'],['Size',a.sizeTypeHeight],['B/L',(a.billOfLadings||[]).join(', ')]]))}
+    else r.append(el('div','','No import record (export, empty, or not at the terminal).'));
+    if(d.visits.length){r.append(el('b','','Visits'));r.append(gT(d.visits.map(v=>[v.category+' '+(v.freight||''),gD(v.inTime)+' '+(v.inMode||''),gD(v.outTime)+' '+(v.outMode||''),gLb(v.lbs),v.sth||'',(v.events||[]).map(x=>x.eventType.replace('UNIT_','')+' '+gD(x.eventTime)).join(' · ')]),['Type','In','Out','Gross','Size','Events']))}
+  }).catch(err=>gErr(r,err))});
+gQ('gTk').addEventListener('submit',e=>{e.preventDefault();const r=gQ('gTkR'),by=gQ('gTkBy').value,o={tag:gUp(gQ('gTkT').value)};o[by]=gUp(gQ('gTkC').value);gBusy(r);
+  Y().call('gpaTickets',[o]).then(d=>{r.textContent='';if(!d||!d.length){r.textContent='No gate tickets found for that plate.';return}
+    d.forEach(x=>{r.append(el('b','',(x.transactionType||'')+' · '+(x.containerNbr||'')+' · PIN '+(x.pin||'')+' · '+gD(x.truckVisitCreated)));
+      r.append(gT([['Chassis',(x.chassisNbr||'')+(x.chassisType?' ('+x.chassisType+')':'')],['Gross',gLb(x.grossWtInLb)],['Seals',x.seals||''],['Line / vessel',(x.lineId||'')+' · '+(x.vessel||'')],['Size',[x.size,x.type,x.height].filter(Boolean).join('/')],['Truck tag',x.truckLicenseNbr||'']]));
+      (x.documents||[]).forEach(dc=>r.append(el('div','',dc.type+' '+gD(dc.created)+': '+(dc.messages||[]).map(m=>m.message).join(' · '))))})}).catch(err=>gErr(r,err))});
+gQ('gBk').addEventListener('submit',e=>{e.preventDefault();const r=gQ('gBkR');gBusy(r);
+  Y().call('gpaBooking',[{booking:gUp(gQ('gBkN').value),scac:gUp(gQ('gBkL').value)}]).then(b=>{r.textContent='';if(!b){r.textContent='Booking not found.';return}
+    r.append(gT([['Vessel',(b.vesselName||'')+' '+(b.outVoyage||'')+' · '+(b.shippingLine||'')],['Terminal',b.terminal||''],['ETA / ETD',gD(b.vesselEta)+' / '+gD(b.vesselEtd)],['Earliest receive (dry)',gD(b.dryEarliestReceive)],['Earliest receive (reefer)',gD(b.reeferEarliestReceive)],['Booked',(b.items||[]).map(i=>i.quantity+' × '+i.sizeTypeHeight).join(', ')]]));
+    if((b.containers||[]).length)r.append(gT(b.containers.map(c=>[c.containerNbr,c.category+' '+(c.freight_kind||''),gD(c.inTime),gD(c.outTime)||'still in',gD(c.vesselLoadTime)]),['Container','Type','In','Out','Loaded']))}).catch(err=>gErr(r,err))});
+let GVS=null;
+const gVsDraw=()=>{const r=gQ('gVsR'),f=gUp(gQ('gVsF').value);r.textContent='';const L=(GVS||[]).filter(v=>!f||gUp([v.name,v.op,v.lines,v.terminal].join(' ')).includes(f));
+  r.append(el('div','',L.length+' vessel(s)'));r.append(gT(L.slice(0,80).map(v=>[v.name+(v.voy?' '+v.voy:''),v.terminal||'',gD(v.ata||v.eta)+(v.ata?' (arrived)':''),gD(v.atd||v.etd),gD(v.erd)+(v.erdLocked?' 🔒':''),gD(v.cutoff),v.lines||v.op||'']),['Vessel','Terminal','ETA','ETD','ERD','Cutoff','Lines']))};
+gQ('gVs').addEventListener('submit',e=>{e.preventDefault();if(GVS){gVsDraw();return}const r=gQ('gVsR');gBusy(r);Y().call('gpaVessels',[{}]).then(d=>{GVS=d;gVsDraw()}).catch(err=>gErr(r,err))});
+gQ('gVsF').addEventListener('input',()=>{if(GVS)gVsDraw()});
+{let PEND=null;const pf=gQ('gPn');
+  const pinOk=()=>{try{return can('pin')}catch(e){return false}};
+  setInterval(()=>{pf.hidden=!pinOk()},3000);
+  pf.addEventListener('submit',e=>{e.preventDefault();const r=gQ('gPnR'),t=gQ('gPnT').value,sth=gUp(gQ('gPnS').value).split('/');
+    const o={tranType:t,containerNbr:gUp(gQ('gPnC').value),bookingNbr:gUp(gQ('gPnB').value),lineScac:gUp(gQ('gPnL').value),containerSize:sth[0]||'',containerType:sth[1]||'',containerHeight:sth[2]||'',delEmptyContainerQuantity:gQ('gPnQ').value.trim(),facility:gUp(gQ('gPnF').value),seal1:gUp(gQ('gPnSe').value)};
+    PEND=o;r.textContent='';r.append(el('div','','Create a '+t+' PIN for '+(o.containerNbr||o.bookingNbr||'?')+' (trucking company AOLQ)? GPA will issue a real PIN.'));
+    const b=el('button','btn2','Confirm, create PIN');b.type='button';b.addEventListener('click',()=>{b.disabled=true;gBusy(r,'Creating PIN at GPA…');
+      Y().call('gpaPin',[Object.assign({confirm:true},PEND)]).then(d=>{r.textContent='';r.append(el('div','go','PIN '+((d&&d.pinNumbers)||[]).join(', ')+' · '+((d&&d.terminalId)||'')))}).catch(err=>gErr(r,err))});
+    r.append(b)})}
 const watchSec=mk('watchSec','port','watch','<h2>Watch for availability <span class="t" id="wMode">GPA tells us when it can be pulled</span></h2>'+
 '<p class="help">Add containers we are waiting on. The Port Sync bookmark sets a GPA <b>Notify</b> alert for each one (GPA emails admin@2f-logistics.com, the app reads it), and once GPA turns on our API the app checks holds, availability and last free day every 15 minutes. When a box is ready you see it here and on Today, and Richard gets an email.</p>'+
 '<form id="wForm" class="walk" autocomplete="off"><label>Container #s <textarea id="wC" rows="3" placeholder="One or more, e.g. MSCU1234567, TGHU7654321" style="text-transform:uppercase"></textarea></label>'+
