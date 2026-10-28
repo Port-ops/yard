@@ -270,6 +270,9 @@ body.tabs header #roleTag,body.tabs header #sync{font-size:12px}
 .cdw:empty{display:none}
 input.cdbad,textarea.cdbad{border-color:var(--stop)!important;outline-color:var(--stop)}
 .pill.bad2{border-color:var(--stop)!important;color:var(--stop)!important}
+#flT td.bad{color:#b3261e;font-weight:600}
+#flT a{color:var(--ink);text-decoration:underline}
+#flT a.home{color:#2e7d4f;font-weight:600}
 
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -1136,6 +1139,35 @@ const scacSec=mk('scacSec','yard','scac','<h2>SCAC finder <span class="t">who pu
 '<div class="drow"><textarea id="scQ" rows="2" placeholder="e.g. MSNU9771396, TXGU7815718" autocapitalize="characters" style="text-transform:uppercase;flex:1;font:inherit;font-family:var(--mono);padding:8px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink)"></textarea><button class="btn" type="button" id="scGo">Find SCAC</button></div>'+
 '<div id="scR"></div><div class="fchips" id="scF"></div><div class="tbl"><table class="score" id="scT"></table></div>');
 storSec.after(scacSec);
+// ---------- Our company chassis + BlackBerry Radar location ----------
+const fleetSec=mk('fleetSec','yard','fleet','<h2>Our chassis <span class="t" id="flAsof">BlackBerry Radar location</span></h2>'+
+'<p class="help">Every company chassis with where BlackBerry Radar last saw it. Tap a location to open the map. <b>Last ping</b> older than 24 hours means the tracker has not reported, so the location may be out of date. <b>Yard status</b> is what Brandon last marked on the Chassis tab.</p>'+
+'<div class="fchips" id="flF"></div><div class="tbl"><table class="score" id="flT"></table></div>');
+scacSec.after(fleetSec);
+let FLF='all';
+const FLW={yard:'In yard',load:'Out on a load',shop:'At shop',hold:'Defect hold',oos:'Out of service',missing:"Can't find"};
+function renderFleet(){const T=$('flT'),F=$('flF');if(!T)return;const S=Y().S||{},R=S.radar||{},CH=S.chassis||{};
+  const C=(S.cont||{}),boxes=[].concat(C.inYard||[],C.open||[]);
+  const nums=[...new Set(Object.keys(R).concat(Object.keys(CH)))].sort();
+  const rows=nums.map(n=>{const r=R[n]||null,c=CH[n]||{};const home=!!(r&&/116 Gulfstream/i.test(r.loc||''));const stale=!r||r.ageH==null||r.ageH>24;
+    const box=boxes.find(b=>String(b.chassis||'').toUpperCase().replace(/\s/g,'')===n);
+    const moving=r&&/^moving/i.test(String(r.st||''));
+    return {n,r,c,home,stale,box,moving,flag:/missing|shop|hold|oos/.test(c.w||'')}});
+  const G=[['all','All'],['home','At the yard'],['away','Away'],['moving','Moving'],['stale','No ping 24h+'],['flag','Flagged']];
+  const pass=(x,k)=>k==='all'||(k==='home'?x.home:k==='away'?(x.r&&!x.home):k==='moving'?x.moving:k==='stale'?x.stale:x.flag);
+  F.textContent='';G.forEach(([k,l])=>{const b=el('button',FLF===k?'on':'',l+' ('+rows.filter(x=>pass(x,k)).length+')');b.type='button';b.addEventListener('click',()=>{FLF=k;renderFleet()});F.append(b)});
+  T.textContent='';const hd=el('tr');['Chassis','BlackBerry location','Last ping','Motion','Yard status','Box on it'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  const list=rows.filter(x=>pass(x,FLF));
+  if(!list.length){const tr=el('tr');const td=el('td','',nums.length?'None in this filter.':'No chassis data yet.');td.colSpan=6;tr.append(td);T.append(tr)}
+  list.forEach(x=>{const tr=el('tr',x.flag?'idle':'');const r=x.r;
+    const tdL=el('td');if(r&&r.loc){const a=el('a',x.home?'home':'',x.home?'At the yard (116 Gulfstream)':String(r.loc).replace(/, United States$/,'').replace(/(\d{5})-\d{4}/,'$1'));a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(r.ll||r.loc);a.target='_blank';a.rel='noopener';tdL.append(a)}else tdL.textContent='No Radar location';
+    const age=r&&r.ageH!=null?(r.ageH<1?'under 1 hr ago':r.ageH<48?r.ageH+' hr ago':Math.round(r.ageH/24)+' days ago'):'—';
+    const tdA=el('td',x.stale?'bad':'',age);if(r&&r.lc)tdA.title=r.lc;
+    const mo=r?String(r.st||'').replace(/:\s*/,' since '):'—';
+    tr.append(el('td','',x.n),tdL,tdA,el('td','',mo),el('td',x.flag?'bad':'',x.c.w?(FLW[x.c.w]||x.c.w)+(x.c.t?' · '+x.c.t:'')+(x.c.w==='missing'&&r&&!x.stale?' · Radar sees it, go check that spot':''):'not marked'),el('td','',x.box?x.box.container+(x.box.st?' · '+x.box.st:''):''));T.append(tr)});
+  const asof=nums.map(n=>R[n]&&R[n].pulled).filter(Boolean)[0];
+  $('flAsof').textContent=nums.length+' chassis · BlackBerry Radar location'+(asof?' · updated '+asof:'')}
+
 const sres=el('div','sres');sres.id='sRes';if(search)search.append(sres);
 
 // Reports: port scoreboard
@@ -1248,7 +1280,7 @@ document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
 const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
-yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
+yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
@@ -1504,7 +1536,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{renderFleet()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
