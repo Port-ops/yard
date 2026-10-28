@@ -1186,9 +1186,9 @@ const sfCoach=mk('sfCoach','safety','coach','<h2>Coaching log <span class="t" id
 '<div class="fchips" id="ccF"></div><div class="tbl"><table class="score" id="ccT"></table></div>');
 {const co=$('sfCo');if(co)co.after(sfCoach)}
 let CC=null,CCt=0,CCF='all';
-function loadCoaching(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-CCt<300000)return;CCt=Date.now();Y().call('getCoaching',[]).then(d=>{CC=d||[];renderCoaching()}).catch(()=>{})}
+function loadCoaching(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-CCt<300000)return;CCt=Date.now();Y().call('getCoaching',[]).then(d=>{CC=d||[];renderCoaching()}).catch(()=>{})}
 function coachDriver(name,topic){go('safety');sub('safety','coach');$('ccDrv').value=name||'';if(topic)$('ccTop').value=topic;$('ccDate').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);setTimeout(()=>$('ccNotes').focus(),80)}
-function renderCoaching(){const T=$('ccT');if(!T)return;
+function renderCoaching(){const T=$('ccT');if(!T)return;const cf=$('ccForm');if(cf)cf.style.display=can('safety')?'':'none';
   const names=new Set();((SF&&SF.drivers)||[]).forEach(d=>{if(d.name&&d.name!=='No driver logged in')names.add(d.name)});((GT&&GT.trucks)||[]).forEach(t=>{if(t.driver)names.add(t.driver)});const DL=$('ccDL');DL.textContent='';[...names].sort().forEach(n=>{const o=el('option');o.value=n;DL.append(o)});
   if(!$('ccDate').value)$('ccDate').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   const L=CC||[],due=L.filter(c=>c.status==='Follow-up due');
@@ -1206,7 +1206,7 @@ const cpSec=mk('cpSec','safety','photos','<h2>Chassis photos <span class="t" id=
 '<p class="help">Drivers must post at least 6 photos in their 2FF RingCentral group: 4 corners, both sides, the rear (lights, mudflaps) and the chassis number plate. They post at <b>every port pickup</b> (#pickup) and <b>before every drop</b> (#drop). The app checks each port gate move every 15 minutes. If photos are missing it reminds the driver right away, and after 30 minutes it alerts 2FF Safety Alerts. Coach every MISSED.</p>'+
 '<div class="fchips" id="cpF"></div><div class="tbl"><table class="score" id="cpT"></table></div>');
 let CP=null,CPt=0,CPF='missed';
-function loadCP(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-CPt<300000)return;CPt=Date.now();Y().call('getChassisPhotos',[]).then(d=>{CP=d;renderCP()}).catch(()=>{})}
+function loadCP(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-CPt<300000)return;CPt=Date.now();Y().call('getChassisPhotos',[]).then(d=>{CP=d;renderCP()}).catch(()=>{})}
 function renderCP(){const T=$('cpT');if(!T)return;const R=(CP&&CP.rows)||[];
   $('cpAsof').textContent=CP&&CP.at?'checked '+fmtDT(new Date(CP.at).getTime())+(CP.err?' · error: '+CP.err:''):'pickup and drop, every move';
   const miss=R.filter(r=>r.status==='MISSED'||r.status==='NO GROUP');
@@ -1224,7 +1224,7 @@ const sfHealth=el('p','help');sfHealth.id='sfHealth';sfHealth.hidden=true;sfOv.a
 let HLt=0;function loadHealth(){if(!((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin')||!Y().call||Date.now()-HLt<300000)return;HLt=Date.now();Y().call('getHealth',[]).then(h=>{sfHealth.hidden=false;sfHealth.innerHTML='';const b=el('b','',h.problems&&h.problems.length?'System check: '+h.problems.length+' problem(s)':'System check: all automatic jobs healthy');b.style.color=h.problems&&h.problems.length?'#b3261e':'#2e7d4f';sfHealth.append(b,document.createTextNode((h.at?' · checked '+fmtDT(new Date(h.at).getTime()):'')+(h.problems&&h.problems.length?' · '+h.problems.join(' | '):'')))}).catch(()=>{})}
 let SFAL=0;
 let SF=null,SFt=0,SFE='all',SFV='drivers';
-function loadSafety(force){if(!SFAL&&Y().S&&Y().S.me){SFAL=1;try{loadAlertState()}catch(e){}}if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-SFt<300000)return;SFt=Date.now();
+function loadSafety(force){if(!SFAL&&Y().S&&Y().S.me){SFAL=1;try{loadAlertState()}catch(e){}}if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-SFt<300000)return;SFt=Date.now();
   Y().call('getSafety',[]).then(d=>{SF=d;renderSafety()}).catch(e=>{SF={err:(e&&e.message)||'Could not load',drivers:[],trucks:[],events:[]};renderSafety()})}
 const sfTot=x=>SFC.reduce((n,[k])=>n+(x[k]||0),0);
 const sfRate=x=>x.miles>=50?Math.round(sfTot(x)/x.miles*10000)/10:null;
@@ -1298,7 +1298,7 @@ gpsSec.append(gtConn);
 gtConn.addEventListener('submit',e=>{e.preventDefault();const m=$('gtM'),u=$('gtU').value.trim(),pw=$('gtP').value;if(!u||!pw){m.textContent='Both are required.';return}
   m.textContent='Checking with Geotab…';Y().call('setGeotabLogin',[{user:u,pass:pw}]).then(r=>{$('gtP').value='';m.textContent='Connected. '+((r&&r.result)||'');GTt=0;SFt=0;loadTrucks(true);loadSafety(true)}).catch(err=>{$('gtP').value='';m.textContent=(err&&err.message)||'Not connected.'})});
 
-function loadTrucks(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-GTt<60000)return;GTt=Date.now();
+function loadTrucks(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-GTt<60000)return;GTt=Date.now();
   Y().call('getTrucks',[]).then(d=>{GT=d;renderGps()}).catch(e=>{GT={err:(e&&e.message)||'Could not load',trucks:[]};renderGps()})}
 function renderGps(){const T=$('gtT'),F=$('gtF');if(!T)return;T.textContent='';F.textContent='';
   if(!GT){T.append(el('tr','',''));T.firstChild.append(el('td','','Loading…'));return}
@@ -1539,7 +1539,7 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
 // hide tabs that are empty for this person
-function tabVis(){const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),gps:can('safety'),safety:can('safety')};['tasks','yard','reports','gps','safety'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),gps:true,safety:true};['tasks','yard','reports','gps','safety'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)';
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
