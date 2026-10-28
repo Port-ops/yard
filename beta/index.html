@@ -861,7 +861,7 @@ run('setGate',g).then(s=>{apply(s);ok();e.target.reset();m.textContent='Saved '+
 
 // ---- manager dashboard (admin + yard) ----
 var D=null;try{D=JSON.parse(localStorage.getItem('yardD')||'null')}catch(e){}
-const canDash=()=>{const r=(S.me&&S.me.r)||[];return r.includes('admin')||r.includes('yard')};
+const canDash=()=>{const r=(S.me&&S.me.r)||[];return r.includes('admin')||r.includes('yard')||r.includes('view')};
 function loadDash(){if(!canDash()||!navigator.onLine)return;call('getDash',[]).then(d=>{d._t=Date.now();D=d;try{localStorage.setItem('yardD',JSON.stringify(d))}catch(e){}renderDash()}).catch(()=>{})}
 function kpi(label,val,sub,c){const d=document.createElement('div');d.className='kpi '+(c||'');const a=document.createElement('span');a.className='kl';a.textContent=label;const b=document.createElement('span');b.className='kv';b.textContent=val;const s=document.createElement('span');s.className='ks';s.textContent=sub||'';d.append(a,b,s);return d}
 function renderDash(){
@@ -1521,7 +1521,8 @@ const SB={},CUR={};try{Object.assign(CUR,JSON.parse(localStorage.getItem('yardSu
 Object.keys(SUBS).forEach(t=>{const bar=el('div','subbar');bar.dataset.tab=t;bar.dataset.sub='*';bar.setAttribute('role','tablist');
   SUBS[t].forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.setAttribute('role','tab');b.append(el('span','',l),el('span','sb'));b.addEventListener('click',()=>sub(t,k));bar.append(b)});
   SB[t]=bar;const first=wrap.querySelector('[data-tab="'+t+'"]:not([data-sub="*"])');if(first)first.before(bar)});
-function subAvail(t){return SUBS[t].map(x=>x[0]).filter(k=>[...wrap.querySelectorAll('[data-tab="'+t+'"][data-sub="'+k+'"]')].some(x=>!x.hidden))}
+const vonly=()=>roles().includes('view')&&!can('yard');const VO_HIDE=['containers','chassis','walk','fix'];
+function subAvail(t){return SUBS[t].map(x=>x[0]).filter(k=>!(t==='yard'&&vonly()&&VO_HIDE.includes(k))).filter(k=>[...wrap.querySelectorAll('[data-tab="'+t+'"][data-sub="'+k+'"]')].some(x=>!x.hidden))}
 function sub(t,k,quiet){const av=subAvail(t);if(!av.includes(k))k=av[0]||SUBS[t][0][0];CUR[t]=k;
   if(!quiet){try{localStorage.setItem('yardSub',JSON.stringify(CUR))}catch(e){}}
   SB[t].querySelectorAll('button').forEach(b=>{b.style.display=av.includes(b.dataset.k)?'':'none';b.classList.toggle('on',b.dataset.k===k);b.setAttribute('aria-selected',b.dataset.k===k)});
@@ -1539,7 +1540,7 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard'),reports:can('yard'),gps:!lim,safety:!lim,port:!lim};['tasks','yard','reports','gps','safety','port'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim};['tasks','yard','reports','gps','safety','port'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)';
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
