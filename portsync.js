@@ -154,8 +154,8 @@
     return page('/express/displayReport.do?param=ContainerDetail').then(function (d) {
       var f = [].slice.call(d.forms).filter(function (x) { return /containerSearch/.test(x.getAttribute('action') || ''); })[0]; if (!f) return { c: c, w: 0 };
       var fd = new URLSearchParams(); [].slice.call(f.elements).forEach(function (e) { if (e.name && e.type !== 'submit') fd.append(e.name, e.name === 'equipmentID' ? c : e.value); });
-      return page('/express/containerSearch.do', fd).then(function (r) { var t = r.body.textContent.replace(/\s+/g, ' '), m = /Weight:\s*(\d+)/.exec(t), cat = /Category:\s*([A-Z]+)/.exec(t);
-        return { c: c, w: m ? +m[1] : 0, cat: cat ? cat[1] : '' }; });
+      return page('/express/containerSearch.do', fd).then(function (r) { var t = r.body.textContent.replace(/\s+/g, ' '), m = /Weight:\s*([\d,]+)/.exec(t), cat = /Category:\s*([A-Z]+)/.exec(t);
+        return { c: c, w: m ? +m[1].replace(/,/g, '') : 0, cat: cat ? cat[1] : '' }; });
     }).catch(function () { return { c: c, w: 0 }; });
   }
   function weightStep() {
