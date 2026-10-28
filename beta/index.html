@@ -275,6 +275,7 @@ input.cdbad,textarea.cdbad{border-color:var(--stop)!important;outline-color:var(
 #flT a.home{color:#2e7d4f;font-weight:600}
 #gtT td.bad{color:#b3261e;font-weight:600}#gtT td.go{color:#2e7d4f;font-weight:600}#gtT td.muted{color:var(--mut,#5d686d)}#gtT a{color:var(--ink);text-decoration:underline}#gtT a.home{color:#2e7d4f;font-weight:600}
 #gdT td.bad{color:#b3261e;font-weight:600}#gdT td.go{color:#2e7d4f;font-weight:600}#gdT td.muted{color:var(--mut,#5d686d);font-style:italic}#gdT a{color:var(--ink);text-decoration:underline}
+#ccT td.bad{color:#b3261e;font-weight:600}#ccT td.go{color:#2e7d4f;font-weight:600}#sfCoach label.chk{display:flex;gap:8px;align-items:center;margin:6px 0}
 
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -1171,6 +1172,39 @@ sfAl.innerHTML='<h3 class="h3">RingCentral alerts <span class="t" id="sfAlS">che
 sfOv.append(sfAl);
 function loadAlertState(){if(!((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin')||!Y().call)return;sfAl.hidden=false;Y().call('getSafetyAlertState',[]).then(a=>{$('sfAlS').textContent=a.on?'ON · speeding at '+a.mph+'+ mph'+(a.err?' · last error: '+a.err:''):'OFF';$('sfAlM').value=a.mph}).catch(()=>{$('sfAlS').textContent=''})}
 sfAl.addEventListener('submit',e=>{e.preventDefault();const m=$('sfAlMsg');m.textContent='Testing…';Y().call('setSafetyHook',[{url:$('sfAlU').value.trim(),mph:$('sfAlM').value.trim()}]).then(()=>{$('sfAlU').value='';m.textContent='Connected. Check the 2FF Safety Alerts team for the test message.';loadAlertState()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
+
+// ---------- Coaching log (Safety › Coaching) ----------
+const sfCoach=mk('sfCoach','safety','coach','<h2>Coaching log <span class="t" id="ccAsof">every talk, on record</span></h2>'+
+'<p class="help">Log every coaching talk the same day: what the driver did, what you agreed, and whether they acknowledged it. The morning RingCentral report shows who has not been coached yet and flags anyone flagged again within 30 days of a talk as <b>REPEAT</b> (escalate to Richard). This is the paper trail that protects the company.</p>'+
+'<form id="ccForm" class="walk" autocomplete="off"><div class="drow"><input id="ccDrv" list="ccDL" placeholder="Driver" style="text-transform:none"><datalist id="ccDL"></datalist><input id="ccDate" type="date"></div>'+
+'<div class="drow"><select id="ccTop"><option value="">Topic…</option><option>Speeding</option><option>Excessive speeding (80+)</option><option>Harsh braking / following too close</option><option>Seat belt</option><option>Possible collision</option><option>Not signed in on Geotab</option><option>Other</option></select><input id="ccFollow" type="date" title="Follow-up date (optional)"></div>'+
+'<label>What happened / notes<textarea id="ccNotes" rows="3" style="text-transform:none" placeholder="e.g. 21 stretches at 80+ last week, top 85 on I-16. Driver said he was running late."></textarea></label>'+
+'<input id="ccAct" placeholder="Agreed action (e.g. max 70 on interstate, re-check in 7 days)" style="text-transform:none">'+
+'<label class="chk"><input type="checkbox" id="ccAck"> Driver acknowledged (verbally or signed)</label>'+
+'<div class="actions"><button class="btn" type="submit">Log coaching</button><span class="msg" id="ccMsg"></span></div></form>'+
+'<div class="fchips" id="ccF"></div><div class="tbl"><table class="score" id="ccT"></table></div>');
+{const co=$('sfCo');if(co)co.after(sfCoach)}
+let CC=null,CCt=0,CCF='all';
+function loadCoaching(force){if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-CCt<300000)return;CCt=Date.now();Y().call('getCoaching',[]).then(d=>{CC=d||[];renderCoaching()}).catch(()=>{})}
+function coachDriver(name,topic){go('safety');sub('safety','coach');$('ccDrv').value=name||'';if(topic)$('ccTop').value=topic;$('ccDate').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);setTimeout(()=>$('ccNotes').focus(),80)}
+function renderCoaching(){const T=$('ccT');if(!T)return;
+  const names=new Set();((SF&&SF.drivers)||[]).forEach(d=>{if(d.name&&d.name!=='No driver logged in')names.add(d.name)});((GT&&GT.trucks)||[]).forEach(t=>{if(t.driver)names.add(t.driver)});const DL=$('ccDL');DL.textContent='';[...names].sort().forEach(n=>{const o=el('option');o.value=n;DL.append(o)});
+  if(!$('ccDate').value)$('ccDate').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  const L=CC||[],due=L.filter(c=>c.status==='Follow-up due');
+  const F=$('ccF');F.textContent='';[['all','All ('+L.length+')'],['due','Follow-up due ('+due.length+')']].forEach(([k,l])=>{const b=el('button',CCF===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{CCF=k;renderCoaching()});F.append(b)});
+  T.textContent='';const hd=el('tr');['Date','Driver','Topic','Notes / agreed action','Ack','Follow-up','By'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  const rows=CCF==='due'?due:L;if(!rows.length){const tr=el('tr');const td=el('td','',CC?'No coaching logged yet.':'Loading…');td.colSpan=7;tr.append(td);T.append(tr)}
+  rows.forEach(c=>{const tr=el('tr');const fu=el('td',c.status==='Follow-up due'&&c.follow&&c.follow<=new Date().toISOString().slice(0,10)?'bad':'',c.follow?c.follow+(c.status==='Follow-up due'?' (open)':''):'');
+    if(c.status==='Follow-up due'){const b=el('button','btn2','Done');b.type='button';b.addEventListener('click',()=>{Y().call('coachClose',[c.id]).then(d=>{CC=d;renderCoaching()})});fu.append(document.createTextNode(' '),b)}
+    tr.append(el('td','',c.date),el('td','',c.driver),el('td','',c.topic),el('td','',[c.notes,c.action&&('→ '+c.action)].filter(Boolean).join(' ')),el('td',c.ack==='Yes'?'go':'bad',c.ack==='Yes'?'Yes':'No'),fu,el('td','',c.by));T.append(tr)});
+  $('ccAsof').textContent=L.length+' talks logged'+(due.length?' · '+due.length+' follow-ups open':'');
+  try{subBadge('safety','coach',due.length,false)}catch(e){}}
+$('ccForm').addEventListener('submit',e=>{e.preventDefault();const m=$('ccMsg');const o={driver:$('ccDrv').value.trim(),date:$('ccDate').value,topic:$('ccTop').value,notes:$('ccNotes').value.trim(),action:$('ccAct').value.trim(),ack:$('ccAck').checked,follow:$('ccFollow').value};
+  if(!o.driver||!o.topic){m.textContent='Driver and topic are required.';return}m.textContent='Saving…';
+  Y().call('coachAdd',[o]).then(d=>{CC=d;['ccNotes','ccAct','ccFollow'].forEach(i=>$(i).value='');$('ccAck').checked=false;m.textContent='Logged for '+o.driver+'.';renderCoaching()}).catch(err=>{m.textContent=(err&&err.message)||'Not saved.'})});
+// System health line (admins), Safety › Overview
+const sfHealth=el('p','help');sfHealth.id='sfHealth';sfHealth.hidden=true;sfOv.append(sfHealth);
+let HLt=0;function loadHealth(){if(!((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin')||!Y().call||Date.now()-HLt<300000)return;HLt=Date.now();Y().call('getHealth',[]).then(h=>{sfHealth.hidden=false;sfHealth.innerHTML='';const b=el('b','',h.problems&&h.problems.length?'System check: '+h.problems.length+' problem(s)':'System check: all automatic jobs healthy');b.style.color=h.problems&&h.problems.length?'#b3261e':'#2e7d4f';sfHealth.append(b,document.createTextNode((h.at?' · checked '+fmtDT(new Date(h.at).getTime()):'')+(h.problems&&h.problems.length?' · '+h.problems.join(' | '):'')))}).catch(()=>{})}
 let SFAL=0;
 let SF=null,SFt=0,SFE='all',SFV='drivers';
 function loadSafety(force){if(!SFAL&&Y().S&&Y().S.me){SFAL=1;try{loadAlertState()}catch(e){}}if(!can('safety')||!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-SFt<300000)return;SFt=Date.now();
@@ -1196,7 +1230,7 @@ function renderSafety(){if(!$('sfK'))return;
   const RV=$('sfRV');RV.textContent='';[['drivers','By driver'],['trucks','By truck']].forEach(([k,l])=>{const b=el('button',SFV===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{SFV=k;renderSafety()});RV.append(b)});
   const rows=(SFV==='drivers'?D:(SF.trucks||[])).map(x=>Object.assign({},x,{rate:sfRate(x),tot:sfTot(x)})).filter(x=>x.miles||x.tot).sort((a,b)=>(b.collision-a.collision)||((b.rate??-1)-(a.rate??-1))||(b.tot-a.tot));
   const RT=$('sfRT');RT.textContent='';const hr=el('tr');[SFV==='drivers'?'Driver':'Truck','Miles','Per 1,000 mi','Collisions','Speeding','Braking','Accel','Cornering','Seat belt'].forEach(h=>hr.append(el('th','',h)));RT.append(hr);
-  rows.forEach(x=>{const tr=el('tr');tr.append(el('td','',x.name),el('td','n',x.miles.toLocaleString()),el('td','n'+(x.rate!=null&&x.rate>=10?' bad':''),x.rate==null?(x.tot?'under 50 mi':'—'):String(x.rate)));
+  rows.forEach(x=>{const tr=el('tr');const nm=el('td','',x.name);if(SFV==='drivers'&&x.name!=='No driver logged in'){const b=el('button','btn2','Coach');b.type='button';b.style.marginLeft='6px';b.addEventListener('click',()=>coachDriver(x.name,x.collision?'Possible collision':x.speeding?'Speeding':x.seatbelt?'Seat belt':x.braking?'Harsh braking / following too close':'Other'));nm.append(b)}tr.append(nm,el('td','n',x.miles.toLocaleString()),el('td','n'+(x.rate!=null&&x.rate>=10?' bad':''),x.rate==null?(x.tot?'under 50 mi':'—'):String(x.rate)));
     ['collision','speeding','braking','accel','corner','seatbelt'].forEach(k=>tr.append(el('td','n'+(x[k]&&(k==='collision'||k==='seatbelt')?' bad':''),x[k]?String(x[k]):'')));RT.append(tr)});
   if(!rows.length)sfMsg('sfRT','No miles or events this week.',9);
   // events
@@ -1409,7 +1443,7 @@ yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / 
 port:[['moves','Gate moves'],['pins','PINs'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
-safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions']]};
+safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching']]};
 const SUBID={portSec:'moves',pinSec:'pins',gateSec:'gate',poolSec:'pool',editSec:'fix',weekSec:'week',dowSec:'week',dashSec:'dash',scoreSec:'score'};
 const SUBH=[[/^Open the yard|^Morning yard walk/,'morning'],[/^All day|^Break/,'day'],[/^Before end of day|^Yard reconcile/,'end'],[/^Who to call/,'contacts'],
 [/^Containers in the yard/,'containers'],[/^Chassis location report/,'chassis'],[/^Yard walk log/,'walk']];
@@ -1663,7 +1697,7 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
   $('wAdd').disabled=true;m.textContent='Saving…';Y().call('watchAdd',[{containers:c,load:$('wLoad').value.trim(),line:$('wLine').value.trim()}])
   .then(d=>{WT=d;e.target.reset();m.textContent='Watching '+d.added.length+(d.dup.length?' · already watching '+d.dup.join(', '):'')+'. Run Port Sync in WebAccess to set the GPA alerts.';WF='open';renderWatch();renderToday()})
   .catch(err=>{m.textContent=(err&&err.message)||'Not saved.'}).finally(()=>{$('wAdd').disabled=false})});
-function all(){try{renderFleet()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
+function all(){try{renderFleet()}catch(e){console.error(e)}try{loadCoaching();renderCoaching();loadHealth()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
