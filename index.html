@@ -1170,7 +1170,7 @@ const sfWhen=t=>t?new Date(t).toLocaleString(undefined,{weekday:'short',month:'n
 function sfMsg(id,txt,cols){const T=$(id);if(!T)return;T.textContent='';if(T.tagName==='UL'){T.append(el('li','empty',txt));return}const tr=el('tr');const td=el('td','',txt);td.colSpan=cols||1;tr.append(td);T.append(tr)}
 function renderSafety(){if(!$('sfK'))return;
   if(!SF){['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,'Loading…',6));return}
-  if(SF.off){const m='Geotab is not connected yet. Richard adds the Geotab login on the server once, then safety data shows here.';$('sfK').textContent='';sfMsg('sfTop',m);['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,m,6));sfMsg('sfCL',m);$('sfAsof').textContent='Geotab · not connected';return}
+  if(SF.off){const m='Geotab is not connected yet. An admin connects it once in Yard › Truck GPS, then safety data shows here.';$('sfK').textContent='';sfMsg('sfTop',m);['sfRT','sfET','sfST'].forEach(i=>sfMsg(i,m,6));sfMsg('sfCL',m);$('sfAsof').textContent='Geotab · not connected';return}
   const D=SF.drivers||[],E=SF.events||[],sum=k=>D.reduce((n,x)=>n+(x[k]||0),0),miles=sum('miles');
   $('sfAsof').textContent='Geotab · last 7 days'+(SF.at?' · updated '+fmtDT(new Date(SF.at).getTime()):'')+(SF.err?' · last refresh failed':'');
   const K=$('sfK');K.textContent='';const chip=(v,l,c,go2)=>{const b=el('button',c);b.type='button';b.append(el('b','',String(v)),el('span','',l));if(go2)b.addEventListener('click',go2);K.append(b)};
@@ -1204,11 +1204,21 @@ function renderSafety(){if(!$('sfK'))return;
   try{const n=sum('collision');const b=tabBtn&&tabBtn('safety');if(b){const g=b.querySelector('.bdg');if(g){g.textContent=n?String(n):'';g.className='bdg'+(n?' r':'')}}subBadge('safety','collisions',n,true);subBadge('safety','events',E.length>99?'99+':E.length,false)}catch(e){}}
 
 let GT=null,GTt=0,GTF='all';
+// Admin-only: connect Geotab by typing the login once (sent over HTTPS to the server, checked with Geotab, never shown again)
+const gtConn=el('form','walk');gtConn.id='gtConn';gtConn.autocomplete='off';gtConn.hidden=true;
+gtConn.innerHTML='<h3 class="h3">Connect Geotab <span class="t">admin only · one time</span></h3><p class="help">Type the MyGeotab login (us1logistics). The server checks it with Geotab, saves it on Google\'s servers (never on a phone) and starts the automatic updates. Best: a view-only Geotab user that only sees 2FF trucks.</p>'+
+'<div class="drow"><input id="gtU" placeholder="Geotab username (email)" autocomplete="off" autocapitalize="none" style="text-transform:none"><input id="gtP" type="password" placeholder="Geotab password" autocomplete="new-password" style="text-transform:none"></div>'+
+'<div class="actions"><button class="btn" type="submit">Connect Geotab</button><span class="msg" id="gtM"></span></div>';
+gpsSec.append(gtConn);
+gtConn.addEventListener('submit',e=>{e.preventDefault();const m=$('gtM'),u=$('gtU').value.trim(),pw=$('gtP').value;if(!u||!pw){m.textContent='Both are required.';return}
+  m.textContent='Checking with Geotab…';Y().call('setGeotabLogin',[{user:u,pass:pw}]).then(r=>{$('gtP').value='';m.textContent='Connected. '+((r&&r.result)||'');GTt=0;SFt=0;loadTrucks(true);loadSafety(true)}).catch(err=>{$('gtP').value='';m.textContent=(err&&err.message)||'Not connected.'})});
+
 function loadTrucks(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-GTt<60000)return;GTt=Date.now();
   Y().call('getTrucks',[]).then(d=>{GT=d;renderGps()}).catch(e=>{GT={err:(e&&e.message)||'Could not load',trucks:[]};renderGps()})}
 function renderGps(){const T=$('gtT'),F=$('gtF');if(!T)return;T.textContent='';F.textContent='';
   if(!GT){T.append(el('tr','',''));T.firstChild.append(el('td','','Loading…'));return}
-  if(GT.off){const tr=el('tr');const td=el('td','','Geotab is not connected yet. Richard adds the Geotab login on the server once, then trucks show here.');tr.append(td);T.append(tr);$('gtAsof').textContent='Geotab · not connected';return}
+  {const ad=((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin');$('gtConn').hidden=!(ad&&(GT.off||GT.err));}
+  if(GT.off){const tr=el('tr');const td=el('td','','Geotab is not connected yet. An admin connects it once below, then trucks show here.');tr.append(td);T.append(tr);$('gtAsof').textContent='Geotab · not connected';return}
   const L=(GT.trucks||[]),now=Date.now(),age=t=>t.at?(now-new Date(t.at).getTime())/3600000:999;
   const home=t=>Math.abs(t.lat-32.1441)<0.004&&Math.abs(t.lng+81.1833)<0.004;
   const G=[['all','All'],['driving','Driving'],['stopped','Stopped'],['home','At the yard'],['off','No signal 24h+']];
