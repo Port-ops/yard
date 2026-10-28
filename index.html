@@ -1462,6 +1462,76 @@ const owSec=mk('owSec','port','ow','<h2>Overweight permits <span class="t" id="o
 '<h3 class="h3">Annual permits by truck <span class="t">GA (every truck), NC / SC / AL / TN</span></h3><div class="fchips" id="pvF"></div><div class="tbl"><table class="score" id="pvT"></table></div>'+
 '<form id="pvForm" class="walk" autocomplete="off"><div class="drow"><input id="pvTk" placeholder="Truck (13-033)" style="text-transform:uppercase"><select id="pvSt"><option>GA</option><option>FL</option><option>NC</option><option>SC</option><option>AL</option><option>TN</option></select><input id="pvN" placeholder="Permit #" style="text-transform:none"></div><div class="drow"><input id="pvI" type="date" title="Issued"><input id="pvE" type="date" title="Expires"><button class="btn" type="submit">Save permit</button></div><span class="msg" id="pvM"></span></form>');
 {const ws=$('watchSec');if(ws)ws.after(owSec);else wrap.append(owSec)}
+
+// ---------- Port > Empties: per diem control after the box leaves the port ----------
+{const st=el('style');st.textContent='#erT td.bad{color:#b3261e;font-weight:600}#erT td.go{color:#2e7d4f;font-weight:600}#erT td.warn{color:#8a6100;font-weight:600}#erT td.muted{color:var(--mut,#5d686d);font-style:italic}#erT button{margin:2px 4px 2px 0;padding:4px 8px;font-size:12px}#erT tr.risk{background:rgba(179,38,30,.06)}#erBox{border:1px solid var(--line,#ccd);border-radius:8px;padding:10px;margin:8px 0}#erBox label{display:flex;flex-direction:column;font-size:12px;gap:2px;flex:1;min-width:140px}#erBox .drow{flex-wrap:wrap;gap:8px}#erMiss{padding:8px;border-left:3px solid #8a6100;margin:6px 0;background:rgba(138,97,0,.07)}';document.head.append(st)}
+const erSec=mk('erSec','port','empties','<h2>Empty returns <span class="t" id="erAsof">per diem watch · from out-gate to empty back at the port</span></h2>'+
+'<p class="help">Every import our trucks pull from GPA lands here on its own. It moves through: <b>Out loaded → Delivered → Empty ready → Return planned → Returned</b>. GPA closes the row when the empty (or a street-turn export) gates back in. Free time comes from each line\'s free days. If a line has no free days saved, the date shows <b>unknown</b>, not safe.</p>'+
+'<div id="erMiss" hidden></div><div class="fchips" id="erF"></div>'+
+'<div class="drow"><input id="erQ" placeholder="Search container, line, customer, load #, TruckMate #, driver" autocomplete="off" style="text-transform:none;flex:1"><button class="btn2" type="button" id="erRef">Refresh</button><button class="btn2" type="button" id="erAddB">Add a box</button></div>'+
+'<div id="erBox" hidden></div><div id="erSum" class="t"></div><div class="tbl"><table class="score" id="erT"></table></div>');
+{const w0=$('watchSec')||$('gmSec');if(w0&&w0.parentNode)w0.after(erSec);else wrap.append(erSec)}
+let ER=null,ERF='open';
+const erD=ms=>ms?new Date(ms).toLocaleDateString(undefined,{month:'numeric',day:'numeric'}):'';
+const erLocal=ms=>{const d=new Date(ms||Date.now());d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+const erOpen=r=>/^(Out|Delivered|Empty ready|Return planned)/.test(r.st);
+function loadER(){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;const s=erSec.querySelector('#erSum');if(!ER)s.textContent='Loading…';
+  Y().call('getEmpties',[{}]).then(d=>{ER=d;renderER()}).catch(e=>{s.textContent=(e&&e.message)||'Could not load empty returns.'})}
+function erRun(fn,arg,msgEl){if(msgEl)msgEl.textContent='Saving…';return Y().call(fn,[arg]).then(d=>{ER=d;erSec.querySelector('#erBox').hidden=true;renderER()}).catch(e=>{if(msgEl)msgEl.textContent=(e&&e.message)||'Could not save.'})}
+const ERACT={delivered:['Delivered','When was it delivered?',0,0],ready:['Empty ready','When was the empty ready?','Where is the empty? (customer, 1 Stop yard, …)',0],plan:['Plan return','When will it go back?','Return to (GCT, Ocean Terminal, depot…)','Driver'],returned:['Returned','When did it gate back in?','Where (if not GPA)',0],closed:['Close','When',0,0],info:['Edit','',0,0],reopen:['Reopen','',0,0]};
+function erForm(r,act){const B=erSec.querySelector('#erBox'),A=ERACT[act];B.hidden=false;B.textContent='';
+  B.append(el('div','h3',A[0]+' · '+r.c+(r.load?' · '+r.load:'')));const row=el('div','drow');const f={};
+  const inp=(k,lab,val,type)=>{const l=el('label','',lab);const i=el('input');i.type=type||'text';i.value=val||'';i.style.textTransform='none';l.append(i);row.append(l);f[k]=i};
+  if(act==='info'){inp('load','Customer / load #',r.load);inp('tm','TruckMate load #',r.tm);inp('line','Steamship line',r.line);inp('size','Size',r.size)}
+  else{if(A[1])inp('when',A[1],erLocal(act==='plan'?(r.plan||Date.now()+86400000):Date.now()),'datetime-local');if(A[2])inp('where',A[2],act==='plan'?r.to:act==='ready'?r.at:'');if(A[3])inp('driver',A[3],r.rdrv)}
+  inp('note',act==='closed'?'Why are you closing it? (street turn, returned elsewhere, not ours…)':'Note (optional)','');
+  B.append(row);const a=el('div','actions'),ok=el('button','btn',A[0]),no=el('button','btn2','Cancel'),m=el('span','msg');ok.type=no.type='button';a.append(ok,no,m);B.append(a);
+  no.addEventListener('click',()=>{B.hidden=true});
+  ok.addEventListener('click',()=>{const o={id:r.id,act};Object.keys(f).forEach(k=>{o[k]=f[k].value});if(o.when)o.when=new Date(o.when).toISOString();erRun('erUpdate',o,m)});
+  B.scrollIntoView({behavior:'smooth',block:'center'})}
+function erAddForm(){const B=erSec.querySelector('#erBox');B.hidden=false;B.textContent='';B.append(el('div','h3','Add a box that is out (pulled before the GPA feed, or by another carrier for us)'));
+  const row=el('div','drow'),f={};[['container','Container #','text'],['pulled','Date it left the port','date'],['line','Steamship line (SCAC)','text'],['size','Size','text'],['load','Customer / load #','text'],['tm','TruckMate load #','text']].forEach(([k,l,t])=>{const x=el('label','',l),i=el('input');i.type=t;if(k==='container')i.style.textTransform='uppercase';else i.style.textTransform='none';x.append(i);row.append(x);f[k]=i});
+  B.append(row);const a=el('div','actions'),ok=el('button','btn','Add'),no=el('button','btn2','Cancel'),m=el('span','msg');ok.type=no.type='button';a.append(ok,no,m);B.append(a);
+  no.addEventListener('click',()=>{B.hidden=true});
+  ok.addEventListener('click',()=>{const o={};Object.keys(f).forEach(k=>o[k]=f[k].value);if(o.pulled)o.pulled=new Date(o.pulled+'T12:00:00').toISOString();erRun('erAdd',o,m)})}
+function renderER(){const T=erSec.querySelector('#erT'),F=erSec.querySelector('#erF'),S=erSec.querySelector('#erSum'),M=erSec.querySelector('#erMiss');if(!T)return;
+  const R=(ER&&ER.rows)||[],O=R.filter(erOpen);
+  if(ER)erSec.querySelector('#erAsof').textContent='per diem watch · updated '+fmtDT(new Date(ER.at).getTime());
+  erSec.querySelector('#erAddB').hidden=!(ER&&ER.edit);
+  M.hidden=!(ER&&ER.missing&&ER.missing.length);M.textContent='';
+  if(ER&&ER.missing&&ER.missing.length){M.append(el('b','','Free days not saved for: '+ER.missing.join(', ')+'.'),el('span','',' Those boxes show free time as unknown. '));
+    if(ER.admin){const fm=el('span');const ln=el('input');ln.placeholder='Line';ln.value=ER.missing[0];ln.style.width='80px';const dy=el('input');dy.type='number';dy.min='0';dy.max='30';dy.placeholder='Free days';dy.style.width='90px';
+      const cnt=el('select');[['calendar days from port out-gate','Calendar days'],['business days from port out-gate','Business days']].forEach(([v,l])=>{const o=el('option','',l);o.value=v;cnt.append(o)});
+      const b=el('button','btn2','Save');b.type='button';const m=el('span','msg');b.addEventListener('click',()=>{if(dy.value==='')return;erRun('erSetFree',{line:ln.value.trim().toUpperCase(),free_days:dy.value,counts:cnt.value},m)});fm.append(ln,' ',dy,' ',cnt,' ',b,m);M.append(fm)}
+    else M.append(el('span','','Ask an admin to add them.'))}
+  const risk=r=>erOpen(r)&&r.left!=null&&r.left<=1&&r.st!=='Return planned',over=r=>erOpen(r)&&r.left!=null&&r.left<0;
+  const FL=[['open','Open',O],['Out','Out loaded',O.filter(r=>/^Out/.test(r.st))],['Delivered','Delivered',O.filter(r=>r.st==='Delivered')],['Empty ready','Empty ready',O.filter(r=>r.st==='Empty ready')],['Return planned','Planned',O.filter(r=>r.st==='Return planned')],['risk','Ends ≤ tomorrow, no plan',O.filter(risk)],['over','Past free time',O.filter(over)],['unknown','Free time unknown',O.filter(r=>r.until==null)],['done','Returned / closed (21 days)',R.filter(r=>!erOpen(r))]];
+  F.textContent='';FL.forEach(([k,l,a])=>{const b=el('button',ERF===k?'on':'',l+' ('+a.length+')');b.type='button';b.addEventListener('click',()=>{ERF=k;renderER()});F.append(b)});
+  const q=String(erSec.querySelector('#erQ').value||'').trim().toUpperCase();
+  let rows=(FL.find(x=>x[0]===ERF)||FL[0])[2].filter(r=>!q||[r.c,r.line,r.load,r.tm,r.drv,r.rdrv,r.to,r.at,r.tag,r.notes].join(' ').toUpperCase().includes(q));
+  rows=rows.slice().sort((a,b)=>(erOpen(b)-erOpen(a))||((a.left==null?999:a.left)-(b.left==null?999:b.left))||((a.pulled||0)-(b.pulled||0)));
+  S.textContent=ER?O.length+' open · '+O.filter(risk).length+' need a return plan by tomorrow · '+O.filter(over).length+' past free time · '+O.filter(r=>r.until==null).length+' free time unknown':'';
+  T.textContent='';const h=el('tr');['Status','Container','Line','Customer / load #','TruckMate #','Pulled','Days out','Free until','Empty at','Return plan','Returned',ER&&ER.edit?'Do next':''].forEach(x=>h.append(el('th','',x)));T.append(h);
+  if(!rows.length){const tr=el('tr'),td=el('td','',ER?'Nothing here.':'Loading…');td.colSpan=12;tr.append(td);T.append(tr)}
+  rows.forEach(r=>{const tr=el('tr',risk(r)||over(r)?'risk':'');const out=r.pulled?Math.floor(((r.ret||Date.now())-r.pulled)/86400000):'';
+    const fu=r.until==null?el('td','muted','unknown'):el('td',!erOpen(r)?'':r.left<0?'bad':r.left<=1?'warn':'go',erD(r.until)+(erOpen(r)?(r.left<0?' · '+(-r.left)+'d over':r.left===0?' · TODAY':r.left===1?' · tomorrow':' · '+r.left+'d left'):''));
+    tr.append(el('td',r.st==='Returned'?'go':'',r.st),el('td','',r.c+(r.size?' · '+r.size:'')),el('td','',r.line||''),el('td','',r.load||''),el('td','',r.tm||''),
+      el('td','',erD(r.pulled)+(r.drv?' · '+r.drv:'')),el('td','n',String(out)),fu,el('td','',r.ready?erD(r.ready)+' · '+(r.at||''):r.deliv?'delivered '+erD(r.deliv):''),
+      el('td','',r.plan?erD(r.plan)+' · '+[r.to,r.rdrv].filter(Boolean).join(' · '):''),el('td','',r.ret?erD(r.ret)+' · '+(r.rmove||''):''));
+    const td=el('td');if(ER&&ER.edit){const B=(act,l)=>{const b=el('button','btn2',l||ERACT[act][0]);b.type='button';b.addEventListener('click',()=>erForm(r,act));td.append(b)};
+      if(erOpen(r)){if(/^Out/.test(r.st))B('delivered');if(!r.ready)B('ready');B('plan',r.plan?'Change plan':'Plan return');B('returned');B('info');B('closed')}else B('reopen','Reopen')}
+    if(r.notes){td.append(el('div','t',r.notes))}tr.append(td);T.append(tr)});
+  try{subBadge('port','empties',O.filter(r=>risk(r)||over(r)).length,true)}catch(e){}}
+erSec.querySelector('#erQ').addEventListener('input',()=>renderER());
+erSec.querySelector('#erRef').addEventListener('click',()=>loadER());
+erSec.querySelector('#erAddB').addEventListener('click',()=>erAddForm());
+setTimeout(()=>loadER(),2500);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='port')loadER()},5*60000);
+// ---------- Reports > Dashboard: button to the 2FF Dashboard (Claude artifact; each person signs in to that Claude org) ----------
+{const box=el('div','drow');box.id='dbLink';box.hidden=true;const a=el('a','btn','Open 2FF Dashboard ↗');a.href='https://claude.ai/artifact/VtjSgEwYzgLSLobGKSHSdM';a.target='_blank';a.rel='noopener';a.style.textDecoration='none';
+  box.append(a,el('span','t',' Loads, quotes, dispatch board, finance, drivers. Opens in a new tab. You must be signed in to the 2FF Claude account.'));
+  const put=()=>{const d=$('dashSec');if(d&&!$('dbLink')){const h=d.querySelector('h2');if(h)h.after(box);else d.prepend(box)}const r=roles();box.hidden=!(r.includes('admin')||r.includes('pin')||r.includes('gate')||r.includes('view'))};
+  setTimeout(put,1500);setInterval(put,5000)}
+
 let OW=null,OWt=0,OWF='open',PV=null,PVF='all';
 const owAdm=()=>((Y().S&&Y().S.me&&Y().S.me.r)||[]).includes('admin');
 function loadOW(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-OWt<120000)return;OWt=Date.now();
@@ -1595,7 +1665,7 @@ document.body.append(nav);document.body.classList.add('tabs');
 const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
-port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
+port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
 safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching'],['photos','Chassis photos']]};
