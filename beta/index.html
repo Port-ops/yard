@@ -1207,6 +1207,7 @@ const cpSec=mk('cpSec','safety','photos','<h2>Chassis photos <span class="t" id=
 '<form id="dpForm" class="row" style="margin:8px 0;gap:6px;display:flex;flex-wrap:wrap;align-items:center"><b>Chargeback?</b> <input id="dpCont" placeholder="Container # (e.g. MSCU1234567)" autocomplete="off" style="flex:1;min-width:180px;text-transform:uppercase"><button class="btn2" type="submit">Make evidence PDF</button><span id="dpMsg" class="t"></span></form>'+
 '<div class="fchips" id="cpF"></div><div class="tbl"><table class="score" id="cpT"></table></div>');
 function dpMake(c){const m=$('dpMsg');m.textContent='Building the PDF for '+c+'…';Y().call('defensePack',[{cont:c}]).then(d=>{m.textContent='';const a=el('a','','Open '+d.cont+' evidence PDF ('+d.photos+' photos, '+d.moves+' gate moves)');a.href=d.url;a.target='_blank';a.rel='noopener';m.append(a)}).catch(e=>{m.textContent=(e&&e.message)||'Could not build it.'})}
+sfCoach.after(cpSec);
 cpSec.querySelector('#dpForm').addEventListener('submit',e=>{e.preventDefault();const c=$('dpCont').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(!/^[A-Z]{4}\d{7}$/.test(c)){$('dpMsg').textContent='Enter a container number like MSCU1234567.';return}dpMake(c)});
 let CP=null,CPt=0,CPF='missed';
 function loadCP(force){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me))return;if(!force&&Date.now()-CPt<300000)return;CPt=Date.now();Y().call('getChassisPhotos',[]).then(d=>{CP=d;renderCP()}).catch(()=>{})}
