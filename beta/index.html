@@ -266,6 +266,10 @@ body.tabs header #roleTag,body.tabs header #sync{font-size:12px}
 #todaySec .chips button b{font-size:24px}
 #tagSec h2{flex-wrap:wrap}
 .pill.warn2{border-color:var(--accent)!important;color:var(--accent-ink)!important}
+.cdw{display:block;font-size:12.5px;color:var(--stop);margin-top:3px}
+.cdw:empty{display:none}
+input.cdbad,textarea.cdbad{border-color:var(--stop)!important;outline-color:var(--stop)}
+.pill.bad2{border-color:var(--stop)!important;color:var(--stop)!important}
 
 
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--brand:#9897ec;--brand-btn:#4b4aa8;--brand-text:#b4b3ff}}
@@ -1214,6 +1218,7 @@ function attention(){const S=Y().S||{},A=[],ci=Y().contInfo||(x=>x);
   ((S.pool&&S.pool.out)||[]).forEach(x=>{const d=x.outgate?Math.round((day0(Date.now())-day0(x.outgate))/DAY)+1:0;if(d>=3)A.push(['r',x.chassis+': pool chassis '+d+'d out','Return it'+(x.pool?' to '+x.pool:'')+'. Rental is running.','port','#poolList li[data-c="'+x.chassis+'"]'])});
   const ch=S.chassis||{};Object.keys(ch).forEach(n=>{const w=(ch[n]||{}).w;if(w==='missing')A.push(['r',n+": chassis can't be found",'Check Radar GPS, call drivers, escalate in 30 min.','yard','#chasBody tr[data-n="'+n+'"]']);
     else if(w==='hold'||w==='oos'||w==='shop')A.push(['y',n+': '+(w==='shop'?'at shop':w==='hold'?'defect hold':'out of service'),'Needs a repair owner and an ETA. Do not dispatch.','yard','#chasBody tr[data-n="'+n+'"]'])});
+  try{const seen=new Set();[...((S.cont&&S.cont.inYard)||[]).map(x=>x.container),...(S.walk||[]).map(w=>String(w.container||'').toUpperCase().trim())].forEach(c=>{if(!c||seen.has(c))return;seen.add(c);const q=cdCheck(c);if(!q.ok)A.push(['y',c+': container # looks wrong','Read it again off the box and fix it in the yard walk or Fix an entry. '+q.why,'yard','#stL li[data-c="'+c+'"]'])})}catch(e){}
   const PN=Y().PN;if(PN&&PN.rows&&(can('pin'))){const now=Date.now();PN.rows.forEach(p=>{
     if(p.st==='failed')A.push(['r',(p.c||p.b)+': PIN request failed',p.msg||'GPA refused it. Fix and resend.','port','#pinSec']);
     else if(p.st==='handoff'&&now-p.t>20*60000)A.push(['y',(p.c||p.b)+': waiting for PIN','Requested by '+p.who+' '+Math.round((now-p.t)/60000)+' min ago. Create it in WebAccess and save the PIN.','port','#pinSec']);
@@ -1330,6 +1335,25 @@ function renderScore(){const PT=Y().PT||{rows:[],tags:[]};const T=$('sbT'),K=$('
   $('sbAsof').textContent='our trucks · last 7 days'+(PT.lastSync?' · synced '+fmtDT(PT.lastSync):'')}
 
 
+// ---------- Data quality: ISO 6346 container check digit (catches misread numbers at the moment they are typed) ----------
+const CDV={};'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach((c,i)=>{let v=10+i;v+=Math.floor((v-1)/10);CDV[c]=v});
+function cdCheck(n){n=String(n||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(!/^[A-Z]{4}\d{7}$/.test(n))return n.length?{ok:false,why:'Container # is 4 letters + 7 numbers ('+n.length+' characters typed).'}:{ok:true};
+  let s=0;for(let i=0;i<10;i++)s+=(i<4?CDV[n[i]]:+n[i])*Math.pow(2,i);const cd=s%11%10;
+  return cd===+n[10]?{ok:true}:{ok:false,why:'Check digit does not match. Re-read the number off the box (if the first 10 are right, the last number would be '+cd+').'}}
+window.cdCheck=cdCheck;
+function cdWarn(inp){if(!inp)return;let w=inp.parentNode.querySelector('.cdw');if(!w){w=el('span','cdw');inp.after(w)}
+  const vals=inp.tagName==='TEXTAREA'?inp.value.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean):[inp.value];
+  const bad=vals.map(v=>[v,cdCheck(v)]).filter(([v,r])=>!r.ok&&v.replace(/[^A-Z0-9]/gi,'').length>=11);
+  w.textContent=bad.length?'⚠ '+(bad.length>1||inp.tagName==='TEXTAREA'?bad.map(b=>b[0].toUpperCase()).join(', ')+': ':'')+bad[0][1].why:'';inp.classList.toggle('cdbad',!!bad.length);return !bad.length}
+['wContainer','ciNum','gNum','pCont','wC'].forEach(id=>{const i=$(id);if(i){i.addEventListener('input',()=>cdWarn(i));i.addEventListener('blur',()=>cdWarn(i))}});
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('#pinFields [data-k=containerNbr]'))cdWarn(e.target)},true);
+// soft block: first save with a bad number warns, second tap saves anyway
+[['walkForm','wContainer'],['cinForm','ciNum'],['gateForm','gNum'],['pinForm',null],['wForm','wC']].forEach(([f,id])=>{const F=$(f);if(!F)return;
+  F.addEventListener('submit',e=>{const inp=id?$(id):F.querySelector('[data-k=containerNbr]');if(!inp||!inp.value.trim())return;
+    if(cdWarn(inp)){delete F.dataset.cdok;return}
+    const key=inp.value.trim().toUpperCase();if(F.dataset.cdok===key){delete F.dataset.cdok;return}
+    F.dataset.cdok=key;e.preventDefault();e.stopImmediatePropagation();inp.focus();
+    const w=inp.parentNode.querySelector('.cdw');if(w)w.textContent+=' Tap save again only if you checked it on the box.'},true)});
 // ---------- In the yard: check-ins + today's yard walk + GPA gate tickets ----------
 let STF='all';
 function yardBoxes(){const S=Y().S||{},ci=Y().contInfo||(x=>x),PT=Y().PT||{rows:[]},by={};
@@ -1357,6 +1381,14 @@ function renderStorage(){const L=$('stL'),F=$('stF');if(!L)return;const {boxes,b
     if(le(r))top.append(el('span','pill',le(r)));if(r.spot)top.append(el('span','pill','spot '+r.spot));if(spec(r))top.append(el('span','pill warn2','reefer/hazmat'));if(r.status&&r.cls)top.append(el('span','pill',r.status));
     const ch=r.chassis&&!/^no/i.test(r.chassis)?'Chassis '+r.chassis:r.portCh?'Chassis '+r.portCh+' (GPA ticket)':'No chassis # recorded';
     li.append(top,el('span','meta',[ch,r.ssl,r.load,r.gate&&('Pulled '+fmtDT(r.gate.t)+' by '+(r.gate.drv||('plate '+r.gate.tag))),r.checked?'checked in'+(r.inAt?' '+fmtD(r.inAt):''):'on yard walk '+(r.walk||'')+' · not checked in',r.damaged?'DAMAGE noted':'',r.notes].filter(Boolean).join(' · ')));
+    {const cq=cdCheck(r.c);if(!cq.ok)top.append(el('span','pill bad2','check number'));}
+    if(!r.checked&&can('yard')){const o=el('div','out');const b=el('button','btn2','Check it in');b.type='button';b.addEventListener('click',()=>{
+      const set=(id,v)=>{const x=$(id);if(x&&v!=null&&v!=='')x.value=v};set('ciNum',r.c);set('ciSsl',r.ssl);set('ciLoad',r.load);set('ciSpot',r.spot);
+      const le=/empty/i.test(r.le||'')?'Empty':/load/i.test(r.le||'')?'Loaded':'';if(le)set('ciLe',le);
+      const ch=r.chassis&&!/^no/i.test(r.chassis)?r.chassis:'';set('ciChas',ch);set('ciMount',ch?'On chassis':'Grounded');
+      if(r.pulled){const d=new Date(r.pulled);set('ciPulled',d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))}
+      set('ciNotes',[r.portCh&&!ch?'Pulled out on chassis '+r.portCh+' (GPA ticket)':'',r.notes].filter(Boolean).join(' · '));
+      cdWarn($('ciNum'));go('yard',$('cinForm'))});o.append(b);li.append(o)}
     li.style.cursor='pointer';li.addEventListener('click',e=>{if(e.target.closest('button'))return;$('qNum').value=r.c;$('qNum').dispatchEvent(new Event('input'));go('today',search)});
     L.append(li)})}
 $('stQ').addEventListener('input',renderStorage);
