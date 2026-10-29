@@ -1799,7 +1799,7 @@ function fcPL(co){const R=(FCD.reports||[]).filter(r=>r.report==='ProfitAndLoss'
 // Owner alerts: plain rules over the synced QuickBooks data (no AI, nothing leaves Supabase). Each company judged on its own.
 function fcAlerts(D,co){const out=[],C=(D.companies||[]).filter(c=>co==='both'||c.id===co),now=Date.now(),M=fcMoney,nm=id=>id==='1Stop'?'1 Stop':'2FF';
   C.forEach(c=>{if(c.qbo_status==='needs_reconnect')out.push(['bad',nm(c.id)+': QuickBooks needs to be reconnected (Integrations).']);
-    else if(c.qbo_status==='connected'&&(!c.last_sync_at||now-new Date(c.last_sync_at).getTime()>2*3600e3))out.push(['warn',nm(c.id)+': last good QuickBooks sync was '+(c.last_sync_at?fmtDT(new Date(c.last_sync_at).getTime()):'never')+'. Numbers may be stale.'])});
+    else if(c.qbo_status==='connected'&&(!c.last_sync_at||now-new Date(c.last_sync_at).getTime()>3.5*3600e3))out.push(['warn',nm(c.id)+': last good QuickBooks sync was '+(c.last_sync_at?fmtDT(new Date(c.last_sync_at).getTime()):'never')+'. Numbers may be stale.'])});
   C.filter(c=>c.qbo_status==='connected').forEach(c=>{const f=r=>r.company===c.id,ar=(D.ar||[]).filter(f),ap=(D.ap||[]).filter(f),bank=(D.bank||[]).filter(f).reduce((s,b)=>s+(+b.balance||0),0),n=nm(c.id);
     const arT=ar.reduce((s,r)=>s+(+r.balance||0),0),by={};ar.filter(r=>r.days_overdue>60).forEach(r=>{const k=r.party_name||'?';by[k]=by[k]||{a:0,n:0};by[k].a+=+r.balance||0;by[k].n++});
     Object.entries(by).sort((a,b)=>b[1].a-a[1].a).slice(0,3).forEach(([k,v])=>out.push(['bad',n+': '+k+' owes '+M(v.a)+' more than 60 days late ('+v.n+' invoice'+(v.n>1?'s':'')+'). Call or stop extending credit.']));
@@ -1864,7 +1864,7 @@ function fcCsv(name,rows){const cols=Object.keys(rows[0]||{});const csv=[cols.jo
 fcInt.querySelector('#fcOut').addEventListener('click',async()=>{const sb=await fcClient();await sb.auth.signOut();fcLock('Signed out.')});
 // lock when the app is hidden for 10 minutes
 let FCHID=0;document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')FCHID=Date.now();else if(FCOK&&FCHID&&Date.now()-FCHID>10*60000){fcClient().then(sb=>sb.auth.signOut()).finally(()=>fcLock('Locked after 10 minutes away. Sign in again.'))}});
-if(/[?&]qbo=connected/.test(location.search))setTimeout(()=>alert('QuickBooks connected. The first sync runs within 15 minutes, or press Sync now under Integrations.'),4500);
+if(/[?&]qbo=connected/.test(location.search))setTimeout(()=>alert('QuickBooks connected. It syncs every 3 hours; press Sync now under Integrations.'),4500);
 function fcStart(){fcSec.hidden=!fcCan();if(!fcCan()){FC_SECS.forEach(s=>s.hidden=true);return}try{tabVis()}catch(e){}if(!FCOK&&!$('fcAuth').childElementCount)fcAuthUI()}
 
 // ---------- Owner > Driver pay (Richard enters; company drivers -> ADP RUN, owner-operators -> direct settlement) ----------
