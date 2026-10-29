@@ -1742,16 +1742,30 @@ const fcTag=t=>'<span class="tg '+({Actual:'a',Estimate:'e',Projection:'p'}[t]||
 async function fcClient(){if(FCSB)return FCSB;const m=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
   FCSB=m.createClient(FC_SB_URL,FC_SB_KEY,{auth:{storage:window.sessionStorage,persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});return FCSB}
 function fcLock(msg){FCOK=false;FCD=null;$('fcMain').hidden=true;[fcBooks,fcPay,fcInt,typeof fcDp!=='undefined'?fcDp:fcInt].forEach(s=>s.hidden=true);try{tabVis()}catch(e){}if(msg)fcAuthUI(msg)}
+// Password reset: the emailed link comes back as #access_token=…&type=recovery. Take the tokens out of the address bar at once.
+let FC_RECOVERY=null;{const h=location.hash||'';if(/type=recovery/.test(h)&&/access_token=/.test(h)){const q=new URLSearchParams(h.slice(1));FC_RECOVERY={a:q.get('access_token'),r:q.get('refresh_token')};history.replaceState(null,'',location.pathname+'#owner');[1500,4000,8000].forEach(t=>setTimeout(()=>{const b=document.querySelector('nav.tabbar button[data-k=owner]');if(b&&FC_RECOVERY&&location.hash!=='#owner')b.click()},t))}
+  else if(/error_description=/.test(h)){const q=new URLSearchParams(h.slice(1));FC_RECOVERY={err:q.get('error_description')};history.replaceState(null,'',location.pathname+'#owner')}}
 async function fcAuthUI(msg){const A=$('fcAuth');A.textContent='';A.hidden=false;const box=el('div','fcBox');A.append(box);if(msg)box.append(el('div','fcMsg bad',msg));
   let sb;try{sb=await fcClient()}catch(e){box.append(el('div','fcMsg bad','Could not load the secure sign-in. Check the internet connection.'));return}
+  if(FC_RECOVERY&&FC_RECOVERY.err){box.append(el('div','fcMsg bad','That reset link did not work ('+FC_RECOVERY.err+'). Links expire after one hour and work once. Tap "Forgot password" again.'));FC_RECOVERY=null}
+  if(FC_RECOVERY&&FC_RECOVERY.a){const {error}=await sb.auth.setSession({access_token:FC_RECOVERY.a,refresh_token:FC_RECOVERY.r});FC_RECOVERY=null;
+    if(error){box.append(el('div','fcMsg bad','Reset link expired. Tap "Forgot password" again.'))}
+    else{box.append(el('h3','','Set a new finance password'),el('p','t','At least 12 characters. Different from your Yard App code and your email password.'));
+      const p1=el('input'),p2=el('input');p1.type=p2.type='password';p1.autocomplete=p2.autocomplete='new-password';p1.placeholder='New password';p2.placeholder='Same password again';
+      const ok=el('button','btn','Save new password'),m=el('div','fcMsg');ok.type='button';
+      ok.addEventListener('click',async()=>{if(p1.value.length<12){m.className='fcMsg bad';m.textContent='Use at least 12 characters.';return}if(p1.value!==p2.value){m.className='fcMsg bad';m.textContent='The two passwords do not match.';return}
+        m.className='fcMsg';m.textContent='Saving…';const {error}=await sb.auth.updateUser({password:p1.value});p1.value=p2.value='';if(error){m.className='fcMsg bad';m.textContent=error.message;return}fcAuthUI()});
+      box.append(el('label','t','New password'),p1,el('label','t','Again'),p2,ok,m);return}}
   const {data:{session}}=await sb.auth.getSession();
   if(!session){box.append(el('h3','','Finance sign-in'),el('p','t','Separate from your Yard App code. Only rp@2f-logistics.com, with the 6-digit code from your authenticator app.'));
     const em=el('input');em.value=FC_EMAIL;em.readOnly=true;const pw=el('input');pw.type='password';pw.placeholder='Finance password';pw.autocomplete='current-password';
-    const go=el('button','btn','Sign in'),mkacct=el('button','btn2','First time: create my finance login'),m=el('div','fcMsg');go.type=mkacct.type='button';
+    const go=el('button','btn','Sign in'),mkacct=el('button','btn2','First time: create my finance login'),m=el('div','fcMsg');go.type=mkacct.type='button';const fg=el('button','btn2','Forgot password');fg.type='button';
+    fg.addEventListener('click',async()=>{fg.disabled=true;m.className='fcMsg';m.textContent='Sending…';const {error}=await sb.auth.resetPasswordForEmail(FC_EMAIL,{redirectTo:'https://yard.2f-logistics.com/'});
+      m.className='fcMsg'+(error?' bad':'');m.textContent=error?error.message:'Sent. Open the "Reset Your Password" email at rp@2f-logistics.com on this phone and tap the link. It brings you back here to set a new password.';setTimeout(()=>fg.disabled=false,60000)});
     go.addEventListener('click',async()=>{m.textContent='Signing in…';const {error}=await sb.auth.signInWithPassword({email:FC_EMAIL,password:pw.value});pw.value='';if(error){m.className='fcMsg bad';m.textContent=error.message;return}fcAuthUI()});
     mkacct.addEventListener('click',async()=>{if(pw.value.length<12){m.className='fcMsg bad';m.textContent='Use at least 12 characters.';return}m.textContent='Creating…';const {error}=await sb.auth.signUp({email:FC_EMAIL,password:pw.value,options:{emailRedirectTo:'https://yard.2f-logistics.com/#owner'}});pw.value='';
       m.className='fcMsg'+(error?' bad':'');m.textContent=error?error.message:'Done. Open the confirmation email Supabase sent to rp@, click it, then come back and sign in. Then tell Claude to turn on your finance permission.'});
-    box.append(el('label','t','Email'),em,el('label','t','Password'),pw,go,document.createTextNode(' '),mkacct,m);return}
+    box.append(el('label','t','Email'),em,el('label','t','Password'),pw,go,document.createTextNode(' '),fg,document.createTextNode(' '),mkacct,m);return}
   const {data:aal}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
   if(aal.currentLevel!=='aal2'){const {data:f}=await sb.auth.mfa.listFactors();const tot=(f&&f.totp||[]).find(x=>x.status==='verified');let fid=tot&&tot.id;
     if(!fid){box.append(el('h3','','Set up your authenticator'),el('p','t','Scan this with Google Authenticator, Microsoft Authenticator or 1Password, then type the 6-digit code it shows. Keep the setup key somewhere safe and offline: it is your backup.'));
