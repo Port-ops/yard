@@ -355,7 +355,7 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <button type="button" data-t="RM">PIN IN<br><small>Return empty</small></button>
 <button type="button" data-t="RE">PIN IN<br><small>Drop export (full)</small></button>
 </div>
-<form id="pinForm" hidden autocomplete="off"><div class="pinf" id="pinFields"></div>
+<form id="pinForm" hidden autocomplete="off"><div class="pinf" id="pinFields"></div><label class="pinto">Send PIN to (RingCentral)<select id="pinTo" class="pinToSel"><option value="">Don't send</option></select></label>
 <div class="actions"><button class="btn" type="submit">Review</button><span class="msg" id="pinMsg"></span></div></form>
 <div class="pinrev" id="pinRev" hidden><b>Check before sending</b><dl id="pinRevL"></dl>
 <div class="actions"><button class="btn" type="button" id="pinGo">Confirm &amp; request PIN</button><button class="btn2" type="button" id="pinBack">Edit</button><span class="msg" id="pinMsg2"></span></div></div>
@@ -954,7 +954,10 @@ const PINF={DI:[['containerNbr','Container #','ABCU1234567']],RM:[['containerNbr
 RE:[['containerNbr','Container #','ABCU1234567'],['bookingNbr','Booking #',''],['lineScac','Line SCAC','MSCU'],['containerSize','Size','20|40|45'],['containerType','Type','DR|HC|RF|OT|FR|TK'],['containerHeight','Height','86|96'],['seal1','Seal # (optional)','']],
 DM:[['bookingNbr','Booking #',''],['lineScac','Line SCAC','MSCU'],['containerSize','Size','20|40|45'],['containerType','Type','DR|HC|RF'],['containerHeight','Height','86|96'],['delEmptyContainerQuantity','How many empties','1']]};
 const PNAME={DI:'PIN OUT · pull import (full)',DM:'PIN OUT · pull empty',RM:'PIN IN · return empty',RE:'PIN IN · drop export (full)'};
-function loadPins(force){if(!canPin()||!navigator.onLine)return;if(!force&&Date.now()-PNt<60000)return;PNt=Date.now();call('getPins',[]).then(d=>{PN=d;renderPins();try{window.dispatchEvent(new Event('yard'))}catch(e){}}).catch(()=>{})}
+var PCH=null;function loadPinChats(){if(PCH||!canPin()||!navigator.onLine)return;call('pinChats',[]).then(d=>{PCH=d;window.PCH=d;document.querySelectorAll('select.pinToSel').forEach(fillPinTo);if(PN)renderPins()}).catch(()=>{})}
+function fillPinTo(sel){if(!PCH||sel.dataset.filled)return;sel.dataset.filled='1';PCH.forEach(c=>sel.append(Object.assign(document.createElement('option'),{value:c.id,textContent:c.name})))}
+window.fillPinTo=fillPinTo;
+function loadPins(force){loadPinChats();if(!canPin()||!navigator.onLine)return;if(!force&&Date.now()-PNt<60000)return;PNt=Date.now();call('getPins',[]).then(d=>{PN=d;renderPins();try{window.dispatchEvent(new Event('yard'))}catch(e){}}).catch(()=>{})}
 function renderPins(){const sec=$('pinSec');if(!canPin()){sec.hidden=true;return}sec.hidden=false;const d=PN||{rows:[]};
 $('pinMode').textContent=d.api?'connected to GPA · PINs come back here':'WebAccess hand-off until GPA API is on';
 const L=$('pinList');L.textContent='';if(!d.rows.length){L.append(Object.assign(document.createElement('li'),{className:'empty',textContent:'No PIN requests yet.'}));return}
@@ -963,8 +966,9 @@ if(r.st==='failed')li.className='late';else if(r.st==='handoff')li.className='wa
 const top=document.createElement('div');top.className='top';const n=document.createElement('span');n.className='num';n.textContent=r.c||r.b;
 const pill=document.createElement('span');pill.className='pill';pill.textContent=expired&&open?'expired':r.st;top.append(n,pill);
 if(r.pin){const p=document.createElement('span');p.className='pin';p.textContent='PIN '+r.pin;top.append(p)}
+const sendRow=(r.pin&&open&&!expired&&PCH)?(()=>{const w=document.createElement('div');w.className='out';const s=document.createElement('select');s.className='pinToSel';s.append(Object.assign(document.createElement('option'),{value:'',textContent:'Send PIN to driver…'}));fillPinTo(s);const b=document.createElement('button');b.type='button';b.className='btn2';b.textContent=/Sent to/.test(r.msg||'')?'Send again':'Send by RingCentral';b.addEventListener('click',()=>{if(!s.value)return;b.disabled=true;b.textContent='Sending…';call('pinSendRc',[{id:r.id,chat:s.value}]).then(d=>{PN=d;renderPins()}).catch(e=>{b.disabled=false;b.textContent='Send by RingCentral';alertPin(e)})});w.append(s,b);return w})():null;
 const meta=document.createElement('span');meta.className='meta';meta.textContent=[PNAME[r.type]||r.type,r.line,r.who,r.t&&new Date(r.t).toLocaleString(undefined,{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}),r.exp&&open&&!expired&&('good until '+new Date(r.exp).toLocaleString(undefined,{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'})),r.msg].filter(Boolean).join(' · ');
-li.append(top,meta);
+li.append(top,meta);if(sendRow)li.append(sendRow);
 if(open&&!expired||r.st==='failed'){const o=document.createElement('div');o.className='out';
 if(r.st==='handoff'||r.st==='failed'){const a=document.createElement('a');a.href='https://webaccess.gaports.com/express/secure/Gate.jsp';a.target='_blank';a.rel='noopener';a.textContent='Open WebAccess';
 const i=document.createElement('input');i.inputMode='numeric';i.placeholder='PIN from WebAccess';i.maxLength=8;i.style.width='9em';
@@ -980,11 +984,12 @@ $('pinForm').addEventListener('submit',e=>{e.preventDefault();const q={tranType:
 if(q.containerNbr!==undefined&&!/^[A-Z]{4}\d{7}$/.test(q.containerNbr)){$('pinMsg').textContent='Container # should be 4 letters and 7 numbers.';return}
 const miss=PINF[PTYPE].filter(([k,l])=>!/optional/.test(l)&&!q[k]).map(([k,l])=>l);if(miss.length){$('pinMsg').textContent='Fill in: '+miss.join(', ');return}
 const dl=$('pinRevL');dl.textContent='';[['Move',PNAME[PTYPE]],['Trucking co','AOLQ'],...PINF[PTYPE].filter(([k])=>q[k]).map(([k,l])=>[l,q[k]])].forEach(([a,b])=>{dl.append(Object.assign(document.createElement('dt'),{textContent:a}),Object.assign(document.createElement('dd'),{textContent:b}))});
+q.sendTo=$('pinTo').value;if(q.sendTo){const o=$('pinTo').selectedOptions[0];dl.append(Object.assign(document.createElement('dt'),{textContent:'Send to'}),Object.assign(document.createElement('dd'),{textContent:o?o.textContent:''}))}
 window._pinQ=q;$('pinForm').hidden=true;$('pinRev').hidden=false;$('pinMsg2').textContent=''});
 $('pinBack').addEventListener('click',()=>{$('pinForm').hidden=false;$('pinRev').hidden=true});
 $('pinGo').addEventListener('click',()=>{const b=$('pinGo');b.disabled=true;$('pinMsg2').textContent='Requesting…';
 call('pinSubmit',[window._pinQ]).then(r=>{$('pinRev').hidden=true;$('pinMsg').textContent='';
-const m=r.mode==='api'?'GPA PIN '+r.pins+' created.':'Saved. Create it in WebAccess, then type the PIN on the request below.';$('pinMsg2').textContent=m;$('pinMsg').textContent=m;$('pinForm').hidden=false;$('pinForm').reset&&$('pinForm').reset();
+const m=r.mode==='api'?'GPA PIN '+r.pins+' created.'+(r.sent?' RingCentral: '+r.sent+'.':''):'Saved. Create it in WebAccess, then type the PIN on the request below.'+(r.sendTo?' It goes to the driver as soon as you save the PIN.':'');$('pinMsg2').textContent=m;$('pinMsg').textContent=m;$('pinForm').hidden=false;$('pinForm').reset&&$('pinForm').reset();
 if(r.mode!=='api')window.open(r.webaccess,'_blank','noopener');loadPins(true)}).catch(e=>alertPin(e)).finally(()=>{b.disabled=false})});
 // ---- fix an entry (yard, gate, admin) ----
 var ED=null,EDt=0,ECUR=null;
@@ -1370,7 +1375,7 @@ const gpaSec=mk('gpaSec','port','moves','<div>'+
 '<form id="gBk" class="gpaCard"><b>Export bookings (1 to 50, same line)</b><textarea id="gBkN" rows="2" placeholder="Booking #s"></textarea><input id="gBkL" placeholder="Line SCAC e.g. MSCU, ONEY, HLCU" autocomplete="off"><button class="btn2" type="submit">Look up</button><div id="gBkR" class="gpaRes"></div></form>'+
 '<form id="gPn" class="gpaCard" hidden><b>PIN request (creates a real PIN at GPA, same as the PINs tab)</b><select id="gPnT"><option value="DI">DI · pick up import (full out)</option><option value="DM">DM · pick up empty</option><option value="RE">RE · return export (full in)</option><option value="RM">RM · return empty</option></select>'+
 '<input id="gPnC" placeholder="Container #" autocomplete="off"><input id="gPnB" placeholder="Booking # (DM, RE)" autocomplete="off"><input id="gPnL" placeholder="Line SCAC (DM, RE)" autocomplete="off">'+
-'<input id="gPnS" placeholder="Size/Type/Height e.g. 40/DR/96 (DM, RE)" autocomplete="off"><input id="gPnQ" placeholder="How many empties (DM)" inputmode="numeric"><input id="gPnF" placeholder="Facility (RM) e.g. GCT" autocomplete="off" value="GCT"><input id="gPnSe" placeholder="Seal (RE, optional)" autocomplete="off">'+
+'<input id="gPnS" placeholder="Size/Type/Height e.g. 40/DR/96 (DM, RE)" autocomplete="off"><input id="gPnQ" placeholder="How many empties (DM)" inputmode="numeric"><input id="gPnF" placeholder="Facility (RM) e.g. GCT" autocomplete="off" value="GCT"><input id="gPnSe" placeholder="Seal (RE, optional)" autocomplete="off"><select id="gPnTo" class="pinToSel"><option value="">Send PIN to (RingCentral)… or do not send</option></select>'+
 '<button class="btn2" type="submit">Review</button><div id="gPnR" class="gpaRes"></div></form>'+
 '<form id="gTk" class="gpaCard"><b>Gate tickets / EIR</b><input id="gTkC" placeholder="Container # (or PIN, or chassis #)" autocomplete="off"><input id="gTkT" placeholder="Truck tag (plate)" autocomplete="off"><select id="gTkBy"><option value="cont">by container</option><option value="pin">by PIN</option><option value="chassis">by chassis</option></select><button class="btn2" type="submit">Get ticket</button><div id="gTkR" class="gpaRes"></div></form>'+
 '</div>');
@@ -1407,12 +1412,12 @@ const gVsDraw=()=>{const r=gQ('gVsR'),f=gUp(gQ('gVsF').value);r.textContent='';c
   r.append(el('div','',L.length+' vessel(s)'));r.append(gT(L.slice(0,80).map(v=>[v.name+(v.voy?' '+v.voy:''),v.terminal||'',gD(v.ata||v.eta)+(v.ata?' (arrived)':''),gD(v.atd||v.etd),gD(v.erd)+(v.erdLocked?' (locked)':''),gD(v.cutoff),v.lines||v.op||'']),['Vessel','Terminal','ETA','ETD','ERD','Cutoff','Lines']))};
 gQ('gVs').addEventListener('submit',e=>{e.preventDefault();if(GVS){gVsDraw();return}const r=gQ('gVsR');gBusy(r);Y().call('gpaVessels',[{}]).then(d=>{GVS=d;gVsDraw()}).catch(err=>gErr(r,err))});
 gQ('gVsF').addEventListener('input',()=>{if(GVS)gVsDraw()});
-{let PEND=null;const pf=gQ('gPn');
+{let PEND=null;const pf=gQ('gPn');setInterval(()=>{const g=gQ('gPnTo');if(g&&window.fillPinTo&&window.PCH)window.fillPinTo(g)},3000);
   pf.addEventListener('submit',e=>{e.preventDefault();const r=gQ('gPnR'),t=gQ('gPnT').value,sth=gUp(gQ('gPnS').value).split('/');
-    const o={tranType:t,containerNbr:gUp(gQ('gPnC').value),bookingNbr:gUp(gQ('gPnB').value),lineScac:gUp(gQ('gPnL').value),containerSize:sth[0]||'',containerType:sth[1]||'',containerHeight:sth[2]||'',delEmptyContainerQuantity:gQ('gPnQ').value.trim(),facility:gUp(gQ('gPnF').value),seal1:gUp(gQ('gPnSe').value)};
+    const o={tranType:t,containerNbr:gUp(gQ('gPnC').value),bookingNbr:gUp(gQ('gPnB').value),lineScac:gUp(gQ('gPnL').value),containerSize:sth[0]||'',containerType:sth[1]||'',containerHeight:sth[2]||'',delEmptyContainerQuantity:gQ('gPnQ').value.trim(),facility:gUp(gQ('gPnF').value),seal1:gUp(gQ('gPnSe').value),sendTo:gQ('gPnTo').value};
     PEND=o;r.textContent='';r.append(el('div','','Create a '+t+' PIN for '+(o.containerNbr||o.bookingNbr||'?')+' (trucking company AOLQ)? GPA will issue a real PIN.'));
     const b=el('button','btn2','Confirm, create PIN');b.type='button';b.addEventListener('click',()=>{b.disabled=true;gBusy(r,'Creating PIN at GPA…');
-      Y().call('pinSubmit',[PEND]).then(d=>{r.textContent='';r.append(el('div','go',d&&d.pins?'PIN '+d.pins+' created at GPA (request '+d.id+'). It is also in the PINs tab.':'Request '+(d&&d.id)+' saved. Create it in WebAccess and type the PIN in the PINs tab.'))}).catch(err=>gErr(r,err))});
+      Y().call('pinSubmit',[PEND]).then(d=>{r.textContent='';r.append(el('div','go',d&&d.pins?'PIN '+d.pins+' created at GPA (request '+d.id+'). It is also in the PINs tab.'+(d.sent?' RingCentral: '+d.sent+'.':''):'Request '+(d&&d.id)+' saved. Create it in WebAccess and type the PIN in the PINs tab.'))}).catch(err=>gErr(r,err))});
     r.append(b)})}
 // ---------- All gate moves from GPA (like WebAccess Truck Transactions), Port > Gate moves ----------
 const gmSec=mk('gmSec','port','moves','<h2>GPA gate moves <span class="t" id="gmAsof">every AOLQ truck transaction, last 7 days</span></h2>'+
@@ -1530,6 +1535,340 @@ erSec.querySelector('#erQ').addEventListener('input',()=>renderER());
 erSec.querySelector('#erRef').addEventListener('click',()=>loadER());
 erSec.querySelector('#erAddB').addEventListener('click',()=>erAddForm());
 setTimeout(()=>loadER(),2500);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='port')loadER()},5*60000);
+
+// ---------- SALES tab: Find work · Quotes · Freight finder ----------
+{const st=el('style');st.textContent='.slT td.bad{color:#b3261e;font-weight:600}.slT td.go{color:#2e7d4f;font-weight:600}.slT td.warn{color:#8a6100;font-weight:600}.slT td.muted,.slT .muted{color:var(--mut,#5d686d)}.slT button{margin:2px 4px 2px 0;padding:4px 8px;font-size:12px}.slT a{color:var(--ink);text-decoration:underline}'+
+'.scr{display:inline-block;min-width:34px;text-align:center;border-radius:6px;padding:2px 6px;font-weight:700;font-family:var(--mono)}.scr.h{background:#2e7d4f;color:#fff}.scr.m{background:#f3d27a;color:#3a2a00}.scr.l{background:#e4e7e8;color:#333}'+
+'.imfc{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--card,#fff)}.imfc h4{margin:0 0 4px;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.imfc .meta{font-size:12px;color:var(--mut,#5d686d)}.imfc .ev{margin:6px 0;font-size:13px}.imfc pre{white-space:pre-wrap;font:inherit;font-size:13px;background:rgba(0,0,0,.03);padding:8px;border-radius:6px;margin:6px 0}.imfc .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}.imfc .tag{font-size:11px;border:1px solid var(--line,#ccd);border-radius:20px;padding:1px 8px}.kpis{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.kpis div{border:1px solid var(--line,#d5d9db);border-radius:8px;padding:6px 10px;min-width:96px}.kpis b{display:block;font-size:20px}';document.head.append(st)}
+let SL=null,SLF='open',SLQ='all',SLC='all',SLI='all';
+const slCan=()=>{const r=roles();return ['admin','pin','gate','view'].some(x=>r.includes(x))};
+const slScore=n=>{const s=el('span','scr '+(n>=70?'h':n>=50?'m':'l'),n==null?'–':String(n));return s};
+const slDate=v=>v?new Date(v).toLocaleString(undefined,{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const slMoney=n=>n==null||n===''?'':'$'+Math.round(+n).toLocaleString();
+const fwSec=mk('fwSec','sales','work','<h2>Find work <span class="t" id="fwAsof">load requests nobody at 2FF has answered yet · scored by the Find Work agent every hour</span></h2>'+
+'<div class="fchips" id="fwF"></div><div class="drow"><input id="fwQ" placeholder="Search company, contact, lane, owner" autocomplete="off" style="text-transform:none;flex:1"><button class="btn2" type="button" id="slRef">Refresh</button></div><div id="fwSum" class="t"></div><div class="tbl"><table class="score slT" id="fwT"></table></div>');
+const qtSec=mk('qtSec','sales','quotes','<h2>Quotes <span class="t">last 14 days · every quote the Quote Agent and the desk sent</span></h2><div class="kpis" id="qtK"></div><div class="fchips" id="qtF"></div><div class="drow"><input id="qtQ" placeholder="Search company, place, zip, move" autocomplete="off" style="text-transform:none;flex:1"></div><div class="tbl"><table class="score slT" id="qtT"></table></div>');
+const imSec=mk('imSec','sales','finder','<h2>Freight finder <span class="t" id="imAsof">forwarders, IMCs, importers and DCs with Savannah volume · researched weekly</span></h2><p class="help">Nothing here is sent automatically. Read the draft, send it yourself from your own email, then mark it <b>Sent by me</b>. Anything marked do not contact is never shown a draft.</p><div id="imRun" class="t"></div><div class="fchips" id="imF"></div><div class="fchips" id="imC"></div><div id="imL"></div>');
+{const anchor=$('erSec')||$('gmSec');[fwSec,qtSec,imSec].forEach(s=>{if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(s,null);else wrap.append(s)})}
+function loadSL(fresh){if(!Y().call||!navigator.onLine||!(Y().S&&Y().S.me)||!slCan())return;Y().call('getSales',[{fresh:!!fresh}]).then(d=>{SL=d;renderSL()}).catch(e=>{fwSec.querySelector('#fwSum').textContent=(e&&e.message)||'Could not load sales data.'})}
+function slRun(fn,arg,btn){if(btn){btn.disabled=true;btn.textContent='Saving…'}return Y().call(fn,[arg]).then(d=>{SL=d;renderSL()}).catch(e=>{if(btn){btn.disabled=false;btn.textContent='Try again'}alert((e&&e.message)||'Could not save.')})}
+function slChips(box,list,cur,set){box.textContent='';list.forEach(([k,l,n])=>{const b=el('button',cur===k?'on':'',l+(n!=null?' ('+n+')':''));b.type='button';b.addEventListener('click',()=>set(k));box.append(b)})}
+function renderFW(){const T=fwSec.querySelector('#fwT'),R=(SL&&SL.fw)||[],q=String(fwSec.querySelector('#fwQ').value||'').trim().toLowerCase();
+  slChips(fwSec.querySelector('#fwF'),[['open','Open',R.filter(r=>r.status==='open').length],['hot','Score 70+',R.filter(r=>r.status==='open'&&r.score>=70).length],['done','Worked / quoted / passed',R.filter(r=>r.status!=='open').length],['all','All 7 days',R.length]],SLF,k=>{SLF=k;renderFW()});
+  let rows=R.filter(r=>SLF==='all'||(SLF==='open'&&r.status==='open')||(SLF==='hot'&&r.status==='open'&&r.score>=70)||(SLF==='done'&&r.status!=='open'));
+  if(q)rows=rows.filter(r=>[r.company,r.contact,r.email,r.subject,r.move,r.origin,r.destination,r.owner_label,r.reason].join(' ').toLowerCase().includes(q));
+  fwSec.querySelector('#fwSum').textContent=SL?(R.length?R.filter(r=>r.status==='open').length+' open request(s) in the last 7 days':'Nothing saved yet. The Find Work agent starts saving here on its next hourly run.'):'Loading…';
+  T.textContent='';const h=el('tr');['Score','Received','Company / contact','Move / lane','Boxes','Owner','Why it scored','Status',''].forEach(x=>h.append(el('th','',x)));T.append(h);
+  if(!rows.length){const tr=el('tr'),td=el('td','muted',SL?'Nothing here.':'Loading…');td.colSpan=9;tr.append(td);T.append(tr)}
+  rows.forEach(r=>{const tr=el('tr');const sc=el('td');sc.append(slScore(r.score));const co=el('td');co.append(el('b','',r.company||'(unknown)'),el('div','muted',[r.contact,r.email].filter(Boolean).join(' · ')));if(r.subject)co.append(el('div','muted',r.subject));
+    const act=el('td');if(r.thread_link){const a=el('a','','Open email');a.href=r.thread_link;a.target='_blank';a.rel='noopener';act.append(a,el('br'))}
+    if(r.status==='open'){[['quoted','Quoted'],['worked','Worked'],['pass','Pass']].forEach(([s,l])=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',()=>{const n=s==='pass'?prompt('Why pass? (no truck, rate too low, not our lane…)',''):'';if(s==='pass'&&n===null)return;slRun('salesFw',{id:r.id,status:s,note:n||''},b)});act.append(b)})}
+    else{const b=el('button','btn2','Reopen');b.type='button';b.addEventListener('click',()=>slRun('salesFw',{id:r.id,status:'open'},b));act.append(b)}
+    tr.append(sc,el('td','',slDate(r.received_at||r.found_at)),co,el('td','',[r.move,[r.origin,r.destination].filter(Boolean).join(' → ')].filter(Boolean).join(' · ')),el('td','n',r.boxes==null?'':String(r.boxes)),el('td','',r.owner_label||''),el('td','muted',r.reason||''),
+      el('td',r.status==='open'?'warn':'go',r.status+(r.worked_by?' · '+r.worked_by:'')+(r.notes?' · '+r.notes:'')),act);T.append(tr)});
+  try{subBadge('sales','work',R.filter(r=>r.status==='open'&&r.score>=70).length,true)}catch(e){}}
+function renderQT(){const T=qtSec.querySelector('#qtT'),R=(SL&&SL.quotes)||[],q=String(qtSec.querySelector('#qtQ').value||'').trim().toLowerCase();
+  const by=s=>R.filter(r=>r.status===s).length,won=R.filter(r=>/won|booked|accepted/i.test(r.status||'')).length;
+  const K=qtSec.querySelector('#qtK');K.textContent='';[['Quotes',R.length],['Waiting',by('Quoted')],['No reply',by('No reply')],['Lost',by('Lost')],['Won',won]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),el('span','t',l));K.append(d)});
+  const sts=[...new Set(R.map(r=>r.status).filter(Boolean))];slChips(qtSec.querySelector('#qtF'),[['all','All',R.length]].concat(sts.map(s=>[s,s,by(s)])),SLQ,k=>{SLQ=k;renderQT()});
+  let rows=R.filter(r=>SLQ==='all'||r.status===SLQ);if(q)rows=rows.filter(r=>[r.company,r.contact,r.place,r.zip,r.move,r.terminal,r.quoted_by].join(' ').toLowerCase().includes(q));
+  T.textContent='';const h=el('tr');['Sent','Company / contact','Move','To','Boxes','Per box','Status','By',''].forEach(x=>h.append(el('th','',x)));T.append(h);
+  if(!rows.length){const tr=el('tr'),td=el('td','muted',SL?'No quotes.':'Loading…');td.colSpan=9;tr.append(td);T.append(tr)}
+  rows.slice(0,200).forEach(r=>{const tr=el('tr'),co=el('td');co.append(el('b','',r.company||''),el('div','muted',[r.contact,r.email].filter(Boolean).join(' · ')));const lk=el('td');if(r.thread_link){const a=el('a','','Email');a.href=r.thread_link;a.target='_blank';a.rel='noopener';lk.append(a)}
+    tr.append(el('td','',slDate(r.created_at)),co,el('td','',[r.move,r.terminal,r.hazmat?'hazmat':'',r.reefer?'reefer':''].filter(Boolean).join(' · ')),el('td','',[r.place,r.zip].filter(Boolean).join(' ')),el('td','n',r.boxes==null?'':String(r.boxes)),el('td','n',slMoney(r.final_price||r.total_per_box)),
+      el('td',/won|booked|accepted/i.test(r.status||'')?'go':r.status==='Lost'?'bad':r.status==='No reply'?'muted':'warn',r.status+(r.lost_reason?' · '+r.lost_reason:'')),el('td','',r.quoted_by||''),lk);T.append(tr)})}
+const IMST=[['drafted','Draft ready'],['sent_by_human','Sent by me'],['replied','Replied'],['qualified','Qualified'],['won','Won'],['lost','Lost'],['researched','Researched'],['compliance_review','Compliance review'],['do_not_contact','Do not contact']];
+const IMCAT={imc:'IMC',steamship_line:'Steamship line',importer_dc:'Importer / DC',forwarder:'Freight forwarder',nvocc:'NVOCC',other:'Other'};
+function renderIM(){const L=imSec.querySelector('#imL'),R=(SL&&SL.imf)||[];
+  if(SL&&SL.imfRun)imSec.querySelector('#imRun').textContent='Last research run '+slDate(SL.imfRun.run_at)+' · '+(SL.imfRun.new_prospects||0)+' new · '+(SL.imfRun.drafts_written||0)+' drafts';
+  slChips(imSec.querySelector('#imF'),[['all','All',R.length]].concat(IMST.map(([k,l])=>[k,l,R.filter(r=>r.status===k).length]).filter(x=>x[2])),SLI,k=>{SLI=k;renderIM()});
+  const cats=[...new Set(R.map(r=>r.category))];slChips(imSec.querySelector('#imC'),[['all','All types']].concat(cats.map(c=>[c,IMCAT[c]||c,R.filter(r=>r.category===c).length])),SLC,k=>{SLC=k;renderIM()});
+  const sf=SLI;const rows=R.filter(r=>(sf==='all'||r.status===sf)&&(SLC==='all'||r.category===SLC));
+  L.textContent='';if(!rows.length){L.append(el('p','muted',SL?'No prospects here.':'Loading…'));return}
+  rows.forEach(r=>{const c=el('div','imfc'),h=el('h4');h.append(slScore(r.score),el('span','',r.company_name));[IMCAT[r.category]||r.category,r.confidence,(IMST.find(x=>x[0]===r.status)||[0,r.status])[1]].filter(Boolean).forEach(t=>h.append(el('span','tag',t)));c.append(h);
+    c.append(el('div','meta',[r.hq_or_local_office,r.website,r.last_researched&&('researched '+r.last_researched)].filter(Boolean).join(' · ')));
+    if(r.savannah_evidence)c.append(el('div','ev',r.savannah_evidence));if(r.score_reasons)c.append(el('div','meta','Why: '+r.score_reasons));
+    if(r.contact_name||r.contact_email)c.append(el('div','ev','Contact: '+[r.contact_name,r.contact_title,r.contact_email].filter(Boolean).join(' · ')+(r.contact_source?' (source: '+r.contact_source+')':'')));
+    if(r.do_not_contact)c.append(el('div','ev bad','DO NOT CONTACT'+(r.dnc_reason?': '+r.dnc_reason:'')));
+    else if(r.draft_body){const d=el('details'),s=el('summary','','Draft email'+(r.draft_subject?': '+r.draft_subject:''));d.append(s,el('pre','',r.draft_body));const row=el('div','row');const cp=el('button','btn2','Copy draft');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText((r.draft_subject?'Subject: '+r.draft_subject+'\n\n':'')+r.draft_body);cp.textContent='Copied'}catch(e){}});row.append(cp);
+      if(r.contact_email){const a=el('a','btn2','Open in my email');a.href='mailto:'+encodeURIComponent(r.contact_email)+'?subject='+encodeURIComponent(r.draft_subject||'')+'&body='+encodeURIComponent(r.draft_body);row.append(a)}d.append(row);c.append(d)}
+    if(r.notes)c.append(el('div','meta','Notes: '+r.notes));
+    const row=el('div','row'),sel=el('select');IMST.filter(([k])=>k!=='do_not_contact'||SL.admin).forEach(([k,l])=>{const o=el('option','',l);o.value=k;if(k===r.status)o.selected=true;sel.append(o)});const nt=el('input');nt.placeholder='Note (who you talked to, next step)';nt.style.flex='1';nt.style.textTransform='none';
+    const b=el('button','btn2','Save');b.type='button';b.addEventListener('click',()=>{if(sel.value===r.status&&!nt.value.trim())return;slRun('salesImf',{id:r.id,status:sel.value,note:nt.value.trim()},b)});row.append(sel,nt,b);c.append(row);L.append(c)});
+  try{subBadge('sales','finder',R.filter(r=>r.status==='drafted').length,false)}catch(e){}}
+function renderSL(){[fwSec,qtSec,imSec].forEach(s=>s.hidden=!slCan());if(!slCan())return;if(SL)fwSec.querySelector('#fwAsof').textContent='load requests nobody at 2FF has answered yet · updated '+slDate(new Date(SL.at).getTime());renderFW();renderQT();renderIM()}
+fwSec.querySelector('#fwQ').addEventListener('input',renderFW);qtSec.querySelector('#qtQ').addEventListener('input',renderQT);fwSec.querySelector('#slRef').addEventListener('click',()=>loadSL(true));
+setTimeout(()=>{renderSL();loadSL()},3000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='sales')loadSL()},3*60000);
+// ---------- SOCIAL MEDIA tab: recruiting posts (LinkedIn · Facebook · Instagram + more) and hiring boards ----------
+// Visible only to Richard, Lethaniel, Yanix, Julia and Mari (the server checks too).
+{const st=el('style');st.textContent='.smP{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--card,#fff)}.smP h4{margin:0 0 4px;font-size:15px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}.smP .meta{font-size:12px;color:var(--mut,#5d686d)}.smP pre{white-space:pre-wrap;font:inherit;font-size:14px;margin:6px 0;max-height:220px;overflow:auto}.smP .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}.smP button,.smC button{padding:5px 10px;font-size:13px}'+
+'.pl{font-size:11px;border-radius:20px;padding:1px 8px;font-weight:600;color:#fff;background:#5d686d}.pl.facebook_page{background:#1877f2}.pl.instagram{background:#c13584}.pl.linkedin_page,.pl.linkedin_personal{background:#0a66c2}.pl.x{background:#111}.pl.tiktok{background:#111}.pl.youtube{background:#c00}'+
+'.stt{font-size:11px;border-radius:20px;padding:1px 8px;border:1px solid currentColor;font-weight:600}.stt.draft{color:#8a6100}.stt.queued{color:#2e7d4f}.stt.posted{color:#2e7d4f;background:#e6f2ea}.stt.failed,.stt.rejected{color:#b3261e}.stt.posting{color:#0a66c2}.stt.skipped{color:#5d686d}'+
+'.smW{font-size:12px;color:#8a6100;background:#fff6dc;border-radius:6px;padding:4px 8px;margin:4px 0}.smW.bad{color:#b3261e;background:#fdecea}'+
+'.smC{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:12px;background:var(--card,#fff)}.smC label{display:block;font-size:12px;color:var(--mut,#5d686d);margin:8px 0 2px}.smC textarea{width:100%;min-height:150px;font:inherit;font-size:14px;padding:8px;box-sizing:border-box;text-transform:none}.smC input,.smC select{text-transform:none}.smChs{display:flex;flex-wrap:wrap;gap:6px}.smChs label{display:flex;gap:4px;align-items:center;border:1px solid var(--line,#ccd);border-radius:8px;padding:4px 8px;margin:0;color:var(--ink);font-size:13px}.smChs label.off{opacity:.5}'+
+'.smPv{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:8px}.smPv>div{border:1px solid var(--line,#d5d9db);border-radius:8px;padding:8px;font-size:13px}.smPv .hd{display:flex;justify-content:space-between;margin-bottom:4px}.smPv pre{white-space:pre-wrap;font:inherit;margin:0;max-height:180px;overflow:auto}.smPv img{width:100%;border-radius:6px;margin-top:4px}'+
+'.smDay{margin:10px 0 2px;font-weight:700}.smBd{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#e4e7e8)}.smBd .on{color:#2e7d4f;font-weight:600}.smBd .offx{color:#5d686d}';document.head.append(st)}
+let SM=null,SMF='review',SMB='all',SMEDIT=null;
+const SM_PEOPLE=['Richard Prescott','Lethaniel Stanley','Yanix Serafico','Julia Perez','Mari Diaz'];
+const smCan=()=>{const me=Y().S&&Y().S.me;return !!(me&&SM_PEOPLE.includes(me.n))};
+const SM_PL={facebook_page:'Facebook',instagram:'Instagram',linkedin_page:'LinkedIn page',linkedin_personal:'LinkedIn (Richard)',x:'X',tiktok:'TikTok',youtube:'YouTube',google_business:'Google Business',threads:'Threads'};
+const SM_LIM={facebook_page:63206,instagram:2200,linkedin_page:3000,linkedin_personal:3000,x:280,threads:500,google_business:1500,tiktok:2200,youtube:5000};
+const SM_AUD=[['company_driver','Company drivers (W-2, ADP)'],['owner_operator','Owner-operators (paid by settlement)'],['yard_crew','Yard, shop & office'],['brand','Brand / general']];
+const SM_CLAIM=/\$\s?\d|\bpay\b|per week|\/\s?wk|weekly|home (daily|every|nightly)|sign[- ]?on|bonus|guarantee|benefit|\bcpm\b|per mile|per load|\d+\s?%|percent|newer? (truck|equipment)|late[- ]model/i;
+const SM_BAD=[[/\b(young|youthful|recent (grad|graduate)s?|digital native|energetic young)\b/i,'Age wording (ADEA): say "new and experienced drivers" instead.'],[/\b(guys|men only|women only|ladies only|manpower|he will|she will)\b/i,'Gendered wording (EEOC): use "drivers" / "you".'],[/\b(native english|english only|american[- ]born|citizens? only)\b/i,'National-origin wording (EEOC): say "must read and speak English to DOT standard" only if that is the rule.'],[/\b(up to|as much as)\s+\$/i,'"Up to $" needs proof most drivers earn it (FTC). Use a typical range you can back up.'],[/\bguarantee/i,'"Guarantee" must be written into the contract or removed.'],[/\b(owner[- ]?operators?|lease[- ]on|1099|independent contractors?)\b[\s\S]*\b(employees?|w-?2|benefits|hourly)\b|\b(employees?|w-?2|benefits|hourly)\b[\s\S]*\b(owner[- ]?operators?|lease[- ]on|1099|independent contractors?)\b/i,'Do not mix the two: company drivers are W-2 on ADP; owner-operators are paid by settlement. One post per type.']];
+const smWarn=(t,pl,img)=>{const w=[];SM_BAD.forEach(([re,m])=>{if(re.test(t))w.push([m,true])});if(SM_CLAIM.test(t))w.push(['Pay / home-time / equipment claim found: needs Julia AND Lethaniel or Richard to approve, and the numbers must match the CareerPlug job and the ADP pay rate.',false]);
+  (pl||[]).forEach(p=>{const L=SM_LIM[p];if(L&&t.length>L)w.push([(SM_PL[p]||p)+': '+t.length+' characters, limit '+L+'.',true]);if(p==='instagram'&&!img)w.push(['Instagram needs a picture. Add an image link.',true]);if(p==='instagram'&&/https?:\/\//.test(t))w.push(['Links in Instagram captions are not clickable. Say "link in bio".',false])});return w};
+const smDT=v=>v?new Date(v).toLocaleString(undefined,{weekday:'short',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const smLocal=v=>{const d=v?new Date(v):new Date(Date.now()+3600000);const z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes())};
+const smToday=mk('smToday','social','today','<h2>Today <span class="t" id="smAsof">recruiting posts waiting on you, going out next and anything that failed</span></h2><div class="kpis" id="smK"></div><div id="smTL"></div>');
+const smCal=mk('smCal','social','calendar','<h2>Calendar <span class="t">next 14 days · approved posts go out at their time through the Chrome publisher</span></h2><div class="fchips" id="smCB"></div><div id="smCL"></div>');
+const smCont=mk('smCont','social','content','<h2>Content <span class="t">write once, pick the channels, send for approval</span></h2><div class="drow"><button class="btn" type="button" id="smNew">New post</button><button class="btn2" type="button" id="smRef">Refresh</button></div><div id="smCmp" hidden></div><div class="fchips" id="smF"></div><div class="drow"><input id="smQ" placeholder="Search post text, title" autocomplete="off" style="text-transform:none;flex:1"></div><div id="smL"></div>');
+const smHire=mk('smHire','social','hiring','<h2>Hiring <span class="t">CareerPlug is the hub · it pushes our 2 driver jobs to the boards below · applicants land here</span></h2><div class="kpis" id="smHK"></div><div id="smHE"></div><div class="tbl"><table class="score slT" id="smAT"></table></div><h3>Job boards</h3><div id="smBL"></div>');
+const smRes=mk('smRes','social','results','<h2>Results <span class="t">last 30 days</span></h2><div class="kpis" id="smRK"></div><div class="tbl"><table class="score slT" id="smRT"></table></div><p class="t">Likes, comments and clicks come in once the Meta and LinkedIn APIs are connected (Settings). Until then this counts posts and CareerPlug applicants.</p>');
+const smSet=mk('smSet','social','settings','<h2>Settings <span class="t">channels, who approves, house rules</span></h2><div id="smSL"></div>');
+const SM_SECS=[smToday,smCal,smCont,smHire,smRes,smSet];
+SM_SECS.forEach(s=>wrap.append(s));
+function smRun(fn,arg,btn){if(btn){btn.disabled=true;btn.dataset.t=btn.textContent;btn.textContent='Saving…'}
+  return Y().call(fn,[arg]).then(d=>{SM=d;renderSM();return d}).catch(e=>{alert((e&&e.message)||String(e))}).finally(()=>{if(btn){btn.disabled=false;btn.textContent=btn.dataset.t}})}
+function loadSM(force){if(!smCan()||!Y().call||!navigator.onLine)return;Y().call('getSocial',[{fresh:!!force}]).then(d=>{SM=d;renderSM()}).catch(e=>{$('smTL').textContent=(e&&e.message)||String(e)})}
+const smMine=()=>SM&&SM.me||{};
+function smNeedsMe(p){const me=smMine();if(p.status!=='draft'||p.review_status==='changes_requested'||me.role==='editor')return false;const ap=p.approvals||[];if(ap.some(a=>a.who===me.n))return false;if(p.has_claims&&ap.length&&ap.some(a=>a.role===me.role))return false;return true}
+function smCard(p,opt){const c=el('div','smP'),h=el('h4');h.append(el('span','pl '+p.platform,SM_PL[p.platform]||p.platform),el('span','stt '+p.status,p.status==='draft'?(p.review_status==='changes_requested'?'changes asked':'needs approval'):p.status==='queued'?'scheduled':p.status));
+  h.append(el('span','',p.brand+(p.title?' · '+p.title:'')));if(p.has_claims)h.append(el('span','tag','pay/claims · 2 approvals'));c.append(h);
+  c.append(el('div','meta',[smDT(p.scheduled_for||p.created_at),p.audience&&p.audience!=='brand'?(SM_AUD.find(a=>a[0]===p.audience)||[])[1]:'',p.created_by_task,p.updated_by&&('edited by '+p.updated_by)].filter(Boolean).join(' · ')));
+  c.append(el('pre','',p.post_text||''));if(p.image_url){const a=el('a','','Picture');a.href=p.image_url;a.target='_blank';c.append(a)}
+  if(p.link_url)c.append(el('div','meta','Link: '+p.link_url));
+  smWarn(p.post_text||'',[p.platform],p.image_url).forEach(([m,b])=>c.append(el('div','smW'+(b?' bad':''),m)));
+  if((p.approvals||[]).length)c.append(el('div','meta','Approved by '+p.approvals.map(a=>a.who.split(' ')[0]).join(' + ')+(p.has_claims&&p.approvals.length<2?' · waiting on '+(p.approvals[0].role==='recruiting'?'Lethaniel or Richard':'Julia'):'')));
+  if(p.review_notes)c.append(el('div','smW',p.review_notes));if(p.last_error)c.append(el('div','smW bad','Error: '+p.last_error));
+  if(p.post_url){const a=el('a','','Open the live post');a.href=p.post_url;a.target='_blank';c.append(a)}
+  const row=el('div','row'),B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));row.append(b)};
+  if(smNeedsMe(p))B('Approve','btn',b=>smRun('socialAct',{action:'approve',id:p.id},b));
+  if(p.status==='draft'&&smMine().role!=='editor'){B('Ask for changes','btn2',b=>{const r=prompt('What should change? (the writer sees this)');if(r)smRun('socialAct',{action:'reject',kind:'changes',id:p.id,reason:r},b)});B('Reject','btn2',b=>{const r=prompt('Why reject it? Pick: off-brand, pay/claim not backed up, compliance wording, wrong audience, bad picture, duplicate, other');if(r)smRun('socialAct',{action:'reject',kind:'reject',id:p.id,reason:r},b)})}
+  if(['draft','queued','failed','rejected'].includes(p.status))B('Edit','btn2',()=>smCompose(p));
+  if(p.status==='queued')B('Pull back to draft','btn2',b=>smRun('socialAct',{action:'unschedule',id:p.id},b));
+  if(p.status==='failed')B('Try again','btn2',b=>smRun('socialAct',{action:'retry',id:p.id},b));
+  if(row.children.length)c.append(row);return c}
+function smCompose(p){SMEDIT=p||null;const box=$('smCmp');box.hidden=false;box.textContent='';const f=el('div','smC');box.append(f);
+  f.append(el('h3','',p?'Edit post #'+p.id+' ('+(SM_PL[p.platform]||p.platform)+')':'New recruiting post'));
+  const brand=el('select');['2FF','1Stop'].forEach(b=>{const o=el('option','',b==='1Stop'?'1 Stop Logistics':'2FF Logistics');o.value=b;brand.append(o)});if(p)brand.value=p.brand,brand.disabled=true;
+  const aud=el('select');SM_AUD.forEach(([k,l])=>{const o=el('option','',l);o.value=k;aud.append(o)});aud.value=p?p.audience||'brand':'company_driver';
+  const title=el('input');title.placeholder='Short title for the calendar (not posted)';title.value=p&&p.title||'';
+  const tx=el('textarea');tx.placeholder='Write the post. Keep pay numbers the same as the CareerPlug job. End with how to apply.';tx.value=p?p.post_text||'':'';
+  const img=el('input');img.placeholder='Picture link (needed for Instagram)';img.value=p&&p.image_url||'';
+  const link=el('input');link.placeholder='Apply link (CareerPlug job page)';link.value=p&&p.link_url||'';
+  const when=el('input');when.type='datetime-local';when.value=smLocal(p&&p.scheduled_for);
+  const chs=el('div','smChs'),pick=new Set();
+  const drawCh=()=>{chs.textContent='';if(p){chs.append(el('span','pl '+p.platform,SM_PL[p.platform]||p.platform));return}
+    (SM.channels||[]).filter(c=>c.brand===brand.value).forEach(c=>{const l=el('label',c.connected?'':'off'),cb=el('input');cb.type='checkbox';cb.disabled=!c.connected;cb.checked=pick.has(c.key);cb.addEventListener('change',()=>{cb.checked?pick.add(c.key):pick.delete(c.key);prev()});l.append(cb,document.createTextNode(c.label.replace(/^.*?–\s*/,'')+(c.connected?'':' (add later)')));chs.append(l)})};
+  const W=el('div'),PV=el('div','smPv');
+  const plats=()=>p?[p.platform]:[...pick].map(k=>((SM.channels||[]).find(c=>c.key===k)||{}).platform).filter(Boolean);
+  const prev=()=>{W.textContent='';smWarn(tx.value+' '+title.value,plats(),img.value.trim()).forEach(([m,b])=>W.append(el('div','smW'+(b?' bad':''),m)));
+    PV.textContent='';[...new Set(plats())].forEach(pl=>{const d=el('div'),hd=el('div','hd');const L=SM_LIM[pl];hd.append(el('span','pl '+pl,SM_PL[pl]||pl),el('span','meta',tx.value.length+(L?' / '+L:'')));d.append(hd);
+      let t=tx.value;if(pl==='x'&&t.length>280)t=t.slice(0,277)+'…';d.append(el('pre','',t+(link.value&&pl!=='instagram'?'\n'+link.value:'')));if(img.value.trim()){const im=el('img');im.src=img.value.trim();im.alt='';im.onerror=()=>im.remove();d.append(im)}PV.append(d)})};
+  [tx,img,link,title].forEach(x=>x.addEventListener('input',prev));brand.addEventListener('change',()=>{pick.clear();drawCh();prev()});
+  const lab=(t,x)=>{f.append(el('label','',t),x)};lab('Company',brand);lab('Who is it for',aud);lab('Channels',chs);lab('Title',title);lab('Post',tx);f.append(W);lab('Picture',img);lab('Apply link',link);lab('Post at',when);
+  f.append(el('label','','Preview'),PV);
+  const row=el('div','drow'),save=el('button','btn',p?'Save changes (goes back for approval)':'Send for approval'),cancel=el('button','btn2','Cancel');save.type=cancel.type='button';
+  cancel.addEventListener('click',()=>{box.hidden=true;SMEDIT=null});
+  save.addEventListener('click',()=>{const o={post_text:tx.value.trim(),title:title.value.trim(),image_url:img.value.trim(),link_url:link.value.trim(),audience:aud.value,scheduled_for:when.value?new Date(when.value).toISOString():'',has_claims:SM_CLAIM.test(tx.value+' '+title.value)};
+    if(SM_BAD.some(([re])=>re.test(o.post_text))&&!confirm('This post has wording flagged for compliance (see the red notes). Send it anyway?'))return;
+    if(p)Object.assign(o,{action:'edit',id:p.id});else Object.assign(o,{action:'create',brand:brand.value,channels:[...pick]});
+    smRun('socialAct',o,save).then(d=>{if(d){box.hidden=true;SMEDIT=null;SMF='review';renderSMC()}})});
+  row.append(save,cancel);f.append(row);drawCh();prev();box.scrollIntoView({behavior:'smooth',block:'start'})}
+function renderSMT(){const P=SM.posts||[],K=$('smK'),L=$('smTL');K.textContent='';L.textContent='';const now=Date.now(),wk=now+7*864e5;
+  const mine=P.filter(smNeedsMe),wait=P.filter(p=>p.status==='draft'),next=P.filter(p=>p.status==='queued'&&new Date(p.scheduled_for||0).getTime()<wk),bad=P.filter(p=>p.status==='failed'||p.status==='posting'&&now-new Date(p.scheduled_for||p.created_at).getTime()>3*36e5),
+    ap=(SM.applicants||[]).filter(a=>now-new Date(a.at).getTime()<7*864e5);
+  [['Need your OK',mine.length],['Waiting approval',wait.length],['Going out (7 days)',next.length],['Failed / stuck',bad.length],['Applicants (7 days)',ap.length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),document.createTextNode(l));K.append(d)});
+  const sec=(t,a)=>{if(!a.length)return;L.append(el('h3','',t));a.forEach(p=>L.append(smCard(p)))};
+  sec('Needs your approval',mine);sec('Failed or stuck',bad);sec('Going out next',next.sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for)).slice(0,6));
+  if(!mine.length&&!bad.length&&!next.length)L.append(el('p','t','Nothing waiting. Write a post in Content.'));
+  try{subBadge('social','today',mine.length,!!bad.length)}catch(e){}}
+function renderSMCal(){const B=$('smCB'),L=$('smCL');B.textContent='';L.textContent='';const pls=[...new Set((SM.posts||[]).map(p=>p.platform))];
+  [['all','All']].concat(pls.map(p=>[p,SM_PL[p]||p])).forEach(([k,l])=>{const b=el('button',SMB===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{SMB=k;renderSMCal()});B.append(b)});
+  const s=new Date();s.setHours(0,0,0,0);const P=(SM.posts||[]).filter(p=>['queued','draft','posting','posted'].includes(p.status)&&(SMB==='all'||p.platform===SMB));
+  for(let i=0;i<14;i++){const d0=s.getTime()+i*864e5,d1=d0+864e5,day=P.filter(p=>{const t=new Date(p.scheduled_for||p.created_at).getTime();return t>=d0&&t<d1}).sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for));
+    L.append(el('div','smDay',new Date(d0).toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})+(day.length?'':' · nothing planned')));day.forEach(p=>L.append(smCard(p)))}}
+const SMFS=[['review','Needs approval'],['queued','Scheduled'],['posted','Posted'],['failed','Failed'],['rejected','Rejected'],['all','All']];
+function renderSMC(){const F=$('smF'),L=$('smL');F.textContent='';L.textContent='';const q=($('smQ').value||'').toLowerCase(),P=SM.posts||[];
+  const m=p=>SMF==='all'||(SMF==='review'?p.status==='draft':p.status===SMF);
+  SMFS.forEach(([k,l])=>{const b=el('button',SMF===k?'on':'',l+' ('+P.filter(p=>k==='all'||(k==='review'?p.status==='draft':p.status===k)).length+')');b.type='button';b.addEventListener('click',()=>{SMF=k;renderSMC()});F.append(b)});
+  const R=P.filter(m).filter(p=>!q||((p.post_text||'')+' '+(p.title||'')).toLowerCase().includes(q));if(!R.length)L.append(el('p','t','None.'));R.slice(0,80).forEach(p=>L.append(smCard(p)))}
+function renderSMH(){const A=SM.applicants||[],K=$('smHK'),T=$('smAT'),E=$('smHE'),BL=$('smBL');K.textContent='';T.textContent='';E.textContent='';BL.textContent='';const now=Date.now();
+  if(SM.applicantsErr)E.append(el('div','smW bad',SM.applicantsErr));
+  const last=A[0]?new Date(A[0].at):null;if(last&&now-last.getTime()>10*864e5)E.append(el('div','smW','No new applicant has reached the CareerPlug Applicants sheet since '+last.toLocaleDateString()+'. Check that the CareerPlug alert is still running and the jobs are still open.'));
+  [['This week',A.filter(a=>now-new Date(a.at)<7*864e5).length],['Fast Track',A.filter(a=>a.fast).length],['Not called back',A.filter(a=>!/^y/i.test(a.called)).length],['90 days',A.length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),document.createTextNode(l));K.append(d)});
+  const hd=el('tr');['Applied','Name','Job','Fast Track','Called back','Status','Notes',''].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  if(!A.length){const tr=el('tr'),td=el('td','',SM.applicantsErr?'Cannot read the sheet yet.':'No applicants in the last 90 days.');td.colSpan=8;tr.append(td);T.append(tr)}
+  const ST=['','Phone screen','MVR/PSP/drug','Road test','Docs','Hired','Not a fit','No answer'];
+  A.forEach(a=>{const tr=el('tr'),cb=el('select'),sl=el('select'),nt=el('input');['','Y','N'].forEach(v=>{const o=el('option','',v||'–');o.value=v;if(String(a.called).toUpperCase().startsWith(v)&&v)o.selected=true;cb.append(o)});
+    ST.concat(ST.includes(a.status)?[]:[a.status]).forEach(v=>{const o=el('option','',v||'–');o.value=v;if(v===a.status)o.selected=true;sl.append(o)});nt.placeholder=a.notes||'note';nt.style.textTransform='none';
+    const b=el('button','btn2','Save');b.type='button';b.addEventListener('click',()=>smRun('socialApplicant',{row:a.row,called:cb.value,status:sl.value,notes:nt.value.trim()||null},b));
+    tr.append(el('td','',smDT(a.at)),el('td','',a.name),el('td','',a.job.replace(/ Local Port Drayage Home Daily| Savannah Home Daily/,'')),el('td',a.fast?'go':'muted',a.fast?'Yes':''));[cb,sl,nt].forEach(x=>{const td=el('td');td.append(x);tr.append(td)});const td=el('td');td.append(b);tr.append(td);T.append(tr)});
+  (SM.boards||[]).forEach(b=>{const r=el('div','smBd'),l=el('div');l.append(el('b','',b.label),el('div','meta',b.how+(b.note?' · '+b.note:'')));const s=el('div',b.on?'on':'offx',b.on?'live':'not set up');
+    if(b.url){const a=el('a','btn2','Open');a.href=b.url;a.target='_blank';s.append(document.createTextNode(' '),a)}r.append(l,s);BL.append(r)})}
+function renderSMR(){const P=(SM.posts||[]).filter(p=>Date.now()-new Date(p.posted_at||p.scheduled_for||p.created_at)<30*864e5),K=$('smRK'),T=$('smRT');K.textContent='';T.textContent='';
+  const posted=P.filter(p=>p.status==='posted');[['Posted',posted.length],['Failed',P.filter(p=>p.status==='failed').length],['Rejected',P.filter(p=>p.status==='rejected').length],['Applicants',(SM.applicants||[]).filter(a=>Date.now()-new Date(a.at)<30*864e5).length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),document.createTextNode(l));K.append(d)});
+  const hd=el('tr');['Channel','Posted','Failed','Recruiting posts','Last post'].forEach(h=>hd.append(el('th','',h)));T.append(hd);
+  [...new Set(P.map(p=>p.brand+'|'+p.platform))].sort().forEach(k=>{const [b,pl]=k.split('|'),X=P.filter(p=>p.brand===b&&p.platform===pl),ps=X.filter(p=>p.status==='posted');const lastP=ps.map(p=>p.posted_at).filter(Boolean).sort().pop();
+    const tr=el('tr');tr.append(el('td','',b+' · '+(SM_PL[pl]||pl)),el('td','',String(ps.length)),el('td',X.some(p=>p.status==='failed')?'bad':'',String(X.filter(p=>p.status==='failed').length)),el('td','',String(ps.filter(p=>p.audience&&p.audience!=='brand').length)),el('td','',lastP?smDT(lastP):''));T.append(tr)})}
+function renderSMS(){const L=$('smSL');L.textContent='';L.append(el('h3','','Social channels'));
+  (SM.channels||[]).forEach(c=>{const r=el('div','smBd'),l=el('div');l.append(el('b','',c.label),el('div','meta',c.connect_method||''));const s=el('div',c.connected?'on':'offx',c.connected?'posting':'add later');if(c.target_url){const a=el('a','btn2','Open');a.href=c.target_url;a.target='_blank';s.append(document.createTextNode(' '),a)}r.append(l,s);L.append(r)});
+  L.append(el('h3','','Who does what'));const ppl=SM.people||{};Object.keys(ppl).forEach(n=>L.append(el('div','smBd',n+' — '+(ppl[n]==='manager'?'writes, approves':ppl[n]==='recruiting'?'writes, approves (required on any pay/home-time claim)':'writes, sends for approval'))));
+  L.append(el('h3','','House rules'));['Every post is a draft until approved. The Chrome publisher only posts approved ones.','Pay, home time, equipment, bonus or "guarantee" = two approvals: Julia AND Lethaniel or Richard. Numbers must match the CareerPlug job.','Two kinds of driver seats, never in the same post: company drivers (W-2, paid through ADP; only promise benefits we offer) and owner-operators (lease-on, paid by settlement; never call them employees).','No age, gender or national-origin wording. Say "drivers" and "you".','Mix: about 40% open seats, 25% day in the life, 20% driver stories (with the driver\'s OK), 15% company news.','Boosted job ads on Facebook/Instagram must use Meta\'s Employment special ad category.','Every post ends with how to apply (the CareerPlug link) so we can count applicants by channel.'].forEach(t=>L.append(el('div','smBd',t)))}
+function renderSM(){SM_SECS.forEach(s=>s.hidden=!smCan());if(!smCan()||!SM)return;
+  const fns=[renderSMT,renderSMCal,renderSMC,renderSMH,renderSMR,renderSMS];fns.forEach(f=>{try{f()}catch(e){console.error(e)}});try{tabVis()}catch(e){}}
+smCont.querySelector('#smNew').addEventListener('click',()=>{if(SM)smCompose(null)});smCont.querySelector('#smRef').addEventListener('click',()=>loadSM(true));smCont.querySelector('#smQ').addEventListener('input',()=>{if(SM)renderSMC()});
+SM_SECS.forEach(s=>s.hidden=true);
+setTimeout(()=>{renderSM();loadSM()},3500);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='social')loadSM()},3*60000);
+// ---------- FCNER tab: Financial Command Center (Richard only) ----------
+// Security does NOT rely on this code. Finance data lives in Supabase schema `finance`; every row needs an explicit
+// owner_finance grant AND an MFA (aal2) session (finance.is_owner()). Yard codes, the admin role and the anon key read nothing.
+// The tab button shows only on Richard's Yard App code; the data shows only after his own Supabase sign-in + authenticator code.
+{const st=el('style');st.textContent='.fcK{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}.fcK>div{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:8px 10px;background:var(--card,#fff)}.fcK b{display:block;font-size:20px;font-family:var(--mono)}.fcK .l{font-size:12px;font-weight:600}.fcK .s{font-size:11px;color:var(--mut,#5d686d)}'+
+'.tg{font-size:10px;border-radius:10px;padding:0 6px;margin-left:4px;font-weight:700;vertical-align:middle}.tg.a{background:#e6f2ea;color:#2e7d4f}.tg.e{background:#fff6dc;color:#8a6100}.tg.p{background:#e7f1fb;color:#0a66c2}.tg.n{background:#eee;color:#5d686d}'+
+'.fcBox{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:14px;background:var(--card,#fff);max-width:420px}.fcBox input{width:100%;box-sizing:border-box;margin:4px 0 10px;text-transform:none}.fcBox img{width:200px;height:200px;display:block;margin:8px 0}.fcBar{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.fcBar button.on{background:var(--ink,#1f2a44);color:#fff}.fcMsg{font-size:13px;margin:6px 0}.fcMsg.bad{color:#b3261e}'+
+'.fcCh{width:100%;height:170px}.fcCh text{font-size:10px;fill:var(--mut,#5d686d)}.fcCh rect.b2{fill:#1f2a44}.fcCh rect.b1{fill:#c8102e}';document.head.append(st)}
+const FC_SB_URL='https://lzwidcwiejowjhgzkcxo.supabase.co',FC_SB_KEY='sb_publishable_EKl8WQgmfocO7TqKJGqE5A_TRxy-LcP',FC_EMAIL='rp@2f-logistics.com';
+let FCSB=null,FCD=null,FCCO='both',FCRANGE='ytd',FCLAST=0,FCOK=false;
+const fcCan=()=>{const me=Y().S&&Y().S.me;return !!(me&&me.n==='Richard Prescott')};
+const fcSec=mk('fcGate','owner','center','<h2>Command Center <span class="t" id="fcAsof">owner only · your own sign-in</span></h2><div id="fcAuth"></div><div id="fcMain" hidden><div class="fcBar" id="fcCo"></div><div class="fcBar" id="fcRg"></div><div class="fcK" id="fcK"></div><h3>Invoiced by month</h3><div id="fcChart"></div><p class="t" id="fcNote"></p></div>');
+const fcBooks=mk('fcBooks','owner','books','<h2>Receivables &amp; payables <span class="t">from QuickBooks · each company\'s own books</span></h2><div class="fcBar"><button class="btn2" type="button" id="fcCsvAr">Download receivables CSV</button><button class="btn2" type="button" id="fcCsvAp">Download payables CSV</button></div><h3>Customers who owe us</h3><div class="tbl"><table class="score slT" id="fcAr"></table></div><h3>Bills to pay</h3><div class="tbl"><table class="score slT" id="fcAp"></table></div>');
+const fcPay=mk('fcPay','owner','payroll','<h2>Payroll (ADP RUN) <span class="t">company drivers and staff · from each RUN payroll summary</span></h2><p class="t">Until ADP confirms API access for RUN, enter the totals from the RUN payroll summary after each run (2 minutes). Every save is logged.</p><div class="fcBox" id="fcPayF"></div><div class="tbl"><table class="score slT" id="fcPayT"></table></div>');
+const fcInt=mk('fcInt','owner','connect','<h2>Integrations <span class="t">what feeds this tab, and when it last worked</span></h2><div class="tbl"><table class="score slT" id="fcIntT"></table></div><h3>Recent syncs</h3><div class="tbl"><table class="score slT" id="fcSyncT"></table></div><div class="fcBar"><button class="btn2" type="button" id="fcOut">Sign out of Finance</button></div>');
+const FC_SECS=[fcSec,fcBooks,fcPay,fcInt];FC_SECS.forEach(s=>{s.hidden=true;wrap.append(s)});
+const fcMoney=n=>n==null||isNaN(n)?'–':(n<0?'-':'')+'$'+Math.abs(Math.round(+n)).toLocaleString();
+const fcTag=t=>'<span class="tg '+({Actual:'a',Estimate:'e',Projection:'p'}[t]||'n')+'">'+t+'</span>';
+async function fcClient(){if(FCSB)return FCSB;const m=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
+  FCSB=m.createClient(FC_SB_URL,FC_SB_KEY,{auth:{storage:window.sessionStorage,persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});return FCSB}
+function fcLock(msg){FCOK=false;FCD=null;$('fcMain').hidden=true;[fcBooks,fcPay,fcInt,typeof fcDp!=='undefined'?fcDp:fcInt].forEach(s=>s.hidden=true);try{tabVis()}catch(e){}if(msg)fcAuthUI(msg)}
+async function fcAuthUI(msg){const A=$('fcAuth');A.textContent='';A.hidden=false;const box=el('div','fcBox');A.append(box);if(msg)box.append(el('div','fcMsg bad',msg));
+  let sb;try{sb=await fcClient()}catch(e){box.append(el('div','fcMsg bad','Could not load the secure sign-in. Check the internet connection.'));return}
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){box.append(el('h3','','Finance sign-in'),el('p','t','Separate from your Yard App code. Only rp@2f-logistics.com, with the 6-digit code from your authenticator app.'));
+    const em=el('input');em.value=FC_EMAIL;em.readOnly=true;const pw=el('input');pw.type='password';pw.placeholder='Finance password';pw.autocomplete='current-password';
+    const go=el('button','btn','Sign in'),mkacct=el('button','btn2','First time: create my finance login'),m=el('div','fcMsg');go.type=mkacct.type='button';
+    go.addEventListener('click',async()=>{m.textContent='Signing in…';const {error}=await sb.auth.signInWithPassword({email:FC_EMAIL,password:pw.value});pw.value='';if(error){m.className='fcMsg bad';m.textContent=error.message;return}fcAuthUI()});
+    mkacct.addEventListener('click',async()=>{if(pw.value.length<12){m.className='fcMsg bad';m.textContent='Use at least 12 characters.';return}m.textContent='Creating…';const {error}=await sb.auth.signUp({email:FC_EMAIL,password:pw.value});pw.value='';
+      m.className='fcMsg'+(error?' bad':'');m.textContent=error?error.message:'Done. Open the confirmation email Supabase sent to rp@, click it, then come back and sign in. Then tell Claude to turn on your finance permission.'});
+    box.append(el('label','t','Email'),em,el('label','t','Password'),pw,go,document.createTextNode(' '),mkacct,m);return}
+  const {data:aal}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if(aal.currentLevel!=='aal2'){const {data:f}=await sb.auth.mfa.listFactors();const tot=(f&&f.totp||[]).find(x=>x.status==='verified');let fid=tot&&tot.id;
+    if(!fid){box.append(el('h3','','Set up your authenticator'),el('p','t','Scan this with Google Authenticator, Microsoft Authenticator or 1Password, then type the 6-digit code it shows. Keep the setup key somewhere safe and offline: it is your backup.'));
+      const old=(f&&f.all||[]).filter(x=>x.factor_type==='totp'&&x.status!=='verified');for(const o of old){try{await sb.auth.mfa.unenroll({factorId:o.id})}catch(e){}}
+      const {data:en,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Richard phone'});if(error){box.append(el('div','fcMsg bad',error.message));return}
+      fid=en.id;const im=el('img');im.src=en.totp.qr_code;im.alt='Authenticator QR code';box.append(im,el('div','t','Setup key: '+en.totp.secret))}
+    else box.append(el('h3','','Authenticator code'),el('p','t','Type the 6-digit code from your authenticator app.'));
+    const c=el('input');c.inputMode='numeric';c.autocomplete='one-time-code';c.maxLength=6;c.placeholder='123456';const b=el('button','btn','Verify'),m=el('div','fcMsg');b.type='button';
+    b.addEventListener('click',async()=>{const {error}=await sb.auth.mfa.challengeAndVerify({factorId:fid,code:c.value.trim()});c.value='';if(error){m.className='fcMsg bad';m.textContent=error.message;return}FCLAST=Date.now();fcAuthUI()});
+    const so=el('button','btn2','Cancel');so.type='button';so.addEventListener('click',async()=>{await sb.auth.signOut();fcAuthUI()});
+    box.append(c,b,document.createTextNode(' '),so,m);return}
+  const {data:isOwner,error:oe}=await sb.rpc('fin_is_owner');
+  if(oe||!isOwner){box.append(el('div','fcMsg bad','Signed in with your authenticator, but this login does not have the owner_finance permission yet. Tell Claude: "grant finance to rp@".'));return}
+  A.hidden=true;FCOK=true;if(!FCLAST)FCLAST=Date.now();fcLoad()}
+async function fcFresh(why){if(Date.now()-FCLAST<5*60000)return true;const sb=await fcClient();const {data:f}=await sb.auth.mfa.listFactors();const t=(f.totp||[]).find(x=>x.status==='verified');if(!t)return false;
+  const code=prompt('Type a fresh 6-digit authenticator code to '+why+'.');if(!code)return false;const {error}=await sb.auth.mfa.challengeAndVerify({factorId:t.id,code:code.trim()});if(error){alert(error.message);return false}FCLAST=Date.now();return true}
+function fcRange(){const t=new Date(),z=d=>d.toISOString().slice(0,10);if(FCRANGE==='month')return [z(new Date(t.getFullYear(),t.getMonth(),1)),z(t)];if(FCRANGE==='12m')return [z(new Date(t.getFullYear()-1,t.getMonth()+1,1)),z(t)];return [z(new Date(t.getFullYear(),0,1)),z(t)]}
+async function fcLoad(){const sb=await fcClient();const [a,b]=fcRange();const {data,error}=await sb.rpc('fin_dashboard',{p_from:a,p_to:b});
+  if(error){if(/not authorized|JWT|aal/i.test(error.message))return fcLock('Session ended. Sign in again.');$('fcNote').textContent=error.message;return}FCD=data;fcRender()}
+const fcC=r=>FCCO==='both'||r.company===FCCO;
+function fcPL(co){const R=(FCD.reports||[]).filter(r=>r.report==='ProfitAndLoss'&&(co==='both'||r.company===co));if(!R.length)return null;const out={income:0,cogs:0,gross:0,expenses:0,net:0,at:null};
+  R.forEach(r=>{(((r.data||{}).Rows||{}).Row||[]).forEach(row=>{const g=row.group,v=+(((row.Summary||{}).ColData||[])[1]||{}).value||0;if(g==='Income')out.income+=v;else if(g==='COGS')out.cogs+=v;else if(g==='GrossProfit')out.gross+=v;else if(g==='Expenses')out.expenses+=v;else if(g==='NetIncome')out.net+=v});
+    if(!out.at||r.fetched_at>out.at)out.at=r.fetched_at});return out}
+function fcRender(){const D=FCD,co=FCCO,K=$('fcK');$('fcMain').hidden=false;[fcBooks,fcPay,fcInt,fcDp].forEach(s=>s.hidden=false);fcDpLoad();try{tabVis()}catch(e){}
+  const C=D.companies||[],conn=C.filter(c=>co==='both'||c.id===co),live=conn.some(c=>c.qbo_status==='connected');
+  const bar=(id,opts,cur,set)=>{const B=$(id);B.textContent='';opts.forEach(([k,l])=>{const x=el('button','btn2'+(k===cur?' on':''),l);x.type='button';x.addEventListener('click',()=>{set(k)});B.append(x)})};
+  bar('fcCo',[['both','Both (side by side)'],['2FF','2FF Logistics'],['1Stop','1 Stop Logistics']],FCCO,k=>{FCCO=k;fcRender()});
+  bar('fcRg',[['month','This month'],['ytd','Year to date'],['12m','Last 12 months']],FCRANGE,k=>{FCRANGE=k;fcLoad()});
+  const today=new Date().toISOString().slice(0,10),dw=new Date();dw.setDate(dw.getDate()-((dw.getDay()+6)%7));const wk=dw.toISOString().slice(0,10),mo=today.slice(0,8)+'01',yr=today.slice(0,5)+'01-01';
+  const rev=(D.revenue||[]).filter(fcC),sum=f=>rev.filter(r=>r.day>=f).reduce((s,r)=>s+(+r.amt||0),0);
+  const ar=(D.ar||[]).filter(fcC),ap=(D.ap||[]).filter(fcC),bank=(D.bank||[]).filter(fcC),pl=fcPL(co),pay=(D.payroll||[]).filter(fcC);
+  const last=conn.map(c=>c.last_sync_at).filter(Boolean).sort().pop(),src=s=>s+(last?' · synced '+fmtDT(new Date(last).getTime()):' · not connected');
+  const card=(l,v,tag,s)=>'<div><span class="l">'+l+'</span>'+fcTag(live||tag==='Actual'&&s.includes('ADP')?tag:'Not connected')+'<b>'+v+'</b><span class="s">'+s+'</span></div>';
+  const payTot=pay.filter(p=>p.pay_date>=yr),pg=payTot.reduce((s,p)=>s+(+p.gross_wages||0),0),pc=payTot.reduce((s,p)=>s+(+p.employer_cost||+p.gross_wages||0),0),pd=payTot.reduce((s,p)=>s+(+p.driver_wages||0),0);
+  K.innerHTML=[card('Revenue today',fcMoney(sum(today)),'Actual',src('QuickBooks invoices')),card('This week',fcMoney(sum(wk)),'Actual',src('QuickBooks invoices')),card('This month',fcMoney(sum(mo)),'Actual',src('QuickBooks invoices')),card('This year',fcMoney(sum(yr)),'Actual',src('QuickBooks invoices')),
+    card('Cash in bank',fcMoney(bank.reduce((s,b)=>s+(+b.balance||0),0)),'Actual',src('QuickBooks bank accounts')),
+    card('Gross profit',pl?fcMoney(pl.gross||pl.income-pl.cogs):'–','Actual',src('QuickBooks P&L')),card('Operating expenses',pl?fcMoney(pl.expenses):'–','Actual',src('QuickBooks P&L')),card('Net profit',pl?fcMoney(pl.net):'–','Actual',src('QuickBooks P&L')),
+    card('Customers owe us',fcMoney(ar.reduce((s,r)=>s+(+r.balance||0),0)),'Actual',ar.length+' open invoices'),card('Overdue',fcMoney(ar.filter(r=>r.days_overdue>0).reduce((s,r)=>s+(+r.balance||0),0)),'Actual',ar.filter(r=>r.days_overdue>30).length+' over 30 days'),
+    card('Bills due in 14 days',fcMoney(ap.filter(r=>r.days_until_due<=14).reduce((s,r)=>s+(+r.balance||0),0)),'Actual',ap.filter(r=>r.days_until_due<0).length+' past due'),
+    '<div><span class="l">Payroll this year</span>'+fcTag(payTot.length?'Actual':'Not connected')+'<b>'+(payTot.length?fcMoney(pc):'–')+'</b><span class="s">'+(payTot.length?'gross '+fcMoney(pg)+' · drivers '+fcMoney(pd)+' · ADP RUN summaries':'enter RUN totals under Payroll')+'</span></div>',
+    '<div><span class="l">Per truck / driver / customer / load</span>'+fcTag('Estimate')+'<b>–</b><span class="s">needs TruckMan loads + costs by truck</span></div>'].join('');
+  // monthly bars: 2FF navy, 1 Stop red
+  const M={};rev.forEach(r=>{const k=String(r.day).slice(0,7);M[k]=M[k]||{'2FF':0,'1Stop':0};M[k][r.company]+=+r.amt||0});const ks=Object.keys(M).sort().slice(-12),mx=Math.max(1,...ks.map(k=>Math.max(M[k]['2FF'],M[k]['1Stop'])));
+  const W=Math.max(1,ks.length),bw=300/W;$('fcChart').innerHTML=ks.length?'<svg class="fcCh" viewBox="0 0 320 170" role="img" aria-label="Invoiced by month">'+ks.map((k,i)=>{const x=10+i*bw,h2=140*M[k]['2FF']/mx,h1=140*M[k]['1Stop']/mx;return '<rect class="b2" x="'+x+'" y="'+(150-h2)+'" width="'+(bw*.4)+'" height="'+h2+'"><title>2FF '+k+' '+fcMoney(M[k]['2FF'])+'</title></rect><rect class="b1" x="'+(x+bw*.42)+'" y="'+(150-h1)+'" width="'+(bw*.4)+'" height="'+h1+'"><title>1 Stop '+k+' '+fcMoney(M[k]['1Stop'])+'</title></rect><text x="'+(x+bw*.4)+'" y="164" text-anchor="middle">'+k.slice(5)+'</text>'}).join('')+'</svg><div class="t">Navy = 2FF · Red = 1 Stop · each company from its own QuickBooks</div>':'<p class="t">No invoices synced yet.</p>';
+  $('fcNote').innerHTML=live?'Actual = posted in QuickBooks or ADP. Estimate = from loads not yet invoiced. Projection = forecast. Companies are shown side by side, never merged.':'<b>QuickBooks is not connected yet.</b> Next step: create the Intuit developer app (see the Phase 1 plan), then connect 2FF and 1 Stop under Integrations.';
+  $('fcAsof').textContent='owner only · loaded '+fmtDT(Date.now());
+  // books
+  const T=(id,head,rows,fn)=>{const t=$(id);t.textContent='';const h=el('tr');head.forEach(x=>h.append(el('th','',x)));t.append(h);if(!rows.length){const r=el('tr'),d=el('td','','Nothing yet.');d.colSpan=head.length;r.append(d);t.append(r)}rows.slice(0,200).forEach(x=>{const r=el('tr');fn(x).forEach(([v,c])=>r.append(el('td',c||'',v==null?'':String(v))));t.append(r)})};
+  T('fcAr',['Company','Customer','Invoice','Due','Days late','Balance'],ar,x=>[[x.company],[x.party_name],[x.doc_number],[x.due_date],[x.days_overdue||'',x.days_overdue>30?'bad':x.days_overdue>0?'warn':''],[fcMoney(x.balance)]]);
+  T('fcAp',['Company','Vendor','Bill','Due','Days left','Balance'],ap,x=>[[x.company],[x.party_name],[x.doc_number],[x.due_date],[x.days_until_due,x.days_until_due<0?'bad':x.days_until_due<=7?'warn':''],[fcMoney(x.balance)]]);
+  T('fcPayT',['Company','Pay date','Period','People','Reg hrs','OT hrs','Gross','Employer taxes','Employer cost','Drivers'],pay,x=>[[x.company],[x.pay_date],[(x.period_start||'')+' – '+(x.period_end||'')],[x.employees],[x.hours_regular],[x.hours_overtime],[fcMoney(x.gross_wages)],[fcMoney(x.employer_taxes)],[fcMoney(x.employer_cost)],[fcMoney(x.driver_wages)]]);
+  T('fcIntT',['Source','Company','Status','Last good sync','Notes'],[].concat(C.map(c=>({s:'QuickBooks Online',c:c.legal_name,st:c.qbo_status,t:c.last_sync_at,n:c.last_error||(c.qbo_status==='connected'?'read-only':'waiting for the Intuit app')})),
+    [{s:'ADP RUN',c:'both',st:pay.length?'manual totals':'not connected',t:pay[0]&&pay[0].uploaded_at,n:'API for RUN unconfirmed; using RUN payroll summaries'},{s:'TruckMan (US1)',c:'2FF',st:'requested',t:null,n:'waiting on US1 IT for API access'}]),x=>[[x.s],[x.c],[x.st,/connected|manual/.test(x.st)&&!/not/.test(x.st)?'go':'warn'],[x.t?fmtDT(new Date(x.t).getTime()):'–'],[x.n]]);
+  T('fcSyncT',['Started','Company','Source','Status','Rows','Error'],D.sync||[],x=>[[fmtDT(new Date(x.started_at).getTime())],[x.company],[x.source],[x.status,x.status==='ok'?'go':x.status==='error'?'bad':''],[x.rows_upserted],[x.error]]);
+  fcPayForm();fcQboButtons()}
+
+async function fcFn(name,body){const sb=await fcClient();const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error('Sign in again.');
+  const r=await fetch(FC_SB_URL+'/functions/v1/'+name,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'apikey':FC_SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('Error '+r.status));return j}
+function fcQboButtons(){const T=$('fcIntT');if(!T||!FCD||$('fcQboBar'))return;const bar=el('div','fcBar');bar.id='fcQboBar';
+  (FCD.companies||[]).forEach(c=>{const on=c.qbo_status==='connected',b=el('button',on?'btn2':'btn',(on?'Disconnect ':'Connect ')+c.legal_name.replace(' LLC','')+' QuickBooks');b.type='button';
+    b.addEventListener('click',async()=>{if(!(await fcFresh((on?'disconnect ':'connect ')+'QuickBooks')))return;try{const j=await fcFn('qbo-oauth',{action:on?'disconnect':'start',company:c.id});if(j.url)location.href=j.url;else fcLoad()}catch(e){alert(e.message)}});bar.append(b)});
+  const s=el('button','btn2','Sync QuickBooks now');s.type='button';s.addEventListener('click',async()=>{s.disabled=true;s.textContent='Syncing…';try{await fcFn('qbo-sync',{});await fcLoad()}catch(e){alert(e.message)}finally{s.disabled=false;s.textContent='Sync QuickBooks now'}});bar.append(s);
+  T.closest('.tbl').after(bar)}
+function fcPayForm(){const F=$('fcPayF');if(F.dataset.done)return;F.dataset.done=1;const fs=[['company','Company','select'],['pay_date','Pay date','date'],['period_start','Period start','date'],['period_end','Period end','date'],['employees','People paid','number'],['hours_regular','Regular hours','number'],['hours_overtime','Overtime hours','number'],['gross_wages','Gross wages $','number'],['employer_taxes','Employer taxes $','number'],['employer_cost','Total employer cost $','number'],['driver_wages','Of gross: drivers $','number']],I={};
+  fs.forEach(([k,l,t])=>{let i;if(t==='select'){i=el('select');[['2FF','2FF Logistics'],['1Stop','1 Stop Logistics']].forEach(([v,n])=>{const o=el('option','',n);o.value=v;i.append(o)})}else{i=el('input');i.type=t;if(t==='number')i.step='0.01'}I[k]=i;F.append(el('label','t',l),i)});
+  const b=el('button','btn','Save payroll totals'),m=el('div','fcMsg');b.type='button';b.addEventListener('click',async()=>{const p={};Object.keys(I).forEach(k=>p[k]=I[k].value);if(!p.pay_date||!p.gross_wages){m.className='fcMsg bad';m.textContent='Pay date and gross wages are required.';return}
+    const sb=await fcClient();const {error}=await sb.rpc('fin_add_payroll',{p});m.className='fcMsg'+(error?' bad':'');m.textContent=error?error.message:'Saved.';if(!error){Object.values(I).forEach(i=>{if(i.tagName==='INPUT')i.value=''});fcLoad()}});F.append(b,m)}
+function fcCsv(name,rows){const cols=Object.keys(rows[0]||{});const csv=[cols.join(',')].concat(rows.map(r=>cols.map(c=>'"'+String(r[c]==null?'':r[c]).replace(/"/g,'""')+'"').join(','))).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
+['fcCsvAr','fcCsvAp'].forEach(id=>fcBooks.querySelector('#'+id).addEventListener('click',async()=>{if(!FCD||!(await fcFresh('download a finance file')))return;const ar=id==='fcCsvAr',rows=(ar?FCD.ar:FCD.ap).filter(fcC);
+  const sb=await fcClient();await sb.rpc('fin_audit',{p_action:'export_csv',p_detail:{what:ar?'receivables':'payables',company:FCCO,rows:rows.length}});fcCsv((ar?'receivables-':'payables-')+FCCO+'-'+new Date().toISOString().slice(0,10)+'.csv',rows)}));
+fcInt.querySelector('#fcOut').addEventListener('click',async()=>{const sb=await fcClient();await sb.auth.signOut();fcLock('Signed out.')});
+// lock when the app is hidden for 10 minutes
+let FCHID=0;document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')FCHID=Date.now();else if(FCOK&&FCHID&&Date.now()-FCHID>10*60000){fcClient().then(sb=>sb.auth.signOut()).finally(()=>fcLock('Locked after 10 minutes away. Sign in again.'))}});
+if(/[?&]qbo=connected/.test(location.search))setTimeout(()=>alert('QuickBooks connected. The first sync runs within 15 minutes, or press Sync now under Integrations.'),4500);
+function fcStart(){fcSec.hidden=!fcCan();if(!fcCan()){FC_SECS.forEach(s=>s.hidden=true);return}try{tabVis()}catch(e){}if(!FCOK&&!$('fcAuth').childElementCount)fcAuthUI()}
+
+// ---------- Owner > Driver pay (Richard enters; company drivers -> ADP RUN, owner-operators -> direct settlement) ----------
+const fcDp=mk('fcDp','owner','driverpay','<h2>Driver pay <span class="t">you enter it · company drivers go to ADP RUN · owner-operators are paid directly</span></h2><div class="fcBar"><button class="btn2" type="button" id="fcDpPrev">◀ Week</button><input type="date" id="fcDpWk" style="max-width:170px"><button class="btn2" type="button" id="fcDpNext">Week ▶</button></div><div class="fcK" id="fcDpK"></div><h3>Company drivers (W-2 · ADP)</h3><div class="tbl"><table class="score slT" id="fcDpC"></table></div><h3>Owner-operators (settlement)</h3><div class="tbl"><table class="score slT" id="fcDpO"></table></div><p class="t" id="fcDpNote">Gross = regular hours × rate + overtime × rate × 1.5 + other. Saving a week again puts it back to draft. Once marked "sent to ADP" or "paid" it is locked.</p><div class="fcBar"><button class="btn2" type="button" id="fcDpCopy">Copy ADP entry list</button></div>');
+fcDp.hidden=true;wrap.append(fcDp);FC_SECS.push(fcDp);
+let FCDRV=null,FCPAY=[];
+const fcSun=d=>{const x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.getDate()-x.getDay());return x.toISOString().slice(0,10)};
+{const w=$('fcDpWk');const t=new Date();t.setDate(t.getDate()-7);w.value=fcSun(t);
+  w.addEventListener('change',()=>{w.value=fcSun(w.value);fcDpLoad()});
+  $('fcDpPrev').addEventListener('click',()=>{const d=new Date(w.value+'T12:00');d.setDate(d.getDate()-7);w.value=fcSun(d);fcDpLoad()});
+  $('fcDpNext').addEventListener('click',()=>{const d=new Date(w.value+'T12:00');d.setDate(d.getDate()+7);w.value=fcSun(d);fcDpLoad()})}
+async function fcDpLoad(){if(!FCOK)return;const sb=await fcClient();if(!FCDRV){const {data,error}=await sb.rpc('fin_drivers');if(error)return;FCDRV=data||[]}
+  const {data,error}=await sb.rpc('fin_pay_list',{p_week:$('fcDpWk').value});if(error){$('fcDpNote').textContent=error.message;return}FCPAY=data||[];fcDpRender()}
+function fcDpRender(){const wk=$('fcDpWk').value,end=new Date(wk+'T12:00');end.setDate(end.getDate()+6);
+  const by=Object.fromEntries(FCPAY.map(p=>[p.driver_id,p]));
+  const inp=(v,w)=>{const i=el('input');i.type='number';i.step='0.01';i.value=v==null?'':v;i.style.width=(w||70)+'px';return i};
+  const coSel=v=>{const s=el('select');[['2FF','2FF'],['1Stop','1 Stop']].forEach(([k,l])=>{const o=el('option','',l);o.value=k;if(k===(v||'2FF'))o.selected=true;s.append(o)});return s};
+  const stat=p=>p?({draft:'draft',approved:'approved',sent_to_adp:'in ADP',paid:'paid'}[p.status]):'not entered';
+  const build=(id,eng,head,fields)=>{const T=$(id);T.textContent='';const h=el('tr');head.forEach(x=>h.append(el('th','',x)));T.append(h);
+    (FCDRV||[]).filter(d=>d.engagement===eng).forEach(d=>{const p=by[d.id],tr=el('tr'),co=coSel(p&&p.company),I={};
+      tr.append(el('td','',d.name));const tdc=el('td');tdc.append(co);tr.append(tdc);
+      fields.forEach(([k,w])=>{I[k]=inp(p&&p[k],w);const td=el('td');td.append(I[k]);tr.append(td)});
+      const amt=el('td','m',p?fcMoney(eng==='company_driver'?p.gross:p.net):'–');tr.append(amt,el('td',p&&p.status==='approved'?'go':p?'warn':'muted',stat(p)));
+      const td=el('td'),sv=el('button','btn2','Save'),ap=el('button','btn2','Approve');sv.type=ap.type='button';
+      const locked=p&&['sent_to_adp','paid'].includes(p.status);if(locked){sv.disabled=true;Object.values(I).forEach(i=>i.disabled=true)}
+      sv.addEventListener('click',async()=>{const o={company:co.value,driver_id:d.id,driver_name:d.name,engagement:eng,week_start:wk};Object.keys(I).forEach(k=>o[k]=I[k].value);
+        const sb=await fcClient();const {error}=await sb.rpc('fin_pay_save',{p:o});if(error)alert(error.message);else fcDpLoad()});
+      ap.disabled=!p||p.status!=='draft';ap.addEventListener('click',async()=>{const sb=await fcClient();const {error}=await sb.rpc('fin_pay_status',{p_id:p.id,p_status:'approved'});if(error)alert(error.message);else fcDpLoad()});
+      td.append(sv,ap);if(p&&p.status==='approved'){const nx=el('button','btn2',eng==='company_driver'?'Mark entered in ADP':'Mark paid');nx.type='button';nx.addEventListener('click',async()=>{if(!confirm('Lock this week for '+d.name+'?'))return;const sb=await fcClient();await sb.rpc('fin_pay_status',{p_id:p.id,p_status:eng==='company_driver'?'sent_to_adp':'paid'});fcDpLoad()});td.append(nx)}
+      tr.append(td);T.append(tr)})};
+  build('fcDpC','company_driver',['Driver','Company','Reg hrs','OT hrs','Rate $/hr','Other $','Gross','Status',''],[['reg_hours',60],['ot_hours',60],['hourly_rate',70],['other_earnings',80]]);
+  build('fcDpO','owner_operator',['Driver','Company','Loads','Linehaul $','Other $','Deductions $','Net','Status',''],[['loads',50],['linehaul',90],['other_earnings',80],['deductions',90]]);
+  const cd=FCPAY.filter(p=>p.engagement==='company_driver'),oo=FCPAY.filter(p=>p.engagement==='owner_operator'),s=(a,k)=>a.reduce((x,p)=>x+(+p[k]||0),0);
+  $('fcDpK').innerHTML='<div><span class="l">Week</span><b>'+wk.slice(5)+' – '+end.toISOString().slice(5,10)+'</b><span class="s">Sun–Sat, matches RUN pay period</span></div><div><span class="l">Company driver gross</span><b>'+fcMoney(s(cd,'gross'))+'</b><span class="s">'+cd.length+' entered · '+s(cd,'reg_hours')+' reg / '+s(cd,'ot_hours')+' OT hrs</span></div><div><span class="l">Owner-operator net</span><b>'+fcMoney(s(oo,'net'))+'</b><span class="s">'+oo.length+' entered · gross '+fcMoney(s(oo,'gross'))+'</span></div>'}
+$('fcDpCopy').addEventListener('click',()=>{const cd=FCPAY.filter(p=>p.engagement==='company_driver'&&p.status!=='draft');if(!cd.length){alert('Approve the company-driver rows first.');return}
+  const txt='ADP RUN entry, week of '+$('fcDpWk').value+'\n'+cd.map(p=>p.driver_name+' ('+p.company+'): regular '+(p.reg_hours||0)+' h, overtime '+(p.ot_hours||0)+' h'+(+p.other_earnings?', other $'+p.other_earnings:'')+' = gross $'+p.gross).join('\n');
+  try{navigator.clipboard.writeText(txt);$('fcDpCopy').textContent='Copied'}catch(e){alert(txt)}});
+setTimeout(fcStart,3800);setInterval(()=>{if(fcCan()&&fcSec.hidden)fcStart()},5000);
+
+
+
+
 // ---------- Reports > Dashboard: button to the 2FF Dashboard (Claude artifact; each person signs in to that Claude org) ----------
 {const box=el('div','drow');box.id='dbLink';box.hidden=true;const a=el('a','btn','Open 2FF Dashboard ↗');a.href='https://claude.ai/artifact/VtjSgEwYzgLSLobGKSHSdM';a.target='_blank';a.rel='noopener';a.style.textDecoration='none';
   box.append(a,el('span','t',' Loads, quotes, dispatch board, finance, drivers. Opens in a new tab. You must be signed in to the 2FF Claude account.'));
@@ -1659,8 +1998,8 @@ const IC={today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d
 tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg>',
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
-reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['reports','Reports'],['gps','GPS'],['safety','Safety']];
+reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',sales:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',owner:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M12 15v2"/></svg>',social:'<svg viewBox="0 0 24 24"><path d="M4 11v2a1 1 0 001 1h2l5 4V6L7 10H5a1 1 0 00-1 1z"/><path d="M16 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['owner','Owner']];
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
@@ -1670,6 +2009,9 @@ const SUBS={today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
+sales:[['work','Find work'],['quotes','Quotes'],['finder','Freight finder']],
+owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
+social:[['today','Today'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
 safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching'],['photos','Chassis photos']]};
@@ -1702,7 +2044,7 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim};['tasks','yard','reports','gps','safety','port'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan()};['tasks','yard','reports','gps','safety','port','sales','social','owner'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)';
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
