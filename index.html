@@ -1844,7 +1844,7 @@ function fcRender(){const D=FCD,co=FCCO,K=$('fcK');$('fcMain').hidden=false;[fcB
   T('fcIntT',['Source','Company','Status','Last good sync','Notes'],[].concat(C.map(c=>({s:'QuickBooks Online',c:c.legal_name,st:c.qbo_status,t:c.last_sync_at,n:(c.qbo_status==='needs_reconnect'?'Reconnect needed – ':'')+(c.last_error||(c.qbo_status==='connected'?'read-only':'waiting for the Intuit app'))})),
     [{s:'ADP RUN',c:'both',st:pay.length?'manual totals':'not connected',t:pay[0]&&pay[0].uploaded_at,n:'API for RUN unconfirmed; using RUN payroll summaries'},{s:'TruckMan (US1)',c:'2FF',st:'requested',t:null,n:'waiting on US1 IT for API access'}]),x=>[[x.s],[x.c],[x.st,/connected|manual/.test(x.st)&&!/not/.test(x.st)?'go':'warn'],[x.t?fmtDT(new Date(x.t).getTime()):'–'],[x.n]]);
   T('fcSyncT',['Started','Company','Source','Status','Rows','Error'],D.sync||[],x=>[[fmtDT(new Date(x.started_at).getTime())],[x.company],[x.source],[x.status,x.status==='ok'?'go':x.status==='error'?'bad':''],[x.rows_upserted],[x.error]]);
-  fcPayForm();fcQboButtons()}
+  fcPayForm();fcQboButtons();fcBankUI().catch(e=>console.warn('bank feeds',e))}
 
 async function fcFn(name,body){const sb=await fcClient();const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error('Sign in again.');
   const r=await fetch(FC_SB_URL+'/functions/v1/'+name,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'apikey':FC_SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(body||{})});
@@ -1854,6 +1854,33 @@ function fcQboButtons(){const T=$('fcIntT');if(!T||!FCD||$('fcQboBar'))return;co
     b.addEventListener('click',async()=>{if(!(await fcFresh((on?'disconnect ':'connect ')+'QuickBooks')))return;try{const j=await fcFn('qbo-oauth',{action:on?'disconnect':'start',company:c.id});if(j.url)location.href=j.url;else fcLoad()}catch(e){alert(e.message)}});bar.append(b)});
   const s=el('button','btn2','Sync QuickBooks now');s.type='button';s.addEventListener('click',async()=>{s.disabled=true;s.textContent='Syncing…';try{await fcFn('qbo-sync',{});await fcLoad()}catch(e){alert(e.message)}finally{s.disabled=false;s.textContent='Sync QuickBooks now'}});bar.append(s);
   T.closest('.tbl').after(bar)}
+// ---------- Owner > Integrations: bank feeds through Plaid (read-only). 1 Stop -> Truist first; 2FF -> Huntington later. ----------
+// Owner-only twice over: this panel only renders after the Finance sign-in, and the plaid-bank server function and
+// fin_bank_status re-check the authenticator session (aal2) + owner_finance on every call. Nothing here can move money.
+const FC_BANKS=[{co:'1Stop',name:'1 Stop',bank:'Truist'}];
+function fcPlaidJs(){return window.Plaid?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.plaid.com/link/v2/stable/link-initialize.js';s.onload=ok;s.onerror=()=>no(new Error('Could not load the Plaid bank login. Check the connection and try again.'));document.head.append(s)})}
+async function fcPlaidOpen(co,tok,redirect){await fcPlaidJs();const h=Plaid.create({token:tok,...(redirect?{receivedRedirectUri:redirect}:{}),
+  onSuccess:async pt=>{try{sessionStorage.removeItem('fcPlaid')}catch(e){}try{const j=await fcFn('plaid-bank',{action:'exchange',company:co,public_token:pt});alert('Bank connected'+(j.institution?' ('+j.institution+')':'')+'. '+(j.transactions||0)+' transactions pulled. It syncs every 3 hours.');fcBankUI()}catch(e){alert(e.message)}},
+  onExit:err=>{try{sessionStorage.removeItem('fcPlaid')}catch(e){}if(err)alert(err.display_message||err.error_message||'Bank login closed.')}});h.open()}
+async function fcBankUI(){const T=$('fcIntT');if(!T||!FCOK)return;let box=$('fcBankBox');if(!box){box=el('div');box.id='fcBankBox';(($('fcQboBar'))||T.closest('.tbl')).after(box)}
+  const sb=await fcClient();const {data:B,error}=await sb.rpc('fin_bank_status');box.textContent='';box.append(el('h3','','Bank feeds (read-only)'));
+  if(error){box.append(el('div','fcMsg bad',error.message));return}
+  const items=(B&&B.items)||[],accts=(B&&B.accounts)||[];
+  const t=el('table','score slT'),w=el('div','tbl');w.append(t);const h=el('tr');['Company','Bank','Account','Balance','Available','Status','Last sync'].forEach(x=>h.append(el('th','',x)));t.append(h);
+  FC_BANKS.forEach(b=>{const it=items.find(i=>i.company===b.co),A=accts.filter(a=>a.company===b.co);
+    const st=it?it.status:'not connected',cls=st==='connected'?'go':st==='needs_reconnect'?'bad':'warn',last=it&&it.last_sync_at?fmtDT(new Date(it.last_sync_at).getTime()):'–';
+    if(!A.length){const r=el('tr');[[b.name],[b.bank],['–'],['–'],['–'],[st,cls],[last]].forEach(([v,c])=>r.append(el('td',c||'',v)));t.append(r)}
+    A.forEach(a=>{const r=el('tr');[[b.name],[(it&&it.institution)||b.bank],[(a.name||'')+(a.mask?' ••'+a.mask:'')],[fcMoney(a.current)],[fcMoney(a.available)],[st,cls],[last]].forEach(([v,c])=>r.append(el('td',c||'',v==null?'':String(v))));t.append(r)});
+    if(it&&it.last_error){const r=el('tr'),d=el('td','warn',it.last_error);d.colSpan=7;r.append(d);t.append(r)}});
+  box.append(w);const bar=el('div','fcBar');
+  FC_BANKS.forEach(b=>{const it=items.find(i=>i.company===b.co);if(it&&it.status==='connected')return;
+    const btn=el('button','btn',(it?'Reconnect ':'Connect ')+b.name+' bank ('+b.bank+')');btn.type='button';
+    btn.addEventListener('click',async()=>{if(!(await fcFresh('connect the '+b.name+' bank')))return;btn.disabled=true;
+      try{const j=await fcFn('plaid-bank',{action:'link_token',company:b.co});try{sessionStorage.setItem('fcPlaid',JSON.stringify({co:b.co,tok:j.link_token}))}catch(e){}await fcPlaidOpen(b.co,j.link_token)}catch(e){alert(e.message)}finally{btn.disabled=false}});bar.append(btn)});
+  if(items.some(i=>i.status==='connected')){const s=el('button','btn2','Sync bank now');s.type='button';s.addEventListener('click',async()=>{s.disabled=true;s.textContent='Syncing…';try{await fcFn('plaid-bank',{action:'sync'});await fcBankUI()}catch(e){alert(e.message)}finally{s.disabled=false;s.textContent='Sync bank now'}});bar.append(s)}
+  box.append(bar);
+  // returning from a bank's own login page on a phone (OAuth): finish the Plaid flow
+  if(/[?&]oauth_state_id=/.test(location.search)){let p=null;try{p=JSON.parse(sessionStorage.getItem('fcPlaid')||'null')}catch(e){}const back=location.href;history.replaceState(null,'',location.pathname+location.hash);if(p&&p.tok)fcPlaidOpen(p.co,p.tok,back).catch(e=>alert(e.message))}}
 function fcPayForm(){const F=$('fcPayF');if(F.dataset.done)return;F.dataset.done=1;const fs=[['company','Company','select'],['pay_date','Pay date','date'],['period_start','Period start','date'],['period_end','Period end','date'],['employees','People paid','number'],['hours_regular','Regular hours','number'],['hours_overtime','Overtime hours','number'],['gross_wages','Gross wages $','number'],['employer_taxes','Employer taxes $','number'],['employer_cost','Total employer cost $','number'],['driver_wages','Of gross: drivers $','number']],I={};
   fs.forEach(([k,l,t])=>{let i;if(t==='select'){i=el('select');[['2FF','2FF Logistics'],['1Stop','1 Stop Logistics']].forEach(([v,n])=>{const o=el('option','',n);o.value=v;i.append(o)})}else{i=el('input');i.type=t;if(t==='number')i.step='0.01'}I[k]=i;F.append(el('label','t',l),i)});
   const b=el('button','btn','Save payroll totals'),m=el('div','fcMsg');b.type='button';b.addEventListener('click',async()=>{const p={};Object.keys(I).forEach(k=>p[k]=I[k].value);if(!p.pay_date||!p.gross_wages){m.className='fcMsg bad';m.textContent='Pay date and gross wages are required.';return}
