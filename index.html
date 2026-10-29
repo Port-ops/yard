@@ -1749,7 +1749,7 @@ async function fcAuthUI(msg){const A=$('fcAuth');A.textContent='';A.hidden=false
     const em=el('input');em.value=FC_EMAIL;em.readOnly=true;const pw=el('input');pw.type='password';pw.placeholder='Finance password';pw.autocomplete='current-password';
     const go=el('button','btn','Sign in'),mkacct=el('button','btn2','First time: create my finance login'),m=el('div','fcMsg');go.type=mkacct.type='button';
     go.addEventListener('click',async()=>{m.textContent='Signing in…';const {error}=await sb.auth.signInWithPassword({email:FC_EMAIL,password:pw.value});pw.value='';if(error){m.className='fcMsg bad';m.textContent=error.message;return}fcAuthUI()});
-    mkacct.addEventListener('click',async()=>{if(pw.value.length<12){m.className='fcMsg bad';m.textContent='Use at least 12 characters.';return}m.textContent='Creating…';const {error}=await sb.auth.signUp({email:FC_EMAIL,password:pw.value});pw.value='';
+    mkacct.addEventListener('click',async()=>{if(pw.value.length<12){m.className='fcMsg bad';m.textContent='Use at least 12 characters.';return}m.textContent='Creating…';const {error}=await sb.auth.signUp({email:FC_EMAIL,password:pw.value,options:{emailRedirectTo:'https://yard.2f-logistics.com/#owner'}});pw.value='';
       m.className='fcMsg'+(error?' bad':'');m.textContent=error?error.message:'Done. Open the confirmation email Supabase sent to rp@, click it, then come back and sign in. Then tell Claude to turn on your finance permission.'});
     box.append(el('label','t','Email'),em,el('label','t','Password'),pw,go,document.createTextNode(' '),mkacct,m);return}
   const {data:aal}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
