@@ -2578,6 +2578,38 @@ $('wForm').addEventListener('submit',e=>{e.preventDefault();const m=$('wMsg'),c=
 function all(){try{renderFleet()}catch(e){console.error(e)}try{loadOW();renderOW()}catch(e){console.error(e)}try{loadCoaching();renderCoaching();loadHealth()}catch(e){console.error(e)}try{loadCP();renderCP()}catch(e){console.error(e)}try{loadSafety();renderSafety()}catch(e){console.error(e)}try{loadTrucks();renderGps()}catch(e){console.error(e)}try{loadRef();renderBill();scacAuto();renderScac()}catch(e){console.error(e)}try{renderWatch();loadWatch()}catch(e){console.error(e)}try{renderStorage()}catch(e){console.error(e)}try{renderToday()}catch(e){console.error(e)}try{renderScore()}catch(e){console.error(e)}try{decoratePort()}catch(e){console.error(e)}try{tabVis()}catch(e){console.error(e)}try{if($('qNum').value)universal()}catch(e){console.error(e)}}
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
+// ---- ASK / RESEARCH: floating button + bottom sheet (Claude for app help and drafting, Perplexity for web research with sources) ----
+{const st=el('style');st.textContent='#aiFab{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:800;height:48px;padding:0 16px;border-radius:24px;border:0;background:#1F2A5C;color:#fff;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(16,24,40,.25);display:flex;align-items:center;gap:6px}#aiFab[hidden]{display:none}'+
+'#aiSh{position:fixed;inset:0;z-index:9200;background:rgba(10,15,30,.45);display:flex;align-items:flex-end;justify-content:center}#aiSh[hidden]{display:none}#aiSh>div{background:var(--card,#fff);color:var(--ink,#1b1f24);width:100%;max-width:640px;height:88vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column}'+
+'.aiHd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line,#e4e7e8)}.aiHd b{flex:1;font-size:17px}.aiHd button{border:0;background:transparent;font-size:22px;min-width:44px;min-height:44px;color:inherit}'+
+'.aiSeg{display:flex;gap:6px;padding:10px 14px 0}.aiSeg button{flex:1;min-height:40px;border-radius:10px;border:1px solid var(--line,#ccd);background:var(--card,#fff);color:inherit;font-size:14px}.aiSeg button.on{background:#1F2A5C;color:#fff;border-color:#1F2A5C;font-weight:700}.aiHint{font-size:12px;color:var(--mut,#5d686d);padding:6px 14px 0}'+
+'.aiLog{flex:1;overflow:auto;padding:10px 14px}.aiQ{margin:10px 0 4px 40px;background:#1F2A5C;color:#fff;border-radius:14px 14px 4px 14px;padding:8px 12px;white-space:pre-wrap}.aiA{margin:4px 30px 10px 0;background:var(--bg,#f1f3f6);border-radius:14px 14px 14px 4px;padding:10px 12px;white-space:pre-wrap;line-height:1.45}.aiA.err{background:#fdecea;color:#b3261e}.aiA .src{margin-top:8px;font-size:12px}.aiA .src a{display:block;padding:3px 0;word-break:break-word}.aiA .cp{margin-top:6px;font-size:12px;padding:4px 10px;min-height:32px}'+
+'.aiSug{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0}.aiSug button{border:1px solid var(--line,#ccd);background:var(--card,#fff);color:inherit;border-radius:16px;padding:6px 10px;font-size:13px;text-align:left}'+
+'.aiIn{display:flex;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);border-top:1px solid var(--line,#e4e7e8)}.aiIn textarea{flex:1;min-height:44px;max-height:120px;font:inherit;font-size:16px;padding:10px;border-radius:12px;border:1px solid var(--line,#ccd);text-transform:none;resize:none}.aiIn button{min-width:72px;border-radius:12px;font-weight:700}'+
+'@media (prefers-color-scheme:dark){#aiSh>div{background:#1d2330;color:#e8eaee}.aiA{background:#262d3b}}';document.head.append(st)}
+let AIM='ask';const AIH={ask:[],research:[]};
+const AI_SUG={ask:['How do I request a PIN?','Write a Facebook post for a yard crew job','How do I change my pinned tabs?','Draft a text to a driver about a late free day'],
+  research:['GPA Garden City Terminal gate hours this week','Current Georgia overweight permit rules for containers','Average owner-operator drayage settlement Savannah 2026','FMCSA hours of service short-haul exception']};
+const aiFab=el('button','','✦ Ask');aiFab.id='aiFab';aiFab.type='button';aiFab.hidden=true;document.body.append(aiFab);
+const aiCanR=()=>{const r=roles();return !(r.includes('limited')&&!r.includes('admin'))};
+function aiVis(){aiFab.hidden=!(Y().S&&Y().S.me&&Y().call)||!!RV}
+setInterval(aiVis,1500);
+function aiOpen(){let sh=$('aiSh');if(!sh){sh=el('div');sh.id='aiSh';sh.addEventListener('click',e=>{if(e.target===sh)sh.hidden=true});document.body.append(sh)}sh.hidden=false;aiDraw()}
+aiFab.addEventListener('click',aiOpen);
+function aiDraw(){const sh=$('aiSh');sh.textContent='';const c=el('div');sh.append(c);
+  const hd=el('div','aiHd'),x=el('button','','✕');x.type='button';x.addEventListener('click',()=>sh.hidden=true);hd.append(el('b','','Ask the Yard App'),x);c.append(hd);
+  if(aiCanR()){const sg=el('div','aiSeg');[['ask','Ask (app help, drafts)'],['research','Research the web']].forEach(([k,l])=>{const b=el('button',AIM===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{AIM=k;aiDraw()});sg.append(b)});c.append(sg)}
+  c.append(el('div','aiHint',AIM==='ask'?'Claude. Helps with the app and writes drafts. It cannot see loads, drivers or money.':'Perplexity. Searches the web and shows its sources. Check anything important before you act on it.'));
+  const log=el('div','aiLog');c.append(log);const H=AIH[AIM];
+  if(!H.length){const s=el('div','aiSug');AI_SUG[AIM].forEach(t=>{const b=el('button','',t);b.type='button';b.addEventListener('click',()=>{ta.value=t;go()});s.append(b)});log.append(s)}
+  H.forEach(h=>{log.append(el('div','aiQ',h.q));const a=el('div','aiA'+(h.err?' err':''),h.a||'…');if(h.src&&h.src.length){const s=el('div','src');s.append(el('b','','Sources'));h.src.forEach(x=>{const l=el('a','',x.title||x.url);l.href=x.url;l.target='_blank';l.rel='noopener';s.append(l)});a.append(s)}
+    if(h.a&&!h.err){const cp=el('button','btn2 cp','Copy');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(h.a);cp.textContent='Copied'}catch(e){}});a.append(cp)}log.append(a)});
+  const inp=el('div','aiIn'),ta=el('textarea'),send=el('button','btn','Send');ta.placeholder=AIM==='ask'?'Ask a question or ask for a draft…':'What should I look up?';ta.rows=1;send.type='button';inp.append(ta,send);c.append(inp);
+  function go(){const q=ta.value.trim();if(q.length<3||send.disabled)return;if(!navigator.onLine){alert('You are offline.');return}
+    const h={q,a:''};H.push(h);const mode=AIM;aiDraw();const s2=$('aiSh').querySelector('.aiIn button');if(s2){s2.disabled=true;s2.textContent='…'}
+    Y().call('aiAsk',[{mode,q,tab:TAB,hist:mode==='ask'?H.slice(0,-1).filter(x=>x.a&&!x.err).slice(-4).map(x=>({q:x.q,a:x.a})):[]}]).then(d=>{h.a=d.text;h.src=d.sources||[]}).catch(e=>{h.a=(e&&e.message)||String(e);h.err=true}).finally(()=>{if(AIM===mode&&!$('aiSh').hidden)aiDraw()})}
+  send.addEventListener('click',go);ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go()}});
+  log.scrollTop=log.scrollHeight;if(!H.length||H[H.length-1].a)setTimeout(()=>{try{ta.focus({preventScroll:true})}catch(e){}},50)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
 all();
 })();
