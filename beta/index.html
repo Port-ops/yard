@@ -1616,11 +1616,11 @@ const SM_LIM={facebook_page:63206,instagram:2200,linkedin_page:3000,linkedin_per
 const SM_AUD=[['company_driver','Company drivers (W-2, ADP)'],['owner_operator','Owner-operators (paid by settlement)'],['yard_crew','Yard, shop & office'],['brand','Brand / general']];
 const SM_CLAIM=/\$\s?\d|\bpay\b|per week|\/\s?wk|weekly|home (daily|every|nightly)|sign[- ]?on|bonus|guarantee|benefit|\bcpm\b|per mile|per load|\d+\s?%|percent|newer? (truck|equipment)|late[- ]model/i;
 const SM_BAD=[[/\b(young|youthful|recent (grad|graduate)s?|digital native|energetic young)\b/i,'Age wording (ADEA): say "new and experienced drivers" instead.'],[/\b(guys|men only|women only|ladies only|manpower|he will|she will)\b/i,'Gendered wording (EEOC): use "drivers" / "you".'],[/\b(native english|english only|american[- ]born|citizens? only)\b/i,'National-origin wording (EEOC): say "must read and speak English to DOT standard" only if that is the rule.'],[/\b(up to|as much as)\s+\$/i,'"Up to $" needs proof most drivers earn it (FTC). Use a typical range you can back up.'],[/\bguarantee/i,'"Guarantee" must be written into the contract or removed.'],[/\b(owner[- ]?operators?|lease[- ]on|1099|independent contractors?)\b[\s\S]*\b(employees?|w-?2|benefits|hourly)\b|\b(employees?|w-?2|benefits|hourly)\b[\s\S]*\b(owner[- ]?operators?|lease[- ]on|1099|independent contractors?)\b/i,'Do not mix the two: company drivers are W-2 on ADP; owner-operators are paid by settlement. One post per type.']];
-const smWarn=(t,pl,img)=>{const w=[];SM_BAD.forEach(([re,m])=>{if(re.test(t))w.push([m,true])});if(SM_CLAIM.test(t))w.push(['Pay / home-time / equipment claim found: needs Julia AND Lethaniel or Richard to approve, and the numbers must match the CareerPlug job and the ADP pay rate.',false]);
+const smWarn=(t,pl,img)=>{const w=[];SM_BAD.forEach(([re,m])=>{if(re.test(t))w.push([m,true])});if(SM_CLAIM.test(t))w.push(['Pay / home-time / equipment claim found: before approving, check the numbers match the CareerPlug job and the ADP pay rate.',false]);
   (pl||[]).forEach(p=>{const L=SM_LIM[p];if(L&&t.length>L)w.push([(SM_PL[p]||p)+': '+t.length+' characters, limit '+L+'.',true]);if(p==='instagram'&&!img)w.push(['Instagram needs a picture. Add an image link.',true]);if(p==='instagram'&&/https?:\/\//.test(t))w.push(['Links in Instagram captions are not clickable. Say "link in bio".',false])});return w};
 const smDT=v=>v?new Date(v).toLocaleString(undefined,{weekday:'short',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
 const smLocal=v=>{const d=v?new Date(v):new Date(Date.now()+3600000);const z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes())};
-const smToday=mk('smToday','social','today','<h2>Today <span class="t" id="smAsof">recruiting posts waiting on you, going out next and anything that failed</span></h2><div class="kpis" id="smK"></div><div id="smTL"></div>');
+const smToday=mk('smToday','social','today','<h2>Approvals <span class="t" id="smAsof">tap a post to see it the way Facebook, Instagram and LinkedIn will show it, then approve or send it back</span></h2><div class="kpis" id="smK"></div><div id="smTL"></div>');
 const smCal=mk('smCal','social','calendar','<h2>Calendar <span class="t">next 14 days · approved posts go out at their time through the Chrome publisher</span></h2><div class="fchips" id="smCB"></div><div id="smCL"></div>');
 const smCont=mk('smCont','social','content','<h2>Content <span class="t">write once, pick the channels, send for approval</span></h2><div class="drow"><button class="btn" type="button" id="smNew">New post</button><button class="btn2" type="button" id="smRef">Refresh</button></div><div id="smCmp" hidden></div><div class="fchips" id="smF"></div><div class="drow"><input id="smQ" placeholder="Search post text, title" autocomplete="off" style="text-transform:none;flex:1"></div><div id="smL"></div>');
 const smHire=mk('smHire','social','hiring','<h2>Hiring <span class="t">post jobs here · they go to our careers page, Google Jobs, Facebook, Instagram and LinkedIn · applicants from every source land below</span></h2><div class="kpis" id="smHK"></div><h3>Jobs</h3><div class="drow"><button class="btn" type="button" id="smJNew">New job</button><a class="btn2" href="https://yard.2f-logistics.com/jobs/" target="_blank" rel="noopener">Open careers page</a></div><div id="smJE" hidden></div><div id="smJL"></div><h3>Applicants</h3><div id="smHE"></div><div class="tbl"><table class="score slT" id="smAT"></table></div><h3>Job boards</h3><div id="smBL"></div>');
@@ -1634,12 +1634,12 @@ function loadSM(force){if(!smCan()||!Y().call||!navigator.onLine)return;Y().call
 const smMine=()=>SM&&SM.me||{};
 function smNeedsMe(p){const me=smMine();if(p.status!=='draft'||p.review_status==='changes_requested'||me.role==='editor')return false;const ap=p.approvals||[];if(ap.some(a=>a.who===me.n))return false;if(p.has_claims&&ap.length&&ap.some(a=>a.role===me.role))return false;return true}
 function smCard(p,opt){const c=el('div','smP'),h=el('h4');h.append(el('span','pl '+p.platform,SM_PL[p.platform]||p.platform),el('span','stt '+p.status,p.status==='draft'?(p.review_status==='changes_requested'?'changes asked':'needs approval'):p.status==='queued'?'scheduled':p.status));
-  h.append(el('span','',p.brand+(p.title?' · '+p.title:'')));if(p.has_claims)h.append(el('span','tag','pay/claims · 2 approvals'));c.append(h);
+  h.append(el('span','',p.brand+(p.title?' · '+p.title:'')));if(p.has_claims)h.append(el('span','tag','pay/claims · check numbers'));c.append(h);
   c.append(el('div','meta',[smDT(p.scheduled_for||p.created_at),p.audience&&p.audience!=='brand'?(SM_AUD.find(a=>a[0]===p.audience)||[])[1]:'',p.created_by_task,p.updated_by&&('edited by '+p.updated_by)].filter(Boolean).join(' · ')));
   c.append(el('pre','',p.post_text||''));if(p.image_url){const a=el('a','','Picture');a.href=p.image_url;a.target='_blank';c.append(a)}
   if(p.link_url)c.append(el('div','meta','Link: '+p.link_url));
   smWarn(p.post_text||'',[p.platform],p.image_url).forEach(([m,b])=>c.append(el('div','smW'+(b?' bad':''),m)));
-  if((p.approvals||[]).length)c.append(el('div','meta','Approved by '+p.approvals.map(a=>a.who.split(' ')[0]).join(' + ')+(p.has_claims&&p.approvals.length<2?' · waiting on '+(p.approvals[0].role==='recruiting'?'Lethaniel or Richard':'Julia'):'')));
+  if((p.approvals||[]).length)c.append(el('div','meta','Approved by '+p.approvals.map(a=>a.who.split(' ')[0]).join(' + ')));
   if(p.review_notes)c.append(el('div','smW',p.review_notes));if(p.last_error)c.append(el('div','smW bad','Error: '+p.last_error));
   if(p.post_url){const a=el('a','','Open the live post');a.href=p.post_url;a.target='_blank';c.append(a)}
   const row=el('div','row'),B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));row.append(b)};
@@ -1676,14 +1676,118 @@ function smCompose(p){SMEDIT=p||null;const box=$('smCmp');box.hidden=false;box.t
     if(p)Object.assign(o,{action:'edit',id:p.id});else Object.assign(o,{action:'create',brand:brand.value,channels:[...pick]});
     smRun('socialAct',o,save).then(d=>{if(d){box.hidden=true;SMEDIT=null;SMF='review';renderSMC()}})});
   row.append(save,cancel);f.append(row);drawCh();prev();box.scrollIntoView({behavior:'smooth',block:'start'})}
+// ---- SOCIAL APPROVALS: queue + full-screen review (Perplexity research: Sprout/Planable/Hootsuite patterns) ----
+{const st=el('style');st.textContent=
+'.aqSeg{display:flex;gap:6px;overflow-x:auto;margin:6px 0 8px}.aqSeg button{border:1px solid var(--line,#ccd);background:var(--card,#fff);color:var(--ink,#1b1f24);border-radius:20px;padding:6px 12px;font-size:13px;white-space:nowrap;min-height:36px}.aqSeg button.on{background:#1F2A5C;color:#fff;border-color:#1F2A5C}'+
+'.aqC{display:flex;gap:10px;align-items:stretch;border:1px solid var(--line,#d5d9db);border-radius:12px;padding:10px;margin:8px 0;background:var(--card,#fff);cursor:pointer;min-height:76px}.aqC:active{transform:scale(.995)}.aqC.mine{border-left:4px solid #C8102E}'+
+'.aqTh{width:64px;height:64px;border-radius:8px;background:#eef0f4 center/cover no-repeat;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:#5d686d;text-align:center}'+
+'.aqB{flex:1;min-width:0}.aqB .t1{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.aqB .t2{font-size:13px;color:var(--mut,#5d686d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.aqB .t3{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center}'+
+'.aqPl{font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;color:#fff;background:#5d686d}.aqPl.facebook_page{background:#1877F2}.aqPl.instagram{background:#C13584}.aqPl.linkedin_page,.aqPl.linkedin_personal{background:#0A66C2}.aqPl.x{background:#000}'+
+'.aqPr{font-size:11px;font-weight:700;border-radius:20px;padding:1px 8px;background:#fff6dc;color:#8a6100}.aqPr.ok{background:#e6f2ea;color:#2e7d4f}.aqPr.back{background:#fdecea;color:#b3261e}.aqDue{font-size:12px;color:var(--mut,#5d686d)}.aqDue.late{color:#b3261e;font-weight:700}'+
+'#smRv{position:fixed;inset:0;z-index:9000;background:var(--bg,#f4f5f7);display:flex;flex-direction:column}#smRv[hidden]{display:none}'+
+'.rvTop{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;background:#1F2A5C;color:#fff}.rvTop b{flex:1;font-size:16px}.rvTop button{background:transparent;border:0;color:#fff;font-size:22px;min-width:44px;min-height:44px}'+
+'.rvBody{flex:1;overflow:auto;padding:12px 12px 150px;max-width:640px;margin:0 auto;width:100%;box-sizing:border-box}'+
+'.rvTabs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto}.rvTabs button{position:relative;border:1px solid var(--line,#ccd);background:var(--card,#fff);color:var(--ink,#1b1f24);border-radius:10px;padding:8px 12px;font-size:14px;min-height:44px;white-space:nowrap}.rvTabs button.on{border-color:#1F2A5C;box-shadow:inset 0 -3px 0 #1F2A5C;font-weight:700}.rvTabs button .seen{color:#2e7d4f;margin-left:4px}'+
+'.rvNote{font-size:12px;color:var(--mut,#5d686d);margin:4px 0 8px;display:flex;justify-content:space-between;gap:8px;align-items:center}.rvNote button{font-size:12px;padding:4px 8px;min-height:32px}'+
+'.pv{background:#fff;color:#1c1e21;border:1px solid #dddfe2;border-radius:10px;overflow:hidden;font:14px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif}.pv .ph{display:flex;gap:8px;align-items:center;padding:10px 12px}.pv .av{width:40px;height:40px;border-radius:50%;background:#1F2A5C;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px;flex:none}.pv .nm{font-weight:700}.pv .sub{font-size:12px;color:#65676b}'+
+'.pv .cap{padding:0 12px 10px;white-space:pre-wrap;word-break:break-word}.pv .cap .more{color:#65676b;font-weight:600;cursor:pointer}.pv img{display:block;width:100%;max-height:520px;object-fit:cover}.pv .noimg{height:120px;background:#f0f2f5;display:flex;align-items:center;justify-content:center;color:#65676b;font-size:13px}'+
+'.pv .lk{background:#f0f2f5;padding:8px 12px;font-size:12px;color:#65676b;border-top:1px solid #dddfe2;word-break:break-all}.pv .acts{display:flex;justify-content:space-around;border-top:1px solid #dddfe2;padding:8px;color:#65676b;font-size:13px;font-weight:600}'+
+'.pv.ig .av{width:32px;height:32px;background:radial-gradient(circle at 30% 107%,#fdf497 0,#fd5949 45%,#d6249f 60%,#285AEB 90%);padding:2px}.pv.ig .av span{background:#1F2A5C;border-radius:50%;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px}.pv.ig img{aspect-ratio:1/1;max-height:none}.pv.ig .acts{justify-content:flex-start;gap:16px;border:0;font-size:20px;color:#262626}.pv.ig .cap{padding-top:0}.pv.li .av{border-radius:4px}'+
+'.rvBox{background:var(--card,#fff);border:1px solid var(--line,#d5d9db);border-radius:12px;padding:12px;margin-top:12px}.rvBox h3{margin:0 0 8px;font-size:15px}.rvReq{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eceef0);font-size:14px}.rvReq:last-child{border:0}.rvReq .ok{color:#2e7d4f;font-weight:700}.rvReq .wt{color:#8a6100;font-weight:700}'+
+'.rvHist{font-size:13px;color:var(--mut,#5d686d)}.rvHist div{padding:4px 0}'+
+'.rvBar{position:fixed;left:0;right:0;bottom:0;z-index:9001;background:var(--card,#fff);border-top:1px solid var(--line,#d5d9db);padding:8px 12px calc(env(safe-area-inset-bottom) + 10px);display:flex;flex-wrap:wrap;gap:8px;max-width:640px;margin:0 auto}.rvBar button{flex:1;min-height:50px;font-size:16px;border-radius:12px;font-weight:700}.rvBar .more{flex:0 0 50px}.rvBar .ap{background:#2e7d4f;border:0;color:#fff}.rvBar .ap:disabled{background:#9db8a7}.rvBar .ch{background:var(--card,#fff);color:#1F2A5C;border:2px solid #1F2A5C}'+
+'.rvConseq{flex:0 0 100%;text-align:center;font-size:12px;color:var(--mut,#5d686d)}'+
+'.rvSheet{position:fixed;inset:0;z-index:9100;background:rgba(10,15,30,.45);display:flex;align-items:flex-end;justify-content:center}.rvSheet>div{background:var(--card,#fff);color:var(--ink,#1b1f24);width:100%;max-width:640px;border-radius:16px 16px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:85vh;overflow:auto}.rvSheet h3{margin:0 0 10px}'+
+'.rvChips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.rvChips button{border:1px solid var(--line,#ccd);background:var(--card,#fff);color:var(--ink,#1b1f24);border-radius:20px;padding:8px 12px;font-size:14px;min-height:40px}.rvChips button.on{background:#1F2A5C;color:#fff;border-color:#1F2A5C}.rvSheet textarea{width:100%;min-height:90px;box-sizing:border-box;font:inherit;padding:8px;text-transform:none}.rvSheet .row2{display:flex;gap:8px;margin-top:10px}.rvSheet .row2 button{flex:1;min-height:48px;font-size:15px}.rvMenu button{display:block;width:100%;text-align:left;min-height:50px;font-size:16px;border:0;border-bottom:1px solid var(--line,#eceef0);background:transparent;color:var(--ink,#1b1f24)}.rvMenu button.red{color:#b3261e}'+
+'@media (prefers-color-scheme:dark){.aqC,.rvBox,.rvBar,.rvTabs button,.aqSeg button{background:#1d2330;color:#e8eaee;border-color:#2f3747}.rvSheet>div{background:#1d2330;color:#e8eaee}#smRv{background:#12161f}}';document.head.append(st)}
+let AQF='mine',RV=null;
+const AQ_REASONS=['Pay or claim not backed up','Compliance wording','Wrong audience','Picture or crop','Typo / grammar','Off-brand tone','Wrong time','Missing apply link'];
+const aqBrand=b=>/1\s?stop/i.test(b||'')?'1 Stop Logistics':'2FF Logistics',aqIni=b=>/1\s?stop/i.test(b||'')?'1S':'2FF';
+const aqKey=p=>[p.brand,p.title||'',p.created_by_task||'',String(p.created_at||'').slice(0,16)].join('|');
+function aqGroups(P){const m=new Map();P.forEach(p=>{const k=aqKey(p);if(!m.has(k))m.set(k,[]);m.get(k).push(p)});return [...m.values()]}
+function aqNeed(p){return {done:(p.approvals||[]).length?1:0,total:1}}
+function aqState(g){const p=g[0];if(g.some(p=>p.status==='draft'&&p.review_status==='changes_requested'))return 'back';if(g.some(smNeedsMe))return 'mine';if(g.some(p=>p.status==='draft'))return 'others';return 'done'}
+function aqCard(g){const p=g[0],s=aqState(g),c=el('div','aqC'+(s==='mine'?' mine':'')),th=el('div','aqTh');if(p.image_url)th.style.backgroundImage='url("'+p.image_url.replace(/"/g,'')+'")';else th.textContent='Text only';
+  const b=el('div','aqB');b.append(el('div','t1',(p.title||(p.post_text||'').split('\n')[0]||'Post').slice(0,90)),el('div','t2',aqBrand(p.brand)+' · '+(p.post_text||'').replace(/\s+/g,' ').slice(0,80)));
+  const t3=el('div','t3');g.forEach(x=>t3.append(el('span','aqPl '+x.platform,SM_PL[x.platform]||x.platform)));
+  const n=aqNeed(p);t3.append(el('span','aqPr'+(s==='back'?' back':s==='done'?' ok':''),s==='back'?'Changes asked':s==='done'?(p.status==='queued'?'Scheduled':p.status==='posted'?'Posted':p.status):(p.has_claims?'PAY CLAIM · ':'')+'Needs 1 OK'));
+  const due=new Date(p.scheduled_for||0).getTime(),late=s!=='done'&&due&&due<Date.now();if(due)t3.append(el('span','aqDue'+(late?' late':''),(late?'Past due · ':'Goes out ')+smDT(p.scheduled_for)));
+  b.append(t3);c.append(th,b);c.addEventListener('click',()=>rvOpen(g));return c}
 function renderSMT(){const P=SM.posts||[],K=$('smK'),L=$('smTL');K.textContent='';L.textContent='';const now=Date.now(),wk=now+7*864e5;
-  const myJ=(SM.jobs||[]).filter(smJNeedsMe),mine=P.filter(smNeedsMe),wait=P.filter(p=>p.status==='draft'),next=P.filter(p=>p.status==='queued'&&new Date(p.scheduled_for||0).getTime()<wk),bad=P.filter(p=>p.status==='failed'||p.status==='posting'&&now-new Date(p.scheduled_for||p.created_at).getTime()>3*36e5),
-    ap=(SM.applicants||[]).filter(a=>now-new Date(a.at).getTime()<7*864e5);
-  [['Need your OK',mine.length+myJ.length],['Waiting approval',wait.length],['Going out (7 days)',next.length],['Failed / stuck',bad.length],['Applicants (7 days)',ap.length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),document.createTextNode(l));K.append(d)});
-  const sec=(t,a)=>{if(!a.length)return;L.append(el('h3','',t));a.forEach(p=>L.append(smCard(p)))};
-  if(myJ.length){L.append(el('h3','','Jobs waiting on you'));myJ.forEach(j=>L.append(smJCard(j)))}sec('Needs your approval',mine);sec('Failed or stuck',bad);sec('Going out next',next.sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for)).slice(0,6));
-  if(!myJ.length&&!mine.length&&!bad.length&&!next.length)L.append(el('p','t','Nothing waiting. Write a post in Content.'));
-  try{subBadge('social','today',mine.length+myJ.length,!!bad.length)}catch(e){}}
+  const myJ=(SM.jobs||[]).filter(smJNeedsMe),G=aqGroups(P.filter(p=>p.status==='draft'||((p.status==='queued'||p.status==='posted')&&now-new Date(p.updated_at||p.created_at).getTime()<7*864e5))),
+    by={mine:G.filter(g=>aqState(g)==='mine'),others:G.filter(g=>aqState(g)==='others'),back:G.filter(g=>aqState(g)==='back'),done:G.filter(g=>aqState(g)==='done')},
+    bad=P.filter(p=>p.status==='failed'||p.status==='posting'&&now-new Date(p.scheduled_for||p.created_at).getTime()>3*36e5),next=P.filter(p=>p.status==='queued'&&new Date(p.scheduled_for||0).getTime()<wk),ap=(SM.applicants||[]).filter(a=>now-new Date(a.at).getTime()<7*864e5);
+  [['Need your OK',by.mine.length+myJ.length],['Waiting on others',by.others.length],['Changes asked',by.back.length],['Going out (7 days)',next.length],['Applicants (7 days)',ap.length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),document.createTextNode(l));K.append(d)});
+  if(myJ.length){L.append(el('h3','','Jobs waiting on you'));myJ.forEach(j=>L.append(smJCard(j)))}
+  const seg=el('div','aqSeg');[['mine','Mine'],['others','Waiting on others'],['back','Changes asked'],['done','Done (7 days)']].forEach(([k,l])=>{const b=el('button',AQF===k?'on':'',l+' '+by[k].length);b.type='button';b.addEventListener('click',()=>{AQF=k;renderSMT()});seg.append(b)});L.append(seg);
+  const list=by[AQF].sort((a,b)=>new Date(a[0].scheduled_for||8e15)-new Date(b[0].scheduled_for||8e15));
+  if(!list.length)L.append(el('p','t',AQF==='mine'?'Nothing waiting on you.':'None.'));list.forEach(g=>L.append(aqCard(g)));
+  if(bad.length){L.append(el('h3','','Failed or stuck'));bad.forEach(p=>L.append(smCard(p)))}
+  try{subBadge('social','today',by.mine.length+myJ.length,!!bad.length)}catch(e){}
+  if(RV)rvRefresh()}
+function rvOpen(g,i){RV={ids:g.map(p=>p.id),i:i||0,seen:new Set([g[i||0].id]),full:false};let box=$('smRv');if(!box){box=el('div');box.id='smRv';document.body.append(box)}box.hidden=false;document.body.style.overflow='hidden';rvDraw();try{history.pushState({rv:1},'')}catch(e){}}
+function rvClose(){RV=null;const b=$('smRv');if(b){b.hidden=true;b.textContent=''}document.body.style.overflow=''}
+window.addEventListener('popstate',()=>{if(RV)rvClose()});
+function rvRefresh(){const P=SM.posts||[],g=RV.ids.map(id=>P.find(p=>p.id===id)).filter(Boolean);if(!g.length)return rvClose();RV.ids=g.map(p=>p.id);if(RV.i>=g.length)RV.i=0;rvDraw()}
+function pvBuild(p,full){const pl=p.platform,ig=pl==='instagram',li=/linkedin/.test(pl),v=el('div','pv'+(ig?' ig':li?' li':'')),hd=el('div','ph'),av=el('div','av');
+  if(ig)av.append(el('span','',aqIni(p.brand)));else av.textContent=aqIni(p.brand);const who=el('div');
+  const nm=pl==='linkedin_personal'?'Richard Prescott':ig?(/1\s?stop/i.test(p.brand||'')?'1stoplogistics':'2fflogistics'):aqBrand(p.brand);
+  who.append(el('div','nm',nm),el('div','sub',ig?'':li?(pl==='linkedin_personal'?'Founder, 2FF Logistics · Now':'Company page · Now'):'Just now · Public'));hd.append(av,who);v.append(hd);
+  const T=p.post_text||'',cut=ig?125:li?210:240,cap=el('div','cap');
+  if(ig){const h=el('b','',nm+' ');cap.append(h)}
+  if(!full&&T.length>cut){cap.append(document.createTextNode(T.slice(0,cut).replace(/\s+\S*$/,'')+'… '));const m=el('span','more',ig?'more':li?'see more':'See more');m.addEventListener('click',e=>{e.stopPropagation();RV.full=true;rvDraw()});cap.append(m)}else cap.append(document.createTextNode(T));
+  if(ig){if(p.image_url){const im=el('img');im.src=p.image_url;im.alt='';v.append(im)}else v.append(el('div','noimg','Instagram needs a picture'));v.append(el('div','acts','♡  💬  ➤'),cap)}
+  else{v.append(cap);if(p.image_url){const im=el('img');im.src=p.image_url;im.alt='';v.append(im)}if(p.link_url)v.append(el('div','lk',p.link_url.replace(/^https?:\/\//,'').split('/')[0].toUpperCase()+' · '+p.link_url));v.append(el('div','acts',li?'Like · Comment · Repost · Send':'Like · Comment · Share'))}
+  return v}
+function rvDraw(){const box=$('smRv'),P=SM.posts||[],g=RV.ids.map(id=>P.find(p=>p.id===id)).filter(Boolean),p=g[RV.i],me=smMine();if(!p)return rvClose();RV.seen.add(p.id);box.textContent='';
+  const top=el('div','rvTop'),x=el('button','','✕');x.type='button';x.setAttribute('aria-label','Close');x.addEventListener('click',()=>{try{history.back()}catch(e){rvClose()}});top.append(x,el('b','',(p.title||'Review post').slice(0,60)));box.append(top);
+  const body=el('div','rvBody');box.append(body);
+  if(g.length>1){const tb=el('div','rvTabs');g.forEach((q,i)=>{const b=el('button',i===RV.i?'on':'',SM_PL[q.platform]||q.platform);b.type='button';if(RV.seen.has(q.id))b.append(el('span','seen','✓'));if(q.status==='draft'&&q.review_status==='changes_requested')b.append(el('span','seen','•'));b.addEventListener('click',()=>{RV.i=i;rvDraw()});tb.append(b)});body.append(tb)}
+  const nt=el('div','rvNote');nt.append(el('span','','Approximate preview · the network may crop or shorten it differently'));const tg=el('button','btn2',RV.full?'As displayed':'Full caption');tg.type='button';tg.addEventListener('click',()=>{RV.full=!RV.full;rvDraw()});nt.append(tg);body.append(nt);
+  body.append(pvBuild(p,RV.full));
+  if(p.link_url){const a=el('a','btn2','Open the apply link');a.href=p.link_url;a.target='_blank';a.rel='noopener';a.style.marginTop='8px';a.style.display='inline-block';body.append(a)}
+  // approvals required, by role
+  const rq=el('div','rvBox');rq.append(el('h3','','Needs 1 approval'));const ap=p.approvals||[],nm=a=>a.who.split(' ')[0]+(a.at?' · '+smDT(a.at):'');
+  const R=(l,a)=>{const r=el('div','rvReq');r.append(el('span','',l),el('span',a?'ok':'wt',a?'✓ '+nm(a):'Waiting'));rq.append(r)};
+  R('Julia, Lethaniel or Richard',ap[0]);
+  rq.append(el('div','rvHist','Any edit clears the approvals, so everyone sees the final words.'));body.append(rq);
+  // compliance facts
+  const w=smWarn(p.post_text||'',[p.platform],p.image_url),cb=el('div','rvBox');cb.append(el('h3','','Check before you approve'));
+  if(p.has_claims)cb.append(el('div','smW','Pay or job promises in this post must match the live job post and real settlements or the ADP pay rate. Owner-operator pay is a settlement after fuel and deductions.'));
+  if(p.audience&&p.audience!=='brand')cb.append(el('div','rvHist','Audience: '+((SM_AUD.find(a=>a[0]===p.audience)||[])[1]||p.audience)));
+  w.forEach(([m,b])=>cb.append(el('div','smW'+(b?' bad':''),m)));if(!w.length&&!p.has_claims)cb.append(el('div','rvHist','No wording flags found.'));body.append(cb);
+  // history
+  const hb=el('div','rvBox'),hs=el('div','rvHist');hb.append(el('h3','','History'));
+  hs.append(el('div','','Written '+smDT(p.created_at)+(p.created_by_task?' · '+p.created_by_task:'')));if(p.updated_by)hs.append(el('div','','Last edit by '+p.updated_by+(p.updated_at?' · '+smDT(p.updated_at):'')));
+  ap.forEach(a=>hs.append(el('div','','Approved by '+nm(a))));if(p.review_notes)hs.append(el('div','smW',p.review_notes));
+  hs.append(el('div','',p.status==='queued'?'Scheduled for '+smDT(p.scheduled_for)+' (approved, not posted yet)':p.status==='posted'?'Posted '+smDT(p.posted_at):p.status==='draft'?'Goes out '+(p.scheduled_for?smDT(p.scheduled_for):'when approved')+' once fully approved':'Status: '+p.status));
+  if(p.post_url){const a=el('a','','Open the live post');a.href=p.post_url;a.target='_blank';hs.append(a)}hb.append(hs);body.append(hb);
+  // bottom decision bar
+  const bar=el('div','rvBar'),B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));bar.append(b);return b};
+  const can=me.role!=='editor'&&p.status==='draft';
+  if(can||['draft','queued','failed','rejected'].includes(p.status))B('⋯','btn2 more',()=>rvMenu(p,g));
+  if(can){B('Request changes','ch',()=>rvChanges(p,'changes'));
+    if(smNeedsMe(p)){const n=aqNeed(p),last=n.done+1>=n.total,todo=g.filter(smNeedsMe);
+      B(todo.length>1&&[...todo].every(q=>RV.seen.has(q.id))?'Approve all '+todo.length:'Approve','ap',b=>rvApprove(todo.length>1&&todo.every(q=>RV.seen.has(q.id))?todo:[p],b));
+      bar.prepend(Object.assign(el('div','rvConseq'),{textContent:'Approving schedules it for '+(p.scheduled_for?smDT(p.scheduled_for):'the next slot')+(todo.length>1&&!todo.every(q=>RV.seen.has(q.id))?' · open every channel tab to approve all at once':'')}))}
+    else B(ap.some(a=>a.who===me.n)?'You approved ✓':'Waiting on others','ap',()=>{}).disabled=true}
+  else if(me.role==='editor'&&p.status==='draft')B(p.review_status==='changes_requested'?'Fix and resend':'Edit','ch',()=>{rvClose();sub('social','content');smCompose(p)});
+  if(bar.children.length)box.append(bar)}
+async function rvApprove(list,btn){btn.disabled=true;btn.textContent='Saving…';try{for(const q of list){SM=await Y().call('socialAct',[{action:'approve',id:q.id}])}renderSM();
+  const left=aqGroups((SM.posts||[]).filter(p=>p.status==='draft')).filter(g=>aqState(g)==='mine');if(left.length&&RV){rvOpen(left[0])}else{try{history.back()}catch(e){rvClose()}}}
+  catch(e){alert((e&&e.message)||String(e));btn.disabled=false;btn.textContent='Approve'}}
+function rvSheet(build){const s=el('div','rvSheet'),c=el('div');s.append(c);s.addEventListener('click',e=>{if(e.target===s)s.remove()});build(c,()=>s.remove());document.body.append(s);return s}
+function rvChanges(p,kind){rvSheet((c,close)=>{c.append(el('h3','',kind==='reject'?'Reject this post':'Request changes'),el('div','rvHist',kind==='reject'?'Rejecting removes it from the queue. Use Request changes if it just needs fixing.':'The writer sees this and fixes the post. Approvals reset after the edit.'));
+  const ch=el('div','rvChips'),on=new Set();AQ_REASONS.concat(kind==='reject'?['Duplicate','Not needed']:[]).forEach(r=>{const b=el('button','',r);b.type='button';b.addEventListener('click',()=>{on.has(r)?on.delete(r):on.add(r);b.classList.toggle('on')});ch.append(b)});
+  const t=el('textarea');t.placeholder=kind==='reject'?'Why? (required)':'What exactly should change?';const r2=el('div','row2'),cx=el('button','btn2','Cancel'),ok=el('button','btn',kind==='reject'?'Reject':'Send back');cx.type=ok.type='button';cx.addEventListener('click',close);
+  ok.addEventListener('click',()=>{const reason=[[...on].join(', '),t.value.trim()].filter(Boolean).join(': ');if(!reason){t.focus();t.placeholder='Pick a reason or write one';return}
+    smRun('socialAct',{action:'reject',kind,id:p.id,reason},ok).then(d=>{if(d){close();if(RV)rvRefresh()}})});r2.append(cx,ok);c.append(ch,t,r2)})}
+function rvMenu(p,g){rvSheet((c,close)=>{const m=el('div','rvMenu'),B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>{close();f()});m.append(b)};
+  if(['draft','queued','failed','rejected'].includes(p.status))B('Edit post','',()=>{rvClose();sub('social','content');smCompose(p)});
+  if(p.status==='queued')B('Pull back to draft','',()=>smRun('socialAct',{action:'unschedule',id:p.id}));
+  if(p.link_url)B('Copy apply link','',()=>{try{navigator.clipboard.writeText(p.link_url)}catch(e){}});
+  if(p.status==='draft'&&smMine().role!=='editor')B('Reject…','red',()=>rvChanges(p,'reject'));
+  B('Cancel','',()=>{});c.append(m)})}
 function renderSMCal(){const B=$('smCB'),L=$('smCL');B.textContent='';L.textContent='';const pls=[...new Set((SM.posts||[]).map(p=>p.platform))];
   [['all','All']].concat(pls.map(p=>[p,SM_PL[p]||p])).forEach(([k,l])=>{const b=el('button',SMB===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{SMB=k;renderSMCal()});B.append(b)});
   const s=new Date();s.setHours(0,0,0,0);const P=(SM.posts||[]).filter(p=>['queued','draft','posting','posted'].includes(p.status)&&(SMB==='all'||p.platform===SMB));
@@ -1703,14 +1807,14 @@ const SMJ_TPL={company_driver:{title:'CDL-A Hazmat Container Driver – Local Po
   yard:{title:'Yard Crew – Container Yard',emp:'FULL_TIME',summary:'Check containers and chassis in and out, keep the yard organized and safe.',req:'Reliable, on time\nComfortable working outdoors\nYard hostler experience a plus'}};
 const smJNeedsMe=j=>{const me=smMine();if(j.status!=='draft'||j.review_status==='changes_requested'||me.role==='editor')return false;const ap=j.approvals||[];if(ap.some(a=>a.who===me.n))return false;if(j.has_claims&&ap.some(a=>a.role===me.role))return false;return true};
 function smJCard(j){const c=el('div','smP smJ'),h=el('h4'),st=j.status==='draft'?(j.review_status==='changes_requested'?'changes asked':'needs approval'):j.status;
-  h.append(el('span','stt '+(j.status==='draft'?'draft':j.status),st),el('span','',j.title));if(j.has_claims)h.append(el('span','tag','pay/claims · 2 approvals'));c.append(h);
+  h.append(el('span','stt '+(j.status==='draft'?'draft':j.status),st),el('span','',j.title));if(j.has_claims)h.append(el('span','tag','pay/claims · check numbers'));c.append(h);
   c.append(el('div','meta',[j.brand==='1Stop'?'1 Stop Logistics':'2FF Logistics',(SMJ_KIND.find(k=>k[0]===j.kind)||[])[1],(SMJ_EMP.find(k=>k[0]===j.employment_type)||[])[1],j.city+', '+j.state].filter(Boolean).join(' · ')));
   if(j.pay_line)c.append(el('div','pay',j.pay_line));if(j.summary)c.append(el('div','',j.summary));
   const cnt=el('div','meta');cnt.append(el('span','cnt',String(j.applicants||0)),document.createTextNode(' applicants'+(j.new_7d?' · '+j.new_7d+' this week':'')+(j.status==='live'&&j.valid_through?' · listed until '+new Date(j.valid_through).toLocaleDateString():'')+(j.social_queued_at?' · hiring posts sent '+smDT(j.social_queued_at):'')+((j.channels||[]).length?'':' · no social posts')));c.append(cnt);
-  if((j.approvals||[]).length)c.append(el('div','meta','Approved by '+j.approvals.map(a=>a.who.split(' ')[0]).join(' + ')+(j.status==='draft'&&j.has_claims&&j.approvals.length<2?' · waiting on '+(j.approvals[0].role==='recruiting'?'Lethaniel or Richard':'Julia'):'')));
+  if((j.approvals||[]).length)c.append(el('div','meta','Approved by '+j.approvals.map(a=>a.who.split(' ')[0]).join(' + ')));
   if(j.review_notes)c.append(el('div','smW',j.review_notes));
   const row=el('div','row'),B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));row.append(b)};
-  if(smJNeedsMe(j))B(j.has_claims&&!(j.approvals||[]).length?'Approve (1 of 2)':'Approve and post','btn',b=>{if(!(j.has_claims&&!(j.approvals||[]).length)&&!confirm('This puts the job live on the careers page and Google Jobs'+((j.channels||[]).length?' and posts it to '+j.channels.length+' social channel(s)':'')+'. Go?'))return;smRun('socialJob',{action:'approve',id:j.id},b)});
+  if(smJNeedsMe(j))B('Approve and post','btn',b=>{if(!confirm('This puts the job live on the careers page and Google Jobs'+((j.channels||[]).length?' and posts it to '+j.channels.length+' social channel(s)':'')+'. Go?'))return;smRun('socialJob',{action:'approve',id:j.id},b)});
   if(j.status==='draft'&&smMine().role!=='editor')B('Ask for changes','btn2',b=>{const r=prompt('What should change? (the writer sees this)');if(r)smRun('socialJob',{action:'reject',id:j.id,reason:r},b)});
   if(j.status!=='closed')B('Edit','btn2',()=>{if(j.status==='live'&&!confirm('Editing takes the job off the careers page until it is approved again. Continue?'))return;smJobEdit(j)});
   if(j.status==='live'){B('Close job','btn2',b=>{if(confirm('Close "'+j.title+'"? It comes off the careers page and Google Jobs.'))smRun('socialJob',{action:'close',id:j.id},b)});
@@ -1733,7 +1837,7 @@ function smJobEdit(j){const box=$('smJE');box.hidden=false;box.textContent='';co
     if(!j&&!drawCh.done&&c.connected&&c.platform!=='linkedin_personal')pick.add(c.key);const l=el('label',c.connected?'':'off'),cb=el('input');cb.type='checkbox';cb.disabled=!c.connected;cb.checked=pick.has(c.key);
     cb.addEventListener('change',()=>{cb.checked?pick.add(c.key):pick.delete(c.key)});l.append(cb,document.createTextNode((SM_PL[c.platform]||c.platform)+(c.connected?'':' (not connected)')));chs.append(l)});drawCh.done=true};
   const W=el('div'),warn=()=>{W.textContent='';const t=[title.value,sum.value,desc.value,ben.value,pnote.value].join(' ');const claims=pmin.value!==''||SM_CLAIM.test(t);
-    if(claims)W.append(el('div','smW','Pay or claims in this job: it needs two approvals – Julia AND Lethaniel or Richard.'));
+    if(claims)W.append(el('div','smW','Pay or claims in this job: check the numbers match ADP and what we actually pay before approving.'));
     if(kind.value==='owner_operator'&&pmin.value!=='')W.append(el('div','smW','Owner-operator pay must match what our owner-operators actually net on recent settlements. An inflated earnings claim is an FTC and lease-law risk.'));
     if(kind.value==='owner_operator'&&emp.value!=='CONTRACTOR')W.append(el('div','smW bad','Owner-operators are contractors, never employees. Pick Contractor (1099).'));
     if(kind.value==='company_driver')W.append(el('div','smW','Pick how this driver is really paid: W-2 through ADP = Full time; 1099 per load = Contractor. The post must match the paperwork.'));
@@ -1774,8 +1878,8 @@ function renderSMR(){const P=(SM.posts||[]).filter(p=>Date.now()-new Date(p.post
     const tr=el('tr');tr.append(el('td','',b+' · '+(SM_PL[pl]||pl)),el('td','',String(ps.length)),el('td',X.some(p=>p.status==='failed')?'bad':'',String(X.filter(p=>p.status==='failed').length)),el('td','',String(ps.filter(p=>p.audience&&p.audience!=='brand').length)),el('td','',lastP?smDT(lastP):''));T.append(tr)})}
 function renderSMS(){const L=$('smSL');L.textContent='';L.append(el('h3','','Social channels'));
   (SM.channels||[]).forEach(c=>{const r=el('div','smBd'),l=el('div');l.append(el('b','',c.label),el('div','meta',c.connect_method||''));const s=el('div',c.connected?'on':'offx',c.connected?'posting':'add later');if(c.target_url){const a=el('a','btn2','Open');a.href=c.target_url;a.target='_blank';s.append(document.createTextNode(' '),a)}r.append(l,s);L.append(r)});
-  L.append(el('h3','','Who does what'));const ppl=SM.people||{};Object.keys(ppl).forEach(n=>L.append(el('div','smBd',n+' — '+(ppl[n]==='manager'?'writes, approves':ppl[n]==='recruiting'?'writes, approves (required on any pay/home-time claim)':'writes, sends for approval'))));
-  L.append(el('h3','','House rules'));['Every post is a draft until approved. The Chrome publisher only posts approved ones.','Pay, home time, equipment, bonus or "guarantee" = two approvals: Julia AND Lethaniel or Richard. Numbers must match the CareerPlug job.','Two kinds of driver seats, never in the same post: company drivers (W-2, paid through ADP; only promise benefits we offer) and owner-operators (lease-on, paid by settlement; never call them employees).','No age, gender or national-origin wording. Say "drivers" and "you".','Mix: about 40% open seats, 25% day in the life, 20% driver stories (with the driver\'s OK), 15% company news.','Boosted job ads on Facebook/Instagram must use Meta\'s Employment special ad category.','Every post ends with how to apply (the CareerPlug link) so we can count applicants by channel.'].forEach(t=>L.append(el('div','smBd',t)))}
+  L.append(el('h3','','Who does what'));const ppl=SM.people||{};Object.keys(ppl).forEach(n=>L.append(el('div','smBd',n+' — '+(ppl[n]==='manager'?'writes, approves':ppl[n]==='recruiting'?'writes, approves':'writes, sends for approval'))));
+  L.append(el('h3','','House rules'));['Every post is a draft until approved. The Chrome publisher only posts approved ones.','Pay, home time, equipment, bonus or "guarantee": one approval (Julia, Lethaniel or Richard). Numbers must match the CareerPlug job and the ADP pay rate.','Two kinds of driver seats, never in the same post: company drivers (W-2, paid through ADP; only promise benefits we offer) and owner-operators (lease-on, paid by settlement; never call them employees).','No age, gender or national-origin wording. Say "drivers" and "you".','Mix: about 40% open seats, 25% day in the life, 20% driver stories (with the driver\'s OK), 15% company news.','Boosted job ads on Facebook/Instagram must use Meta\'s Employment special ad category.','Every post ends with how to apply (the CareerPlug link) so we can count applicants by channel.'].forEach(t=>L.append(el('div','smBd',t)))}
 function renderSM(){SM_SECS.forEach(s=>s.hidden=!smCan());if(!smCan()||!SM)return;
   const fns=[renderSMT,renderSMCal,renderSMC,renderSMH,renderSMR,renderSMS];fns.forEach(f=>{try{f()}catch(e){console.error(e)}});try{tabVis()}catch(e){}}
 smCont.querySelector('#smNew').addEventListener('click',()=>{if(SM)smCompose(null)});smHire.querySelector('#smJNew').addEventListener('click',()=>{if(SM)smJobEdit(null)});smCont.querySelector('#smRef').addEventListener('click',()=>loadSM(true));smCont.querySelector('#smQ').addEventListener('input',()=>{if(SM)renderSMC()});
@@ -2135,7 +2239,7 @@ yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / 
 port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
 sales:[['work','Find work'],['quotes','Quotes'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
-social:[['today','Today'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
+social:[['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
 safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching'],['photos','Chassis photos']]};
