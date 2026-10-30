@@ -3392,6 +3392,59 @@ function renderBrief(){const S=Y().S||{};if(!S.me)return;let b=$('tBrief');if(!b
   const row=el('div','bRow'),p=el('button','bPlay',BR_SPEAK?'■ Stop':'▶ Listen'),x=el('button','bX','Hide for today');p.type=x.type='button';p.setAttribute('aria-label','Read my briefing out loud');const vb=el('button','bX','Voice ›');vb.type='button';vb.addEventListener('click',()=>myOpen(false,'voice'));
   p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{brStop(p);brSave({hid:brToday()});renderBrief()});row.append(p,vb,x);c.append(row);b.append(c)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
+// ===== COMPUTER VIEW / PHONE VIEW (owner 10/30/2026; Perplexity research: one app, two arrangements — Gmail/Slack/Linear pattern) =====
+// Auto: computer view at 1024 px and wider, phone view below. Anyone can force "Phone" or "Computer" in the account menu (remembered on that device).
+// Computer view: left sidebar with every tab (labels, badges), wide workspace (up to 1320 px), dialogs centered, the AI assistant as a right-side panel,
+// hover states and keyboard shortcuts (/ = search, Ctrl/Cmd+K = assistant, Esc = close). Same data and buttons as the phone: nothing is duplicated.
+{const st=el('style');st.textContent=
+'html.desk body{padding-left:240px}'+
+'html.desk nav.tabbar{top:0!important;bottom:0!important;left:0!important;right:auto!important;width:240px!important;height:100vh!important;flex-direction:column!important;justify-content:flex-start!important;align-items:stretch!important;border-top:0!important;border-right:1px solid rgba(255,255,255,.08)!important;box-shadow:none!important;background:#141a2b!important;padding:0 0 14px!important;overflow-y:auto!important;z-index:60}'+
+'html.desk nav.tabbar .deskBrand{display:flex!important}'+
+'html.desk nav.tabbar.pinned .in,html.desk nav.tabbar .in{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:2px!important;max-width:none!important;width:auto!important;padding:6px 10px!important;overflow:visible!important}'+
+'html.desk nav.tabbar button,html.desk nav.tabbar.pinned button,html.desk nav.tabbar button.inMore{display:flex!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:12px!important;min-height:42px!important;min-width:0!important;width:100%!important;padding:8px 12px!important;border-radius:10px!important;color:#aeb6c8!important;flex:none!important}'+
+'html.desk nav.tabbar button span.l{font:600 14px/1.2 var(--body)!important;text-transform:none!important}'+
+'html.desk nav.tabbar button svg{width:20px!important;height:20px!important}'+
+'html.desk nav.tabbar button:hover{background:rgba(255,255,255,.06)!important;color:#fff!important}'+
+'html.desk nav.tabbar button.on{background:rgba(170,184,255,.14)!important;color:#fff!important}'+
+'html.desk nav.tabbar button.on::before{top:8px!important;bottom:8px!important;left:0!important;right:auto!important;width:3px!important;height:auto!important;border-radius:0 3px 3px 0!important}'+
+'html.desk nav.tabbar .bdg{position:static!important;margin-left:auto!important;box-shadow:none!important}'+
+'html.desk nav.tabbar button[data-k=more]{display:none!important}'+
+'html.desk nav.tabbar button[style*="display: none"],html.desk nav.tabbar button[style*="display:none"],html.desk nav.tabbar button[hidden]{display:none!important}'+ // never show a tab the person's role hides
+'html.desk .tbl{overflow-x:auto}'+
+'.deskBrand{display:none;align-items:center;gap:10px;padding:16px 18px 10px;color:#fff;font:700 17px var(--display,var(--body))}.deskBrand img{width:34px;height:34px;border-radius:8px;background:#fff;object-fit:contain}.deskBrand small{display:block;font:500 11px var(--body);color:#8a93a8}'+
+'.deskFoot{display:none;margin:10px 12px 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#8a93a8}html.desk .deskFoot{display:block}.deskFoot button{background:transparent;border:1px solid rgba(255,255,255,.18);color:#cfd5e3;border-radius:8px;padding:6px 10px;font-size:12px;margin-top:6px;cursor:pointer}.deskFoot kbd{background:rgba(255,255,255,.1);border-radius:4px;padding:0 5px;font-size:11px}'+
+'html.desk .wrap{max-width:1320px!important;margin:0 auto!important;padding-left:28px!important;padding-right:28px!important;padding-bottom:40px!important}'+
+'html.desk #aiFab{bottom:24px!important;right:24px!important}'+
+'html.desk .a2hs{display:none!important}'+
+// dialogs and sheets: centered on a computer
+'html.desk .smwSheet,html.desk .phLib,html.desk .rvSheet,html.desk .moreSheet{align-items:center!important}html.desk .smwSheet>div,html.desk .phLib>div,html.desk .rvSheet>div{border-radius:16px!important;max-width:720px!important;max-height:84vh!important}'+
+// the assistant becomes a right-side panel that keeps the screen visible
+'html.desk #aiSh{justify-content:flex-end!important;align-items:stretch!important;background:rgba(10,15,30,.18)!important}html.desk #aiSh>div{max-width:440px!important;max-height:none!important;height:100vh!important;border-radius:0!important;box-shadow:-8px 0 30px rgba(0,0,0,.18)}'+
+// wider grids and denser cards
+'html.desk .kpis{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))!important}html.desk .smwG{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))!important}html.desk .shQ{grid-template-columns:repeat(4,1fr)!important}html.desk .smwT{grid-template-columns:repeat(4,1fr)!important}'+
+'html.desk #hrL{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:0 14px}'+
+'@media (hover:hover) and (pointer:fine){html.desk table.score tr:hover td,html.desk table.slT tr:hover td{background:rgba(31,42,92,.04)}html.desk .hrC:hover,html.desk .smwP:hover,html.desk .aqC:hover,html.desk .smwG .cd:hover{box-shadow:0 4px 16px rgba(20,30,70,.10)}}'+
+// view switch in the account menu
+'.vwRow{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line,#e3e6e8);font-size:14px}.vwRow span{flex:1}.vwRow button{border:1px solid var(--line,#d5d9db);background:var(--card,#fff);color:var(--ink,#1b1f24);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}.vwRow button.on{background:#1F2A5C;color:#fff;border-color:#1F2A5C}';
+document.head.append(st)}
+const VW={get(){try{return localStorage.getItem('viewMode')||'auto'}catch(e){return 'auto'}},
+  set(m){try{localStorage.setItem('viewMode',m)}catch(e){}VW.apply()},
+  apply(){const m=VW.get(),on=m==='computer'||(m==='auto'&&innerWidth>=1024);document.documentElement.classList.toggle('desk',on)}};
+window.yardView=VW;VW.apply();addEventListener('resize',()=>{clearTimeout(window.__vwT);window.__vwT=setTimeout(VW.apply,120)});
+// sidebar brand + footer (shown only in computer view)
+{const nav=document.querySelector('nav.tabbar');if(nav){const br=el('div','deskBrand'),im=el('img'),tx=el('div');im.src='logo.png';im.alt='';tx.append(document.createTextNode('DockRelay'),el('small','','2FF Logistics · 1 Stop'));br.append(im,tx);nav.prepend(br);
+  const ft=el('div','deskFoot'),pb=el('button','','📱 Switch to phone view');pb.type='button';pb.addEventListener('click',()=>VW.set('phone'));
+  ft.append(el('div','','Shortcuts: '),el('div','','/ search · Ctrl+K assistant · Esc close'),pb);ft.querySelectorAll('div')[1].innerHTML='<kbd>/</kbd> search · <kbd>Ctrl K</kbd> assistant · <kbd>Esc</kbd> close';nav.append(ft)}}
+// view switch inside the account menu (top-right avatar)
+{const m=document.getElementById('abMenu');if(m)new MutationObserver(()=>{const c=m.querySelector('.abCard');if(!c||c.querySelector('.vwRow'))return;const r=el('div','vwRow');r.append(el('span','','Screen layout'));
+  [['auto','Auto'],['phone','📱 Phone'],['computer','💻 Computer']].forEach(([k,l])=>{const b=el('button',VW.get()===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{VW.set(k);r.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});r.append(b)});
+  const out=c.querySelector('.abOut');c.insertBefore(r,out||null)}).observe(m,{childList:true,subtree:true})}
+// keyboard shortcuts (computer)
+document.addEventListener('keydown',e=>{const t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable);
+  if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();try{const f=document.getElementById('aiFab');if(f&&!f.hidden)aiOpen()}catch(x){}return}
+  if(e.key==='Escape'){const sh=document.getElementById('aiSh');if(sh&&!sh.hidden){sh.hidden=true;return}const s=document.querySelector('.smwSheet,.phLib');if(s){s.remove();return}}
+  if(e.key==='/'&&!typing){const i=[...document.querySelectorAll('section:not([hidden]) input[placeholder*="Search" i],section:not([hidden]) input[placeholder*="Filter" i],#hrQ')].find(x=>x.offsetParent!==null);if(i){e.preventDefault();i.focus()}}});
+
 all();
 })();
 
