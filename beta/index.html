@@ -2221,19 +2221,20 @@ const pl=$('pList');let PF='all';
 if(pl){const fc=el('div','fchips');fc.id='pChips';[['all','All'],['today','Today'],['OUT','Out-gates'],['IN','In-gates']].forEach(([k,l])=>{const b=el('button',k==='all'?'on':'',l);b.type='button';b.dataset.k=k;
   b.addEventListener('click',()=>{PF=k;fc.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));decoratePort()});fc.append(b)});pl.before(fc)}
 
+const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
 // ---------- 3. bottom tab bar ----------
-const IC={today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+const IC={ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg>',
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
 reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',sales:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',owner:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M12 15v2"/></svg>',social:'<svg viewBox="0 0 24 24"><path d="M4 11v2a1 1 0 001 1h2l5 4V6L7 10H5a1 1 0 00-1 1z"/><path d="M16 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['owner','Owner']];
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['owner','Owner'],['ask','Ask AI']];
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
-const SUBS={today:[['att','Attention'],['feed','Port feed']],
+const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
@@ -2262,7 +2263,7 @@ function sub(t,k,quiet){const av=subAvail(t);if(!av.includes(k))k=av[0]||SUBS[t]
 function show(){[...wrap.children].forEach(x=>{if(!x.dataset||!x.dataset.tab)return;x.classList.toggle('vis',x.dataset.tab===TAB&&(x.dataset.sub==='*'||x.dataset.sub===CUR[TAB]))})}
 function subBadge(t,k,n,red){const b=SB[t]&&SB[t].querySelector('button[data-k="'+k+'"] .sb');if(b){b.textContent=n?String(n):'';b.className='sb'+(red?' r':'')}}
 let TAB='';
-function go(k,target,quiet){TAB=k;document.body.dataset.tab=k;inn.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.k===k);b.setAttribute('aria-current',b.dataset.k===k?'page':'false')});try{moreSync()}catch(e){}
+function go(k,target,quiet){TAB=k;if(k==='ask')setTimeout(()=>{try{aiDraw()}catch(x){}},30);document.body.dataset.tab=k;inn.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.k===k);b.setAttribute('aria-current',b.dataset.k===k?'page':'false')});try{moreSync()}catch(e){}
   {const tg=target&&(typeof target==='string'?document.querySelector(target):target);const hs=tg&&tg.closest&&tg.closest('.wrap > [data-sub]');sub(k,hs&&hs.dataset.sub!=='*'?hs.dataset.sub:(CUR[k]||''),true)}
   if(!quiet){try{localStorage.setItem('yardTab',k)}catch(e){}if(history.replaceState)history.replaceState(null,'','#'+k)}
   if(target){setTimeout(()=>{const t=typeof target==='string'?document.querySelector(target):target;if(t){t.scrollIntoView({behavior:'smooth',block:'center'});t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash')}},60)}
@@ -2298,7 +2299,7 @@ function moreSync(){const inM=HID.includes(TAB);moreBtn.classList.toggle('on',in
   const mb=moreBtn.querySelector('.bdg'),mt=n&&!inM?String(n):'',mc='bdg'+(red?'':' y');if(mb.textContent!==mt)mb.textContent=mt;if(mb.className!==mc)mb.className=mc;if(!sheet.hidden)drawMore()}
 function drawMore(){sheet.textContent='';const card=el('div','msCard'),hd=el('div','msHd');hd.append(el('b','',EDIT?'Pick your 4 tabs':'More'));
   const eb=el('button','msEdit',EDIT?'Done':'Edit my tabs');eb.type='button';eb.addEventListener('click',()=>{EDIT=!EDIT;drawMore()});hd.append(eb);card.append(hd);
-  const vis=TABS.map(t=>t[0]).filter(k=>tabBtn(k).style.display!=='none'),list=EDIT?vis:HID,g=el('div','msGrid');
+  const vis=TABS.map(t=>t[0]).filter(k=>tabBtn(k).style.display!=='none'),list=EDIT?vis:HID.slice().sort((x,y)=>(y==='ask')-(x==='ask')),g=el('div','msGrid');
   list.forEach(k=>{const b=el('button','msItem'+(EDIT&&FAV.includes(k)?' pick':'')+(k===TAB?' cur':''));b.type='button';b.innerHTML=IC[k];b.append(el('span','',(TABS.find(t=>t[0]===k)||[])[1]));
     const d=tabBtn(k).querySelector('.bdg');if(!EDIT&&d&&d.textContent)b.append(el('i',d.classList.contains('y')?'y':'',d.textContent));
     b.addEventListener('click',()=>{if(!EDIT){closeMore();go(k);return}
@@ -2579,7 +2580,7 @@ function all(){try{renderFleet()}catch(e){console.error(e)}try{loadOW();renderOW
 window.addEventListener('yard',all);window.addEventListener('yardport',()=>{try{decoratePort()}catch(e){}});
 let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().length){firstRole=false;startTab()}});
 // ---- ASK / RESEARCH: floating button + bottom sheet (Claude for app help and drafting, Perplexity for web research with sources) ----
-{const st=el('style');st.textContent='#aiFab{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:800;height:48px;padding:0 16px;border-radius:24px;border:0;background:#1F2A5C;color:#fff;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(16,24,40,.25);display:flex;align-items:center;gap:6px}#aiFab[hidden]{display:none}'+
+{const st=el('style');st.textContent='.subbar[data-tab=ask]{display:none!important}#aiTab .aiTabC{display:flex;flex-direction:column;height:calc(100dvh - 190px);min-height:420px;background:var(--card,#fff);border:1px solid var(--line,#e4e7e8);border-radius:14px;overflow:hidden}#aiFab{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:800;height:48px;padding:0 16px;border-radius:24px;border:0;background:#1F2A5C;color:#fff;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(16,24,40,.25);display:flex;align-items:center;gap:6px}#aiFab[hidden]{display:none}'+
 '#aiSh{position:fixed;inset:0;z-index:9200;background:rgba(10,15,30,.45);display:flex;align-items:flex-end;justify-content:center}#aiSh[hidden]{display:none}#aiSh>div{background:var(--card,#fff);color:var(--ink,#1b1f24);width:100%;max-width:640px;height:88vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column}'+
 '.aiHd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line,#e4e7e8)}.aiHd b{flex:1;font-size:17px}.aiHd button{border:0;background:transparent;font-size:22px;min-width:44px;min-height:44px;color:inherit}'+
 '.aiSeg{display:flex;gap:6px;padding:10px 14px 0}.aiSeg button{flex:1;min-height:40px;border-radius:10px;border:1px solid var(--line,#ccd);background:var(--card,#fff);color:inherit;font-size:14px}.aiSeg button.on{background:#1F2A5C;color:#fff;border-color:#1F2A5C;font-weight:700}.aiHint{font-size:12px;color:var(--mut,#5d686d);padding:6px 14px 0}'+
@@ -2590,16 +2591,11 @@ let firstRole=true;window.addEventListener('yard',()=>{if(firstRole&&roles().len
 let AIM='ask',AIB=null,AINE=null,ta0='';const AIH={ask:[],research:[]};
 const AI_SUG={ask:['How do I request a PIN?','Write a Facebook post for a yard crew job','How do I change my pinned tabs?','Draft a text to a driver about a late free day'],
   research:['GPA Garden City Terminal gate hours this week','Current Georgia overweight permit rules for containers','Average owner-operator drayage settlement Savannah 2026','FMCSA hours of service short-haul exception']};
-const aiFab=el('button','','✦ Ask');aiFab.id='aiFab';aiFab.type='button';aiFab.hidden=true;document.body.append(aiFab);
 const aiCanR=()=>{const r=roles();return !(r.includes('limited')&&!r.includes('admin'))};
-function aiVis(){aiFab.hidden=!(Y().S&&Y().S.me&&Y().call)||!!RV}
-setInterval(aiVis,1500);
-function aiOpen(){let sh=$('aiSh');if(!sh){sh=el('div');sh.id='aiSh';sh.addEventListener('click',e=>{if(e.target===sh)sh.hidden=true});document.body.append(sh)}sh.hidden=false;aiDraw()}
-aiFab.addEventListener('click',aiOpen);
 function aiMd(t){const f=document.createDocumentFragment();String(t).replace(/\s*\[(web|\d)[^\]]*\]/g,'').split('\n').forEach((ln,i)=>{if(i)f.append(document.createElement('br'));let h=/^#{1,4}\s+/.test(ln);ln=ln.replace(/^#{1,4}\s+/,'').replace(/^\s*[-*]\s+/,'• ');
   const parts=ln.split(/\*\*/);parts.forEach((p,j)=>{if(!p)return;if(j%2||h){const b=document.createElement('b');b.textContent=p;f.append(b)}else f.append(document.createTextNode(p))})});return f}
-function aiDraw(){const sh=$('aiSh');sh.textContent='';const c=el('div');sh.append(c);
-  const hd=el('div','aiHd'),x=el('button','','✕');x.type='button';x.addEventListener('click',()=>sh.hidden=true);hd.append(el('b','','Ask the Yard App'),x);c.append(hd);
+function aiDraw(){const sh=$('aiTab');if(!sh)return;sh.textContent='';const c=el('div','aiTabC');sh.append(c);
+  const hd=el('div','aiHd');hd.append(el('b','','AI Assistant'));c.append(hd);
   if(aiCanR()){const sg=el('div','aiSeg');[['ask','Ask (app help, drafts)'],['research','Research the web']].forEach(([k,l])=>{const b=el('button',AIM===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{AIM=k;aiDraw()});sg.append(b)});c.append(sg)}
   if(AIB&&roles().includes('admin'))c.append(el('div','aiHint','Team AI spend · today $'+Number(AIB.t||0).toFixed(2)+' of $'+Number(AIB.dc||0).toFixed(2)+' · this month $'+Number(AIB.s).toFixed(2)+' of $'+AIB.b));c.append(el('div','aiHint',AIM==='ask'?'Claude. Helps with the app and writes drafts. It cannot see loads, drivers or money.':'Perplexity. Searches the web and shows its sources. Check anything important before you act on it.'));
   const log=el('div','aiLog');c.append(log);const H=AIH[AIM];
@@ -2611,11 +2607,11 @@ function aiDraw(){const sh=$('aiSh');sh.textContent='';const c=el('div');sh.appe
     const b1=el('button','btn','Email me a code'),msg=el('div','meta');b1.type='button';p.append(em,cd,b1,msg);log.append(p);
     b1.addEventListener('click',()=>{b1.disabled=true;msg.textContent='';if(cd.hidden){const e=em.value.trim().toLowerCase();if(!/@(2f-logistics\.com|1stoplogisticsllc\.com)$/.test(e)){msg.textContent='Only @2f-logistics.com or @1stoplogisticsllc.com emails are allowed.';b1.disabled=false;return}
       Y().call('aiSignup',[{email:e}]).then(()=>{cd.hidden=false;em.disabled=true;b1.textContent='Verify';msg.textContent='Code sent to '+e+'. Check your inbox (and spam).';cd.focus()}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})}
-      else Y().call('aiVerify',[{code:cd.value}]).then(()=>{const q0=AINE;AINE=null;aiDraw();const t=$('aiSh').querySelector('.aiIn textarea');if(t&&q0){t.value=q0;$('aiSh').querySelector('.aiIn button').click()}}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})})}
-  const inp=el('div','aiIn'),ta=el('textarea'),send=el('button','btn','Send');ta.placeholder=AIM==='ask'?'Ask a question or ask for a draft…':'What should I look up?';ta.rows=1;send.type='button';inp.append(ta,send);c.append(inp);
+      else Y().call('aiVerify',[{code:cd.value}]).then(()=>{const q0=AINE;AINE=null;aiDraw();const t=$('aiTab').querySelector('.aiIn textarea');if(t&&q0){t.value=q0;$('aiTab').querySelector('.aiIn button').click()}}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})})}
+  const inp=el('div','aiIn'),ta=el('textarea'),send=el('button','btn','Send');ta.placeholder=AIM==='ask'?'Ask about the app or describe what to write…':'What do you want to find on the web?';ta.rows=1;send.type='button';inp.append(ta,send);c.append(inp);
   function go(){const q=ta.value.trim();if(q.length<3||send.disabled)return;if(!navigator.onLine){alert('You are offline.');return}
-    const h={q,a:''};H.push(h);const mode=AIM;aiDraw();const s2=$('aiSh').querySelector('.aiIn button');if(s2){s2.disabled=true;s2.textContent='…'}
-    Y().call('aiAsk',[{mode,q,tab:TAB,hist:mode==='ask'?H.slice(0,-1).filter(x=>x.a&&!x.err).slice(-4).map(x=>({q:x.q,a:x.a})):[]}]).then(d=>{h.a=d.text;h.src=d.sources||[];if(d.budget)AIB={s:d.spent,b:d.budget,t:d.today,dc:d.dayCap}}).catch(e=>{const m=(e&&e.message)||String(e);if(/NEED_EMAIL/.test(m)){H.pop();AINE=q;ta0=q}else{h.a=m;h.err=true}}).finally(()=>{if(AIM===mode&&!$('aiSh').hidden)aiDraw()})}
+    const h={q,a:''};H.push(h);const mode=AIM;aiDraw();const s2=$('aiTab').querySelector('.aiIn button');if(s2){s2.disabled=true;s2.textContent='…'}
+    Y().call('aiAsk',[{mode,q,tab:TAB,hist:mode==='ask'?H.slice(0,-1).filter(x=>x.a&&!x.err).slice(-4).map(x=>({q:x.q,a:x.a})):[]}]).then(d=>{h.a=d.text;h.src=d.sources||[];if(d.budget)AIB={s:d.spent,b:d.budget,t:d.today,dc:d.dayCap}}).catch(e=>{const m=(e&&e.message)||String(e);if(/NEED_EMAIL/.test(m)){H.pop();AINE=q;ta0=q}else{h.a=m;h.err=true}}).finally(()=>{if(AIM===mode&&TAB==='ask')aiDraw()})}
   send.addEventListener('click',go);ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go()}});
   log.scrollTop=log.scrollHeight;if(!H.length||H[H.length-1].a)setTimeout(()=>{try{ta.focus({preventScroll:true})}catch(e){}},50)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
