@@ -2596,13 +2596,15 @@ function aiVis(){aiFab.hidden=!(Y().S&&Y().S.me&&Y().call)||!!RV}
 setInterval(aiVis,1500);
 function aiOpen(){let sh=$('aiSh');if(!sh){sh=el('div');sh.id='aiSh';sh.addEventListener('click',e=>{if(e.target===sh)sh.hidden=true});document.body.append(sh)}sh.hidden=false;aiDraw()}
 aiFab.addEventListener('click',aiOpen);
+function aiMd(t){const f=document.createDocumentFragment();String(t).replace(/\s*\[(web|\d)[^\]]*\]/g,'').split('\n').forEach((ln,i)=>{if(i)f.append(document.createElement('br'));let h=/^#{1,4}\s+/.test(ln);ln=ln.replace(/^#{1,4}\s+/,'').replace(/^\s*[-*]\s+/,'• ');
+  const parts=ln.split(/\*\*/);parts.forEach((p,j)=>{if(!p)return;if(j%2||h){const b=document.createElement('b');b.textContent=p;f.append(b)}else f.append(document.createTextNode(p))})});return f}
 function aiDraw(){const sh=$('aiSh');sh.textContent='';const c=el('div');sh.append(c);
   const hd=el('div','aiHd'),x=el('button','','✕');x.type='button';x.addEventListener('click',()=>sh.hidden=true);hd.append(el('b','','Ask the Yard App'),x);c.append(hd);
   if(aiCanR()){const sg=el('div','aiSeg');[['ask','Ask (app help, drafts)'],['research','Research the web']].forEach(([k,l])=>{const b=el('button',AIM===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{AIM=k;aiDraw()});sg.append(b)});c.append(sg)}
   c.append(el('div','aiHint',AIM==='ask'?'Claude. Helps with the app and writes drafts. It cannot see loads, drivers or money.':'Perplexity. Searches the web and shows its sources. Check anything important before you act on it.'));
   const log=el('div','aiLog');c.append(log);const H=AIH[AIM];
   if(!H.length){const s=el('div','aiSug');AI_SUG[AIM].forEach(t=>{const b=el('button','',t);b.type='button';b.addEventListener('click',()=>{ta.value=t;go()});s.append(b)});log.append(s)}
-  H.forEach(h=>{log.append(el('div','aiQ',h.q));const a=el('div','aiA'+(h.err?' err':''),h.a||'…');if(h.src&&h.src.length){const s=el('div','src');s.append(el('b','','Sources'));h.src.forEach(x=>{const l=el('a','',x.title||x.url);l.href=x.url;l.target='_blank';l.rel='noopener';s.append(l)});a.append(s)}
+  H.forEach(h=>{log.append(el('div','aiQ',h.q));const a=el('div','aiA'+(h.err?' err':''));if(h.a&&!h.err)a.append(aiMd(h.a));else a.textContent=h.a||'…';if(h.src&&h.src.length){const s=el('div','src');s.append(el('b','','Sources'));h.src.forEach(x=>{const l=el('a','',x.title||x.url);l.href=x.url;l.target='_blank';l.rel='noopener';s.append(l)});a.append(s)}
     if(h.a&&!h.err){const cp=el('button','btn2 cp','Copy');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(h.a);cp.textContent='Copied'}catch(e){}});a.append(cp)}log.append(a)});
   const inp=el('div','aiIn'),ta=el('textarea'),send=el('button','btn','Send');ta.placeholder=AIM==='ask'?'Ask a question or ask for a draft…':'What should I look up?';ta.rows=1;send.type='button';inp.append(ta,send);c.append(inp);
   function go(){const q=ta.value.trim();if(q.length<3||send.disabled)return;if(!navigator.onLine){alert('You are offline.');return}
