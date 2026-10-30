@@ -2675,8 +2675,25 @@ function myOpen(first){const p=prefs(),d={...p},S=el('div','myS'),c=el('div');S.
   sv.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{renderToday()}catch(x){}});sk.addEventListener('click',()=>{if(first)prefSave({asked:true});S.remove();try{renderToday()}catch(x){}});e.append(sk,sv);c.append(e);
   S.addEventListener('click',ev=>{if(ev.target===S)S.remove()})}
 window.yardMyOpen=()=>myOpen(false);let PNEWS=null;
-function loadNews(){if(!Y().call||!navigator.onLine)return;Y().call('getPortNews',[{}]).then(d=>{PNEWS=d;try{renderNews();renderBrief()}catch(e){}}).catch(()=>{})}
+function loadNews(){if(!Y().call||!navigator.onLine)return;Y().call('getPortNews',[{}]).then(d=>{PNEWS=d;try{renderNews();renderBrief();renderGates()}catch(e){}}).catch(()=>{})}
 setTimeout(loadNews,3500);setInterval(()=>{if(document.visibilityState==='visible')loadNews()},60*60000);
+// ---- GPA GATES (official Garden City page): today's hours in the briefing, holiday closings ahead, one-tap GPA customer service.
+const hm=v=>{const m=String(v).match(/(\d{1,2}):?(\d{2})/);if(!m)return v;let h=+m[1],mi=m[2];const ap=h>=12?'PM':'AM';h=h%12||12;return h+(mi!=='00'?':'+mi:'')+' '+ap};
+function gateToday(){const G=PNEWS&&PNEWS.gates;if(!G)return null;const d=new Date(),dow=d.getDay(),iso=d.toISOString().slice(0,10),loc=new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  const hol=(G.holidays||[]).find(h=>h.d===loc);if(hol&&/closed/i.test(hol.gct))return {closed:true,say:'Garden City gates are closed today for '+hol.n+'.',lines:['Closed today: '+hol.n]};
+  if(dow===0)return {closed:true,say:'No regular Garden City gates on Sunday unless a shipping line requests one.',lines:['Sunday: no regular gates (only if a line requests one)']};
+  if(dow===6){const sat=(G.hours||[]).find(l=>/Saturday/i.test(l));return sat?{say:'Saturday: Gate 4 only, 8 AM to 5 PM, dry boxes only. Pick-up cut-off 3:30, drop-off 4.',lines:[sat]}:null}
+  const L=(G.hours||[]).filter(l=>!/Saturday|overtime/i.test(l));const pick=L.find(l=>/Dry container pick-up cut-off/i.test(l)),g38=L.find(l=>/Gates 3 and 8/i.test(l)),g4=L.find(l=>/Gate 4 opens/i.test(l));
+  const t=x=>(String(x||'').match(/\b\d{4}\b/g)||[]).map(hm);const a=t(g38),b=t(g4),c=t(pick);
+  return {say:'Garden City gates: 3 and 8 open '+(a[0]||'6 AM')+' to '+(a[1]||'5 PM')+', Gate 4 '+(b[0]||'4 AM')+' to '+(b[1]||'6 PM')+'. Dry pick-up cut-off '+(c[0]||'4:30 PM')+'.',lines:L}}
+function gateAhead(days){const G=PNEWS&&PNEWS.gates;if(!G)return [];const now=new Date();now.setHours(0,0,0,0);return (G.holidays||[]).filter(h=>{const t=new Date(h.d+'T12:00:00').getTime()-now.getTime();return t>0&&t<=days*864e5&&/closed/i.test(h.gct)})}
+function renderGates(){const host=$('portSec');if(!host||!PNEWS)return;let b=$('gpaGates');if(!b){b=el('div','pnews');b.id='gpaGates';host.before(b)}b.textContent='';
+  const g=gateToday(),G=PNEWS.gates,h=el('div','pH');h.append(el('b','','Garden City gates today'),el('span','meta','official GPA'));b.append(h);
+  if(g)g.lines.slice(0,8).forEach(l=>b.append(el('div','',l)));else b.append(el('div','meta','Gate hours not available right now.'));
+  const ah=gateAhead(30);ah.forEach(x=>b.append(el('div','alert','Closed '+new Date(x.d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+': '+x.n)));
+  const row=el('div','');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';const P=PNEWS.gpa||{};
+  const call=el('a','btn','Call GPA customer service');call.href='tel:+19129635526';const em=el('a','btn2','Email GPA');em.href='mailto:'+(P.email||'csv@gaports.com');const pg=el('a','btn2','Full gate rules');if(G){pg.href=G.url;pg.target='_blank';pg.rel='noopener'}
+  row.append(call,em);if(G)row.append(pg);b.append(row,el('div','meta','GPA Customer Experience '+(P.phone||'(912) 963-5526')+' · '+(P.hours||'8 AM - 5 PM Mon-Fri')+'. Weekend/holiday gate requests go through the shipping line by 1 PM the day before.'))}
 function renderNews(){let b=$('tNews');const anchor=$('tBrief');if(!anchor)return;if(!b){b=el('div');b.id='tNews';anchor.after(b)}b.textContent='';
   if(!prefs().news||!PNEWS||(!PNEWS.news.length&&!PNEWS.alerts.length))return;const c=el('div','pnews'),h=el('div','pH');h.append(el('b','','Georgia Ports news'),el('span','meta','official GPA'));c.append(h);
   PNEWS.alerts.slice(0,2).forEach(a=>c.append(el('div','alert','GPA notice · '+a.t)));
@@ -2705,6 +2722,7 @@ function brLines(){const S=Y().S||{},me=S.me||{},r=roles(),first=prefs().nick||S
   if(pins)L.push(n(pins,'PIN request')+' waiting for a PIN.');if(pinBad)L.push(n(pinBad,'PIN request')+' failed. Check the PINs tab.');
   try{if(SM&&smCan()){const mine=(SM.posts||[]).filter(smNeedsMe).length+(SM.jobs||[]).filter(smJNeedsMe).length,back=(SM.posts||[]).filter(p=>p.status==='draft'&&p.review_status==='changes_requested').length;
     if(mine)L.push(n(mine,'post or job','posts or jobs')+' waiting for your approval.');if(back&&smMine().role==='editor')L.push(n(back,'post')+' sent back for changes.')}}catch(e){}
+  try{const gt=gateToday();if(gt&&ops)L.push(gt.say);const ah=gateAhead(7);if(ah.length)L.push('Heads up: Garden City gates closed '+new Date(ah[0].d+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})+' for '+ah[0].n+'.')}catch(e){}
   if(PNEWS&&prefs().news){if(PNEWS.alerts.length)L.push(n(PNEWS.alerts.length,'new GPA notice')+'. Check Georgia Ports news below.');else if(PNEWS.news[0]&&Date.now()-new Date(PNEWS.news[0].d+'T12:00:00').getTime()<2*864e5)L.push('Port news: '+PNEWS.news[0].t+'.')}
   if(MD){const all=MD.open.concat(MD.close),left=all.filter(i=>!MD.done[i]);const part=hr<12?MD.open.filter(i=>!MD.done[i]):left;
     if(all.length)L.push(left.length?n(left.length,'item')+' left on your My day checklist'+(part[0]?'. Next: '+part[0].replace(/\(.*?\)/g,'').trim()+'.':'.'):'Your My day checklist is done. Nice work.')}
@@ -2714,14 +2732,19 @@ function brMot(){const d=new Date(),k=d.getFullYear()*400+d.getMonth()*32+d.getD
 let BR_SPEAK=false;
 function brSpeak(btn){const ss=window.speechSynthesis;if(!ss||typeof SpeechSynthesisUtterance==='undefined'){alert('This phone cannot read aloud here. The briefing is shown on screen.');return}
   if(BR_SPEAK){ss.cancel();BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen';return}
-  const {hi,L}=brLines(),u=new SpeechSynthesisUtterance([hi,'Here is your briefing.'].concat(L.slice(0,6),prefs().mot?[brMot()]:[]).join(' '));u.lang='en-US';u.rate=prefs().rate||1;
+  const {hi,L}=brLines(),u=new SpeechSynthesisUtterance([hi,'Here is your briefing.'].concat(L.slice(0,7),prefs().mot?[brMot()]:[]).join(' '));u.lang='en-US';u.rate=prefs().rate||1;
   const v=(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang)&&/Samantha|Ava|Allison|Google US English|Natural/i.test(x.name))||(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
-  u.onend=u.onerror=()=>{BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen'};ss.cancel();ss.speak(u);BR_SPEAK=true;btn.classList.add('on');btn.textContent='■ Stop';brSave({heard:brToday()})}
+  let started=false;u.onstart=()=>{started=true};u.onend=u.onerror=()=>{BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen'};
+  // iPhone quirks: calling cancel() right before speak() can drop the new speech, and Safari sometimes leaves speech "paused".
+  try{if(ss.speaking||ss.pending)ss.cancel()}catch(e){}try{ss.resume()}catch(e){}ss.speak(u);BR_SPEAK=true;btn.classList.add('on');btn.textContent='■ Stop';brSave({heard:brToday()});
+  setTimeout(()=>{if(!started&&BR_SPEAK){try{ss.cancel()}catch(e){}BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen';brTip(btn)}},2500)}
+function brTip(btn){let t=btn.parentNode.parentNode.querySelector('.bTip');if(!t){t=el('div','bTip');t.style.cssText='font-size:13px;color:#8a6100;background:#fff6dc;border-radius:8px;padding:8px 10px;margin-top:8px';btn.parentNode.after(t)}
+  t.textContent='No sound? Flip the iPhone Ring/Silent switch to Ring (or turn off Silent Mode in Control Center), turn the volume up, then tap Listen again. Bluetooth headphones or the truck radio also work.'}
 function renderBrief(){const S=Y().S||{};if(!S.me)return;let b=$('tBrief');if(!b){b=el('div');b.id='tBrief';const h=$('tMy')||$('tHello');if(!h)return;h.after(b)}if(!prefs().brief){b.textContent='';try{renderNews()}catch(e){}return}
   const st=brState(),hidden=st.hid===brToday();b.textContent='';
   if(hidden){const m=el('button','briefMini','▶ Today\'s briefing');m.type='button';m.addEventListener('click',()=>{brSave({hid:''});renderBrief()});b.append(m);return}
   const {L}=brLines(),c=el('div','brief'),h=el('div','bH');h.append(el('b','','Your shift briefing'),el('span','meta',new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})));c.append(h);
-  const ul=el('ul');L.slice(0,6).forEach(t=>ul.append(el('li','',t)));c.append(ul);if(prefs().mot)c.append(el('p','bMot',brMot()));
+  const ul=el('ul');L.slice(0,7).forEach(t=>ul.append(el('li','',t)));c.append(ul);if(prefs().mot)c.append(el('p','bMot',brMot()));
   const row=el('div','bRow'),p=el('button','bPlay',BR_SPEAK?'■ Stop':'▶ Listen'),x=el('button','bX','Hide for today');p.type=x.type='button';p.setAttribute('aria-label','Read my briefing out loud, about 15 seconds');
   p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{try{speechSynthesis.cancel()}catch(e){}BR_SPEAK=false;brSave({hid:brToday()});renderBrief()});row.append(p,x);c.append(row);b.append(c)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
