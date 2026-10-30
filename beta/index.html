@@ -2363,7 +2363,7 @@ function renderMyDay(){const b=mdBox();if(!b)return;b.textContent='';if(!MD){b.h
   part('Start of day',MD.open,hr>=11);part('Before you leave',MD.close,hr>=17);
   b.append(el('p','mdNote','Live work (last free days, PINs, applicants, failed posts) is in Needs attention below.'));
   if(MD.team&&MD.team.length){const tw=el('details','mdTeam');tw.append(el('summary','','Team today'));MD.team.forEach(t=>{const r=el('div','mdTr');r.append(el('span','',t.n),el('b',t.done===t.total?'go':t.done?'':'muted',t.done+' / '+t.total));tw.append(r)});b.append(tw)}}
-function loadMyDay(){if(!Y().call||!navigator.onLine)return;Y().call('getMyDay',[{}]).then(d=>{MD=d;renderMyDay()}).catch(()=>{})}
+function loadMyDay(){if(!Y().call||!navigator.onLine)return;Y().call('getMyDay',[{}]).then(d=>{MD=d;renderMyDay();try{renderBrief()}catch(e){}}).catch(()=>{})}
 setTimeout(loadMyDay,2500);setInterval(()=>{if(document.visibilityState==='visible')loadMyDay()},10*60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadMyDay()});
 {const st=el('style');st.textContent='.tFresh{font-size:12.5px;color:var(--muted);margin:2px 2px 0}'+
 '.chips.skel button b,.chips.skel button span{color:transparent!important;background:linear-gradient(90deg,#e8ebf1 25%,#f4f6f9 50%,#e8ebf1 75%);background-size:200% 100%;animation:skel 1.2s infinite;border-radius:6px}.chips.skel button::after{opacity:0}@keyframes skel{to{background-position:-200% 0}}'+
@@ -2379,7 +2379,7 @@ setTimeout(()=>{let seen=0;try{seen=+localStorage.getItem('yardA2HS')||0;localSt
   const x=el('button','','Got it');x.type='button';x.addEventListener('click',()=>{t.remove();try{localStorage.setItem('yardA2HS','99')}catch(e){}});t.append(x);document.body.append(t);
   const st=el('style');st.textContent='.a2hs{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;gap:10px;align-items:center;background:#1F2A5C;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.a2hs button{flex:none;background:#fff;color:#1F2A5C;border:0;border-radius:10px;padding:8px 12px;font-weight:700}';document.head.append(st)},6000);
 // ---------- 5. Today render ----------
-function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
+function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{renderBrief()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
   $('tHello').textContent='';$('tHello').append((hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(me?', '+String(me.n).split(' ')[0]:''),el('small','',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})));
   const ci=Y().contInfo||(x=>x),inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci);
   const late=[...inY,...open].filter(r=>r.cls==='late').length,warn=[...inY,...open].filter(r=>r.cls==='warn').length;
@@ -2647,6 +2647,46 @@ async function vcStart(){const p=vcPanel(),top=el('div','vcTop'),orb=el('div','v
     if(/Permission|NotAllowed|denied/i.test(m)){fin('Microphone blocked');sub.textContent='Allow the microphone: iPhone Settings → Safari → Microphone, then try again.';return}
     fin('Could not start');sub.textContent=m}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&VC)VC.fin('Ended (app closed)')});
+// ---- SHIFT BRIEFING (Perplexity research 10/30/2026): silent card + tap "Listen" (iPhone voice, free). Never auto-plays: iOS blocks it,
+// and people open the app in meetings, near customers and in trucks. Spoken text uses counts only (no driver/customer names or container numbers).
+// Facts come from the app's own data (port feed, PINs, My day, approvals), not AI web research, so it can't read out made-up gate hours.
+{const st=el('style');st.textContent='.brief{border:1px solid var(--line,#d5d9db);border-left:4px solid #1F2A5C;border-radius:14px;background:var(--card,#fff);padding:12px 14px;margin:10px 0}.brief .bH{display:flex;align-items:center;justify-content:space-between;gap:8px}.brief .bH b{font-size:16px}.brief .bMot{font-style:italic;color:#1F2A5C;margin:0 0 10px;font-size:15px}.brief ul{margin:8px 0 10px;padding-left:18px}.brief li{margin:4px 0;font-size:15px;line-height:1.35}'+
+'.brief .bRow{display:flex;gap:8px;flex-wrap:wrap}.brief .bPlay{background:#1F2A5C!important;color:#fff!important;border:0!important;border-radius:22px!important;padding:10px 16px!important;font-weight:700;font-size:15px!important;min-height:44px}.brief .bPlay.on{background:#C8102E!important}.brief .bX{background:transparent!important;border:0!important;color:var(--mut,#5d686d)!important;font-size:14px!important;min-height:44px}'+
+'.briefMini{display:inline-flex;align-items:center;gap:6px;margin:6px 0;background:transparent!important;border:1px solid var(--line,#ccd)!important;border-radius:20px!important;padding:6px 12px!important;font-size:14px!important;color:inherit!important}';document.head.append(st)}
+const BR_KEY='yardBrief';const brToday=()=>new Date().toISOString().slice(0,10);
+function brState(){try{return JSON.parse(localStorage.getItem(BR_KEY)||'{}')}catch(e){return {}}}
+function brSave(o){try{localStorage.setItem(BR_KEY,JSON.stringify(Object.assign(brState(),o)))}catch(e){}}
+function brLines(){const S=Y().S||{},me=S.me||{},r=roles(),first=String(me.n||'').split(' ')[0],L=[],hr=new Date().getHours(),ci=Y().contInfo||(x=>x);
+  const inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci),late=[...inY,...open].filter(x=>x.cls==='late').length,warn=[...inY,...open].filter(x=>x.cls==='warn').length;
+  const PT=Y().PT||{rows:[]},pt=(PT.rows||[]).filter(x=>x.t>=day0(Date.now())),PN=Y().PN,pins=PN&&PN.rows?PN.rows.filter(p=>p.st==='handoff').length:null,pinBad=PN&&PN.rows?PN.rows.filter(p=>p.st==='failed').length:0;
+  let A=[];try{A=attention()}catch(e){}const red=A.filter(a=>a[0]==='r').length;
+  const n=(k,s,p)=>k+' '+(k===1?s:(p||s+'s'));
+  const ops=r.includes('admin')||r.includes('yard')||r.includes('pin')||r.includes('gate')||!r.includes('limited');
+  if(A.length)L.push((red?n(red,'urgent item')+' and ':'')+n(A.length,'item')+' need attention.');else L.push('Nothing needs attention right now.');
+  if(ops&&late)L.push(n(late,'box','boxes')+' on per diem.');
+  if(ops&&warn)L.push(n(warn,'box','boxes')+' with free time ending today or tomorrow.');
+  if(ops&&pt.length)L.push(n(pt.length,'port move')+' so far today, '+pt.filter(x=>x.dir==='OUT').length+' out and '+pt.filter(x=>x.dir==='IN').length+' in.');
+  if(pins)L.push(n(pins,'PIN request')+' waiting for a PIN.');if(pinBad)L.push(n(pinBad,'PIN request')+' failed. Check the PINs tab.');
+  try{if(SM&&smCan()){const mine=(SM.posts||[]).filter(smNeedsMe).length+(SM.jobs||[]).filter(smJNeedsMe).length,back=(SM.posts||[]).filter(p=>p.status==='draft'&&p.review_status==='changes_requested').length;
+    if(mine)L.push(n(mine,'post or job','posts or jobs')+' waiting for your approval.');if(back&&smMine().role==='editor')L.push(n(back,'post')+' sent back for changes.')}}catch(e){}
+  if(MD){const all=MD.open.concat(MD.close),left=all.filter(i=>!MD.done[i]);const part=hr<12?MD.open.filter(i=>!MD.done[i]):left;
+    if(all.length)L.push(left.length?n(left.length,'item')+' left on your My day checklist'+(part[0]?'. Next: '+part[0].replace(/\(.*?\)/g,'').trim()+'.':'.'):'Your My day checklist is done. Nice work.')}
+  const hi=(hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(first?', '+first:'')+'.';return {hi,L}}
+const BR_MOT=["Every box we move on time is a promise kept. Let's keep a lot of promises today.","Safe beats fast, and smooth is fast. Have a strong one.","The port doesn't wait, and neither do we. Let's go get it.","Small things done right add up to a great day. You've got this.","One move at a time. Clean paperwork, safe miles, happy customers.","Today is a fresh start. Make it count.","Good teams talk early. Flag problems fast and we'll fix them together.","You make this operation run. Thank you for showing up.","Stay sharp, stay safe, and finish strong.","Pros check twice and move once. Let's be pros today.","Win the morning and the rest of the day follows.","Nobody does it alone. Lean on the team, and be someone the team can lean on.","Hustle with a plan. That's how we grow.","Treat every customer like our best customer.","Busy is good. Organized busy is better.","A good attitude is contagious. Spread it around the yard.","Progress, not perfection. Keep moving forward.","Today's effort is tomorrow's reputation.","Take care of the details and the big things take care of themselves.","Be proud of the work. It moves the whole port.","Stay calm, stay clear, stay in touch. That's how we win the day.","Every call answered and every gate move logged builds trust. Keep it up.","Hard days build strong teams. We've got each other.","Let's make it a zero-incident day.","Do the next right thing, then the next one.","Your work keeps freight moving and families fed. That matters.","Start strong, check in often, finish clean.","Consistency beats intensity. Show up and do it right again today.","Great things are built one load at a time.","Thanks for being part of 2FF and 1 Stop. Let's have a great day."];
+function brMot(){const d=new Date(),k=d.getFullYear()*400+d.getMonth()*32+d.getDate();const n=String(((Y().S||{}).me||{}).n||'');let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%997;return BR_MOT[(k+h)%BR_MOT.length]}
+let BR_SPEAK=false;
+function brSpeak(btn){const ss=window.speechSynthesis;if(!ss||typeof SpeechSynthesisUtterance==='undefined'){alert('This phone cannot read aloud here. The briefing is shown on screen.');return}
+  if(BR_SPEAK){ss.cancel();BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen';return}
+  const {hi,L}=brLines(),u=new SpeechSynthesisUtterance([hi,'Here is your briefing.'].concat(L.slice(0,6),[brMot()]).join(' '));u.lang='en-US';u.rate=1.02;
+  const v=(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang)&&/Samantha|Ava|Allison|Google US English|Natural/i.test(x.name))||(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
+  u.onend=u.onerror=()=>{BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen'};ss.cancel();ss.speak(u);BR_SPEAK=true;btn.classList.add('on');btn.textContent='■ Stop';brSave({heard:brToday()})}
+function renderBrief(){const S=Y().S||{};if(!S.me)return;let b=$('tBrief');if(!b){b=el('div');b.id='tBrief';const h=$('tHello');if(!h)return;h.after(b)}
+  const st=brState(),hidden=st.hid===brToday();b.textContent='';
+  if(hidden){const m=el('button','briefMini','▶ Today\'s briefing');m.type='button';m.addEventListener('click',()=>{brSave({hid:''});renderBrief()});b.append(m);return}
+  const {L}=brLines(),c=el('div','brief'),h=el('div','bH');h.append(el('b','','Your shift briefing'),el('span','meta',new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})));c.append(h);
+  const ul=el('ul');L.slice(0,6).forEach(t=>ul.append(el('li','',t)));c.append(ul);c.append(Object.assign(el('p','bMot',brMot()),{}));
+  const row=el('div','bRow'),p=el('button','bPlay',BR_SPEAK?'■ Stop':'▶ Listen'),x=el('button','bX','Hide for today');p.type=x.type='button';p.setAttribute('aria-label','Read my briefing out loud, about 15 seconds');
+  p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{try{speechSynthesis.cancel()}catch(e){}BR_SPEAK=false;brSave({hid:brToday()});renderBrief()});row.append(p,x);c.append(row);b.append(c)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
 all();
 })();
