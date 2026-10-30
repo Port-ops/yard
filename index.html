@@ -2363,7 +2363,7 @@ function renderMyDay(){const b=mdBox();if(!b)return;b.textContent='';if(!MD){b.h
   part('Start of day',MD.open,hr>=11);part('Before you leave',MD.close,hr>=17);
   b.append(el('p','mdNote','Live work (last free days, PINs, applicants, failed posts) is in Needs attention below.'));
   if(MD.team&&MD.team.length){const tw=el('details','mdTeam');tw.append(el('summary','','Team today'));MD.team.forEach(t=>{const r=el('div','mdTr');r.append(el('span','',t.n),el('b',t.done===t.total?'go':t.done?'':'muted',t.done+' / '+t.total));tw.append(r)});b.append(tw)}}
-function loadMyDay(){if(!Y().call||!navigator.onLine)return;Y().call('getMyDay',[{}]).then(d=>{MD=d;renderMyDay()}).catch(()=>{})}
+function loadMyDay(){if(!Y().call||!navigator.onLine)return;Y().call('getMyDay',[{}]).then(d=>{MD=d;renderMyDay();try{renderBrief()}catch(e){}}).catch(()=>{})}
 setTimeout(loadMyDay,2500);setInterval(()=>{if(document.visibilityState==='visible')loadMyDay()},10*60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadMyDay()});
 {const st=el('style');st.textContent='.tFresh{font-size:12.5px;color:var(--muted);margin:2px 2px 0}'+
 '.chips.skel button b,.chips.skel button span{color:transparent!important;background:linear-gradient(90deg,#e8ebf1 25%,#f4f6f9 50%,#e8ebf1 75%);background-size:200% 100%;animation:skel 1.2s infinite;border-radius:6px}.chips.skel button::after{opacity:0}@keyframes skel{to{background-position:-200% 0}}'+
@@ -2379,8 +2379,8 @@ setTimeout(()=>{let seen=0;try{seen=+localStorage.getItem('yardA2HS')||0;localSt
   const x=el('button','','Got it');x.type='button';x.addEventListener('click',()=>{t.remove();try{localStorage.setItem('yardA2HS','99')}catch(e){}});t.append(x);document.body.append(t);
   const st=el('style');st.textContent='.a2hs{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;gap:10px;align-items:center;background:#1F2A5C;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.a2hs button{flex:none;background:#fff;color:#1F2A5C;border:0;border-radius:10px;padding:8px 12px;font-weight:700}';document.head.append(st)},6000);
 // ---------- 5. Today render ----------
-function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
-  $('tHello').textContent='';$('tHello').append((hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(me?', '+String(me.n).split(' ')[0]:''),el('small','',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})));
+function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{renderMyCard()}catch(e){}try{renderBrief()}catch(e){}try{renderNews()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
+  $('tHello').textContent='';$('tHello').append((hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(me?', '+(prefs().nick||String(me.n).split(' ')[0]):''),el('small','',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})));
   const ci=Y().contInfo||(x=>x),inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci);
   const late=[...inY,...open].filter(r=>r.cls==='late').length,warn=[...inY,...open].filter(r=>r.cls==='warn').length;
   const PT=Y().PT||{rows:[]},t0=day0(Date.now()),pt=(PT.rows||[]).filter(r=>r.t>=t0);
@@ -2595,7 +2595,7 @@ const aiCanR=()=>{const r=roles();return !(r.includes('limited')&&!r.includes('a
 function aiMd(t){const f=document.createDocumentFragment();String(t).replace(/\s*\[(web|\d)[^\]]*\]/g,'').split('\n').forEach((ln,i)=>{if(i)f.append(document.createElement('br'));let h=/^#{1,4}\s+/.test(ln);ln=ln.replace(/^#{1,4}\s+/,'').replace(/^\s*[-*]\s+/,'• ');
   const parts=ln.split(/\*\*/);parts.forEach((p,j)=>{if(!p)return;if(j%2||h){const b=document.createElement('b');b.textContent=p;f.append(b)}else f.append(document.createTextNode(p))})});return f}
 function aiDraw(){const sh=$('aiTab');if(!sh)return;sh.textContent='';const c=el('div','aiTabC');sh.append(c);
-  const hd=el('div','aiHd');hd.append(el('b','','AI Assistant'));c.append(hd);
+  const hd=el('div','aiHd'),tk=el('button','aiTalk','🎙 Talk');tk.type='button';tk.setAttribute('aria-label','Talk to the assistant by voice');tk.addEventListener('click',vcTalk);hd.append(el('b','','AI Assistant'),tk);c.append(hd);
   if(aiCanR()){const sg=el('div','aiSeg');[['ask','Ask (app help, drafts)'],['research','Research the web']].forEach(([k,l])=>{const b=el('button',AIM===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{AIM=k;aiDraw()});sg.append(b)});c.append(sg)}
   if(AIB&&roles().includes('admin'))c.append(el('div','aiHint','Team AI spend · today $'+Number(AIB.t||0).toFixed(2)+' of $'+Number(AIB.dc||0).toFixed(2)+' · this month $'+Number(AIB.s).toFixed(2)+' of $'+AIB.b));c.append(el('div','aiHint',AIM==='ask'?'Claude. Helps with the app and writes drafts. It cannot see loads, drivers or money.':'Perplexity. Searches the web and shows its sources. Check anything important before you act on it.'));
   const log=el('div','aiLog');c.append(log);const H=AIH[AIM];
@@ -2607,13 +2607,123 @@ function aiDraw(){const sh=$('aiTab');if(!sh)return;sh.textContent='';const c=el
     const b1=el('button','btn','Email me a code'),msg=el('div','meta');b1.type='button';p.append(em,cd,b1,msg);log.append(p);
     b1.addEventListener('click',()=>{b1.disabled=true;msg.textContent='';if(cd.hidden){const e=em.value.trim().toLowerCase();if(!/@(2f-logistics\.com|1stoplogisticsllc\.com)$/.test(e)){msg.textContent='Only @2f-logistics.com or @1stoplogisticsllc.com emails are allowed.';b1.disabled=false;return}
       Y().call('aiSignup',[{email:e}]).then(()=>{cd.hidden=false;em.disabled=true;b1.textContent='Verify';msg.textContent='Code sent to '+e+'. Check your inbox (and spam).';cd.focus()}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})}
-      else Y().call('aiVerify',[{code:cd.value}]).then(()=>{const q0=AINE;AINE=null;aiDraw();const t=$('aiTab').querySelector('.aiIn textarea');if(t&&q0){t.value=q0;$('aiTab').querySelector('.aiIn button').click()}}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})})}
+      else Y().call('aiVerify',[{code:cd.value}]).then(()=>{const q0=AINE;AINE=null;aiDraw();if(q0==='__voice__'){vcTalk();return}const t=$('aiTab').querySelector('.aiIn textarea');if(t&&q0){t.value=q0;$('aiTab').querySelector('.aiIn button').click()}}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})})}
   const inp=el('div','aiIn'),ta=el('textarea'),send=el('button','btn','Send');ta.placeholder=AIM==='ask'?'Ask about the app or describe what to write…':'What do you want to find on the web?';ta.rows=1;send.type='button';inp.append(ta,send);c.append(inp);
   function go(){const q=ta.value.trim();if(q.length<3||send.disabled)return;if(!navigator.onLine){alert('You are offline.');return}
     const h={q,a:''};H.push(h);const mode=AIM;aiDraw();const s2=$('aiTab').querySelector('.aiIn button');if(s2){s2.disabled=true;s2.textContent='…'}
     Y().call('aiAsk',[{mode,q,tab:TAB,hist:mode==='ask'?H.slice(0,-1).filter(x=>x.a&&!x.err).slice(-4).map(x=>({q:x.q,a:x.a})):[]}]).then(d=>{h.a=d.text;h.src=d.sources||[];if(d.budget)AIB={s:d.spent,b:d.budget,t:d.today,dc:d.dayCap}}).catch(e=>{const m=(e&&e.message)||String(e);if(/NEED_EMAIL/.test(m)){H.pop();AINE=q;ta0=q}else{h.a=m;h.err=true}}).finally(()=>{if(AIM===mode&&TAB==='ask')aiDraw()})}
   send.addEventListener('click',go);ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go()}});
   log.scrollTop=log.scrollHeight;if(!H.length||H[H.length-1].a)setTimeout(()=>{try{ta.focus({preventScroll:true})}catch(e){}},50)}
+// ---- TALK: two-way voice with the ElevenLabs "Yard App Voice Assistant" (talk only, 3-minute cap) ----
+{const st=el('style');st.textContent='#aiTab .aiTalk{display:flex!important;align-items:center;gap:6px;border:0!important;border-radius:20px!important;background:#C8102E!important;color:#fff!important;font-weight:700;font-size:15px!important;padding:8px 14px!important;min-height:40px;width:auto!important}.aiHd{justify-content:space-between}'+
+'#vcPan{position:fixed;inset:0;z-index:9300;background:#0f1630;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 28px)}#vcPan[hidden]{display:none}'+
+'.vcTop{text-align:center}.vcTop b{display:block;font-size:20px}.vcTop span{opacity:.75;font-size:14px}.vcOrb{width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4b5fd1,#1F2A5C 60%,#0f1630);box-shadow:0 0 0 0 rgba(200,16,46,.6);transition:transform .2s}'+
+'.vcOrb.speaking{animation:vcP 1.1s infinite;background:radial-gradient(circle at 35% 30%,#ff5a6e,#C8102E 60%,#5a0a16)}.vcOrb.listening{animation:vcP 2.2s infinite}@keyframes vcP{0%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}100%{box-shadow:0 0 0 34px rgba(255,255,255,0)}}'+
+'.vcLog{width:100%;max-width:520px;max-height:30vh;overflow:auto;font-size:15px;line-height:1.4}.vcLog div{margin:6px 0}.vcLog .u{opacity:.75}.vcBtns{display:flex;gap:12px;width:100%;max-width:520px}.vcBtns button{flex:1;min-height:56px;border-radius:16px;border:0;font-size:17px;font-weight:700}.vcEnd{background:#C8102E;color:#fff}.vcMute{background:#2b355e;color:#fff}'+
+'.vcSafe p{font-size:16px;line-height:1.45;max-width:420px;text-align:center}';document.head.append(st)}
+let VC=null;const VC_SDK='https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.26.0/dist/lib.iife.js';
+function vcLoad(){return window.ElevenLabsClient?Promise.resolve(window.ElevenLabsClient):new Promise((ok,no)=>{const s=document.createElement('script');s.src=VC_SDK;s.onload=()=>ok(window.ElevenLabsClient);s.onerror=()=>no(new Error('Could not load the voice service. Check your signal.'));document.head.append(s)})}
+function vcPanel(){let p=$('vcPan');if(!p){p=el('div');p.id='vcPan';p.setAttribute('role','dialog');p.setAttribute('aria-label','Voice assistant');document.body.append(p)}p.hidden=false;p.textContent='';return p}
+function vcSafety(){const p=vcPanel(),c=el('div','vcSafe');c.style.cssText='display:flex;flex-direction:column;align-items:center;gap:18px;margin:auto';
+  c.append(el('div','vcOrb'),el('b','','Talk to the Yard App'),el('p','','Only use voice when you are parked or stopped away from moving equipment. Never while driving.'),el('p','','It can explain the app and draft messages out loud. It cannot see loads, drivers or money, and it cannot approve or send anything. Each talk stops at 3 minutes. Nothing is recorded.'));
+  const b=el('div','vcBtns'),go=el('button','vcEnd',"I'm parked — start"),cx=el('button','vcMute','Cancel');go.type=cx.type='button';go.style.background='#2e7d4f';
+  cx.addEventListener('click',()=>{p.hidden=true});go.addEventListener('click',()=>{try{sessionStorage.setItem('vcOK','1')}catch(e){}vcStart()});b.append(go,cx);c.append(b);p.append(c)}
+function vcTalk(){if(!navigator.onLine){alert('You are offline.');return}let ok=false;try{ok=sessionStorage.getItem('vcOK')==='1'}catch(e){}ok?vcStart():vcSafety()}
+async function vcStart(){const p=vcPanel(),top=el('div','vcTop'),orb=el('div','vcOrb'),log=el('div','vcLog'),btns=el('div','vcBtns'),end=el('button','vcEnd','End'),mute=el('button','vcMute','Mute');end.type=mute.type='button';
+  const ttl=el('b','','Connecting…'),sub=el('span','','Allow the microphone if your phone asks');top.append(ttl,sub);btns.append(mute,end);p.append(top,orb,log,btns);
+  let s=null,t0=0,tick=null,muted=false,closed=false,id=0;
+  const fin=async why=>{if(closed)return;closed=true;clearInterval(tick);try{s&&await s.endSession()}catch(e){}const secs=t0?Math.round((Date.now()-t0)/1000):0;
+    if(id)Y().call('aiVoice',[{end:true,id,secs}]).catch(()=>{});VC=null;ttl.textContent=why||'Ended';sub.textContent=secs?'Talked '+Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0'):'';orb.className='vcOrb';end.textContent='Close';end.onclick=()=>{p.hidden=true};mute.hidden=true};
+  end.addEventListener('click',()=>{if(!closed)fin('Ended')});
+  mute.addEventListener('click',()=>{muted=!muted;try{s.setMicMuted(muted)}catch(e){}mute.textContent=muted?'Unmute':'Mute'});
+  try{const d=await Y().call('aiVoice',[{}]);id=d.id;const EL=await vcLoad();if(closed)return;
+    s=await EL.Conversation.startSession({signedUrl:d.signed_url,connectionType:'websocket',
+      onConnect:()=>{t0=Date.now();ttl.textContent='Listening';tick=setInterval(()=>{const g=Math.round((Date.now()-t0)/1000);sub.textContent=Math.floor(g/60)+':'+String(g%60).padStart(2,'0')+' of 3:00';if(g>=182)fin("That's 3 minutes")},1000)},
+      onModeChange:m=>{const sp=m&&m.mode==='speaking';orb.className='vcOrb '+(sp?'speaking':'listening');if(!closed)ttl.textContent=sp?'Speaking':'Listening'},
+      onMessage:m=>{if(!m||!m.message)return;const r=el('div',m.source==='user'?'u':'',(m.source==='user'?'You: ':'')+m.message);log.append(r);log.scrollTop=log.scrollHeight},
+      onDisconnect:()=>fin('Ended'),onError:e=>{log.append(el('div','',(e&&e.message)||String(e)))}});
+    VC={s,fin}}
+  catch(e){const m=(e&&e.message)||String(e);if(/NEED_EMAIL/.test(m)){p.hidden=true;closed=true;AINE='__voice__';if(TAB!=='ask')go('ask');aiDraw();return}
+    if(/Permission|NotAllowed|denied/i.test(m)){fin('Microphone blocked');sub.textContent='Allow the microphone: iPhone Settings → Safari → Microphone, then try again.';return}
+    fin('Could not start');sub.textContent=m}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&VC)VC.fin('Ended (app closed)')});
+// ---- MAKE IT YOURS (Perplexity research 10/30/2026): role defaults first, optional 60-second setup, everything editable later in one place.
+// Personal look/sound only; company rules, access and safety stay locked. Saved on this phone (localStorage).
+const PREF_KEY='yardPrefs';const PREF_DEF={nick:'',brief:true,rate:1,mot:true,news:true,big:false,asked:false};
+function prefs(){let p={};try{p=JSON.parse(localStorage.getItem(PREF_KEY)||'{}')}catch(e){}return Object.assign({},PREF_DEF,p)}
+function prefSave(o){try{localStorage.setItem(PREF_KEY,JSON.stringify(Object.assign(prefs(),o)))}catch(e){}prefApply()}
+function prefApply(){document.documentElement.classList.toggle('bigText',!!prefs().big)}
+prefApply();
+{const st=el('style');st.textContent='html.bigText body{font-size:18px}html.bigText .brief li,html.bigText .mdItem span,html.bigText #tAtt li{font-size:17px!important}'+
+'.myS{position:fixed;inset:0;z-index:9400;background:rgba(10,15,30,.5);display:flex;align-items:flex-end;justify-content:center}.myS>div{background:var(--card,#fff);color:var(--ink,#1b1f24);width:100%;max-width:560px;max-height:90vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px)}'+
+'.myS h3{margin:0 0 4px}.myS .q{margin:14px 0 6px;font-weight:700}.myS input[type=text]{width:100%;box-sizing:border-box;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line,#ccd);text-transform:none}'+
+'.myS .opts{display:flex;gap:8px;flex-wrap:wrap}.myS .opts button{border:1px solid var(--line,#ccd)!important;background:var(--card,#fff)!important;color:inherit!important;border-radius:20px!important;padding:8px 14px!important;font-size:15px!important;min-height:42px}.myS .opts button.on{background:#1F2A5C!important;color:#fff!important;border-color:#1F2A5C!important}'+
+'.myS .end{display:flex;gap:8px;margin-top:18px}.myS .end button{flex:1;min-height:50px;font-size:16px;border-radius:12px}.myCard{border:1px dashed #1F2A5C;border-radius:14px;padding:12px 14px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}.myCard b{display:block}.myCard span{font-size:13px;color:var(--mut,#5d686d)}'+
+'.pnews{border:1px solid var(--line,#d5d9db);border-radius:14px;background:var(--card,#fff);padding:12px 14px;margin:10px 0}.pnews .pH{display:flex;justify-content:space-between;align-items:center}.pnews a{display:block;padding:8px 0;border-top:1px solid var(--line,#eceef0);text-decoration:none;color:inherit}.pnews a:first-of-type{border-top:0}.pnews a b{font-size:15px;line-height:1.35;display:block}.pnews a small{color:var(--mut,#5d686d)}.pnews .alert{background:#fdecea;color:#b3261e;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:14px}';document.head.append(st)}
+function myOpen(first){const p=prefs(),d={...p},S=el('div','myS'),c=el('div');S.append(c);document.body.append(S);
+  c.append(el('h3','',first?'Make it yours (1 minute)':'Make it yours'),el('div','meta','Change any of this later: tap your initials at the top, then Make it yours. Only changes this phone.'));
+  const Q=(t,node)=>{c.append(el('div','q',t),node)},opt=(key,list)=>{const w=el('div','opts');list.forEach(([v,l])=>{const b=el('button',d[key]===v?'on':'',l);b.type='button';b.addEventListener('click',()=>{d[key]=v;w.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});w.append(b)});return w};
+  const nk=el('input');nk.type='text';nk.maxLength=24;nk.placeholder=String(((Y().S||{}).me||{}).n||'').split(' ')[0]||'Your first name';nk.value=d.nick;nk.addEventListener('input',()=>{d.nick=nk.value.trim()});
+  Q('1. What should the app call you?',nk);
+  Q('2. Show your shift briefing on Today?',opt('brief',[[true,'Yes'],[false,'No']]));
+  Q('3. When you tap Listen, how fast should it talk?',opt('rate',[[0.9,'Slower'],[1,'Normal'],[1.15,'Faster']]));
+  Q('4. A short motivation line each day?',opt('mot',[[true,'Yes'],[false,'No thanks']]));
+  Q('5. Georgia Ports news on Today?',opt('news',[[true,'Yes'],[false,'No']]));
+  Q('6. Text size',opt('big',[[false,'Normal'],[true,'Larger']]));
+  const tb=el('button','btn2','7. Pick your 4 bottom tabs ›');tb.type='button';tb.style.marginTop='14px';tb.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{openMore();EDIT=true;drawMore()}catch(e){}});c.append(tb);
+  const e=el('div','end'),sv=el('button','btn','Save'),sk=el('button','btn2',first?'Skip for now':'Cancel');sv.type=sk.type='button';
+  sv.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{renderToday()}catch(x){}});sk.addEventListener('click',()=>{if(first)prefSave({asked:true});S.remove();try{renderToday()}catch(x){}});e.append(sk,sv);c.append(e);
+  S.addEventListener('click',ev=>{if(ev.target===S)S.remove()})}
+window.yardMyOpen=()=>myOpen(false);let PNEWS=null;
+function loadNews(){if(!Y().call||!navigator.onLine)return;Y().call('getPortNews',[{}]).then(d=>{PNEWS=d;try{renderNews();renderBrief()}catch(e){}}).catch(()=>{})}
+setTimeout(loadNews,3500);setInterval(()=>{if(document.visibilityState==='visible')loadNews()},60*60000);
+function renderNews(){let b=$('tNews');const anchor=$('tBrief');if(!anchor)return;if(!b){b=el('div');b.id='tNews';anchor.after(b)}b.textContent='';
+  if(!prefs().news||!PNEWS||(!PNEWS.news.length&&!PNEWS.alerts.length))return;const c=el('div','pnews'),h=el('div','pH');h.append(el('b','','Georgia Ports news'),el('span','meta','official GPA'));c.append(h);
+  PNEWS.alerts.slice(0,2).forEach(a=>c.append(el('div','alert','GPA notice · '+a.t)));
+  PNEWS.news.slice(0,3).forEach(n=>{const a=el('a');a.href=n.u;a.target='_blank';a.rel='noopener';a.append(el('b','',n.t),el('small','',n.src+' · '+new Date(n.d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})));c.append(a)});b.append(c)}
+function renderMyCard(){let b=$('tMy');const anchor=$('tHello');if(!anchor)return;if(!b){b=el('div');b.id='tMy';anchor.after(b)}b.textContent='';if(prefs().asked)return;
+  const c=el('div','myCard'),t=el('div');t.append(el('b','','Make the app yours'),el('span','','6 quick choices · about a minute'));const go2=el('button','btn','Start');go2.type='button';go2.addEventListener('click',()=>myOpen(true));c.append(t,go2);b.append(c)}
+// ---- SHIFT BRIEFING (Perplexity research 10/30/2026): silent card + tap "Listen" (iPhone voice, free). Never auto-plays: iOS blocks it,
+// and people open the app in meetings, near customers and in trucks. Spoken text uses counts only (no driver/customer names or container numbers).
+// Facts come from the app's own data (port feed, PINs, My day, approvals), not AI web research, so it can't read out made-up gate hours.
+{const st=el('style');st.textContent='.brief{border:1px solid var(--line,#d5d9db);border-left:4px solid #1F2A5C;border-radius:14px;background:var(--card,#fff);padding:12px 14px;margin:10px 0}.brief .bH{display:flex;align-items:center;justify-content:space-between;gap:8px}.brief .bH b{font-size:16px}.brief .bMot{font-style:italic;color:#1F2A5C;margin:0 0 10px;font-size:15px}.brief ul{margin:8px 0 10px;padding-left:18px}.brief li{margin:4px 0;font-size:15px;line-height:1.35}'+
+'.brief .bRow{display:flex;gap:8px;flex-wrap:wrap}.brief .bPlay{background:#1F2A5C!important;color:#fff!important;border:0!important;border-radius:22px!important;padding:10px 16px!important;font-weight:700;font-size:15px!important;min-height:44px}.brief .bPlay.on{background:#C8102E!important}.brief .bX{background:transparent!important;border:0!important;color:var(--mut,#5d686d)!important;font-size:14px!important;min-height:44px}'+
+'.briefMini{display:inline-flex;align-items:center;gap:6px;margin:6px 0;background:transparent!important;border:1px solid var(--line,#ccd)!important;border-radius:20px!important;padding:6px 12px!important;font-size:14px!important;color:inherit!important}';document.head.append(st)}
+const BR_KEY='yardBrief';const brToday=()=>new Date().toISOString().slice(0,10);
+function brState(){try{return JSON.parse(localStorage.getItem(BR_KEY)||'{}')}catch(e){return {}}}
+function brSave(o){try{localStorage.setItem(BR_KEY,JSON.stringify(Object.assign(brState(),o)))}catch(e){}}
+function brLines(){const S=Y().S||{},me=S.me||{},r=roles(),first=prefs().nick||String(me.n||'').split(' ')[0],L=[],hr=new Date().getHours(),ci=Y().contInfo||(x=>x);
+  const inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci),late=[...inY,...open].filter(x=>x.cls==='late').length,warn=[...inY,...open].filter(x=>x.cls==='warn').length;
+  const PT=Y().PT||{rows:[]},pt=(PT.rows||[]).filter(x=>x.t>=day0(Date.now())),PN=Y().PN,pins=PN&&PN.rows?PN.rows.filter(p=>p.st==='handoff').length:null,pinBad=PN&&PN.rows?PN.rows.filter(p=>p.st==='failed').length:0;
+  let A=[];try{A=attention()}catch(e){}const red=A.filter(a=>a[0]==='r').length;
+  const n=(k,s,p)=>k+' '+(k===1?s:(p||s+'s'));
+  const ops=r.includes('admin')||r.includes('yard')||r.includes('pin')||r.includes('gate')||!r.includes('limited');
+  if(A.length)L.push((red?n(red,'urgent item')+' and ':'')+n(A.length,'item')+' need attention.');else L.push('Nothing needs attention right now.');
+  if(ops&&late)L.push(n(late,'box','boxes')+' on per diem.');
+  if(ops&&warn)L.push(n(warn,'box','boxes')+' with free time ending today or tomorrow.');
+  if(ops&&pt.length)L.push(n(pt.length,'port move')+' so far today, '+pt.filter(x=>x.dir==='OUT').length+' out and '+pt.filter(x=>x.dir==='IN').length+' in.');
+  if(pins)L.push(n(pins,'PIN request')+' waiting for a PIN.');if(pinBad)L.push(n(pinBad,'PIN request')+' failed. Check the PINs tab.');
+  try{if(SM&&smCan()){const mine=(SM.posts||[]).filter(smNeedsMe).length+(SM.jobs||[]).filter(smJNeedsMe).length,back=(SM.posts||[]).filter(p=>p.status==='draft'&&p.review_status==='changes_requested').length;
+    if(mine)L.push(n(mine,'post or job','posts or jobs')+' waiting for your approval.');if(back&&smMine().role==='editor')L.push(n(back,'post')+' sent back for changes.')}}catch(e){}
+  if(PNEWS&&prefs().news){if(PNEWS.alerts.length)L.push(n(PNEWS.alerts.length,'new GPA notice')+'. Check Georgia Ports news below.');else if(PNEWS.news[0]&&Date.now()-new Date(PNEWS.news[0].d+'T12:00:00').getTime()<2*864e5)L.push('Port news: '+PNEWS.news[0].t+'.')}
+  if(MD){const all=MD.open.concat(MD.close),left=all.filter(i=>!MD.done[i]);const part=hr<12?MD.open.filter(i=>!MD.done[i]):left;
+    if(all.length)L.push(left.length?n(left.length,'item')+' left on your My day checklist'+(part[0]?'. Next: '+part[0].replace(/\(.*?\)/g,'').trim()+'.':'.'):'Your My day checklist is done. Nice work.')}
+  const hi=(hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(first?', '+first:'')+'.';return {hi,L}}
+const BR_MOT=["Every box we move on time is a promise kept. Let's keep a lot of promises today.","Safe beats fast, and smooth is fast. Have a strong one.","The port doesn't wait, and neither do we. Let's go get it.","Small things done right add up to a great day. You've got this.","One move at a time. Clean paperwork, safe miles, happy customers.","Today is a fresh start. Make it count.","Good teams talk early. Flag problems fast and we'll fix them together.","You make this operation run. Thank you for showing up.","Stay sharp, stay safe, and finish strong.","Pros check twice and move once. Let's be pros today.","Win the morning and the rest of the day follows.","Nobody does it alone. Lean on the team, and be someone the team can lean on.","Hustle with a plan. That's how we grow.","Treat every customer like our best customer.","Busy is good. Organized busy is better.","A good attitude is contagious. Spread it around the yard.","Progress, not perfection. Keep moving forward.","Today's effort is tomorrow's reputation.","Take care of the details and the big things take care of themselves.","Be proud of the work. It moves the whole port.","Stay calm, stay clear, stay in touch. That's how we win the day.","Every call answered and every gate move logged builds trust. Keep it up.","Hard days build strong teams. We've got each other.","Let's make it a zero-incident day.","Do the next right thing, then the next one.","Your work keeps freight moving and families fed. That matters.","Start strong, check in often, finish clean.","Consistency beats intensity. Show up and do it right again today.","Great things are built one load at a time.","Thanks for being part of 2FF and 1 Stop. Let's have a great day."];
+function brMot(){const d=new Date(),k=d.getFullYear()*400+d.getMonth()*32+d.getDate();const n=String(((Y().S||{}).me||{}).n||'');let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%997;return BR_MOT[(k+h)%BR_MOT.length]}
+let BR_SPEAK=false;
+function brSpeak(btn){const ss=window.speechSynthesis;if(!ss||typeof SpeechSynthesisUtterance==='undefined'){alert('This phone cannot read aloud here. The briefing is shown on screen.');return}
+  if(BR_SPEAK){ss.cancel();BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen';return}
+  const {hi,L}=brLines(),u=new SpeechSynthesisUtterance([hi,'Here is your briefing.'].concat(L.slice(0,6),prefs().mot?[brMot()]:[]).join(' '));u.lang='en-US';u.rate=prefs().rate||1;
+  const v=(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang)&&/Samantha|Ava|Allison|Google US English|Natural/i.test(x.name))||(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
+  u.onend=u.onerror=()=>{BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen'};ss.cancel();ss.speak(u);BR_SPEAK=true;btn.classList.add('on');btn.textContent='■ Stop';brSave({heard:brToday()})}
+function renderBrief(){const S=Y().S||{};if(!S.me)return;let b=$('tBrief');if(!b){b=el('div');b.id='tBrief';const h=$('tMy')||$('tHello');if(!h)return;h.after(b)}if(!prefs().brief){b.textContent='';try{renderNews()}catch(e){}return}
+  const st=brState(),hidden=st.hid===brToday();b.textContent='';
+  if(hidden){const m=el('button','briefMini','▶ Today\'s briefing');m.type='button';m.addEventListener('click',()=>{brSave({hid:''});renderBrief()});b.append(m);return}
+  const {L}=brLines(),c=el('div','brief'),h=el('div','bH');h.append(el('b','','Your shift briefing'),el('span','meta',new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})));c.append(h);
+  const ul=el('ul');L.slice(0,6).forEach(t=>ul.append(el('li','',t)));c.append(ul);if(prefs().mot)c.append(el('p','bMot',brMot()));
+  const row=el('div','bRow'),p=el('button','bPlay',BR_SPEAK?'■ Stop':'▶ Listen'),x=el('button','bX','Hide for today');p.type=x.type='button';p.setAttribute('aria-label','Read my briefing out loud, about 15 seconds');
+  p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{try{speechSynthesis.cancel()}catch(e){}BR_SPEAK=false;brSave({hid:brToday()});renderBrief()});row.append(p,x);c.append(row);b.append(c)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
 all();
 })();
@@ -2655,7 +2765,7 @@ all();
       var st=document.createElement('div');st.className='abRow';st.innerHTML='<span>Status</span><b></b>';st.querySelector('b').textContent=(sy&&sy.textContent||'').trim()||sp.textContent;c.append(st);
       if(qt&&qt.textContent.trim()){var qq=document.createElement('div');qq.className='abRow';qq.innerHTML='<span>On this phone</span><b></b>';qq.querySelector('b').textContent=qt.textContent.trim();c.append(qq)}
       var co=document.createElement('div');co.className='abRow';co.innerHTML='<span>Company</span><b>2FF Logistics · agency of America 1 Logistics</b>';c.append(co);
-      var so=document.createElement('button');so.type='button';so.className='abOut';so.textContent='Sign out of this phone';so.addEventListener('click',function(){var o=document.querySelector('header .signout');if(o)o.click()});c.append(so);
+      var my=document.createElement('button');my.type='button';my.className='abOut';my.style.color='#1F2A5C';my.textContent='Make it yours (name, briefing, text size)';my.addEventListener('click',function(){m.hidden=true;if(window.yardMyOpen)window.yardMyOpen()});c.append(my);var so=document.createElement('button');so.type='button';so.className='abOut';so.textContent='Sign out of this phone';so.addEventListener('click',function(){var o=document.querySelector('header .signout');if(o)o.click()});c.append(so);
       m.append(c);m.hidden=false}
     av.addEventListener('click',function(){m.hidden?open():m.hidden=true});sp.addEventListener('click',open);
     m.addEventListener('click',function(e){if(e.target===m)m.hidden=true});
