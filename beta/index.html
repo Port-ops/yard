@@ -2237,7 +2237,7 @@ document.body.append(nav);document.body.classList.add('tabs');
 const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
-port:[['moves','Gate moves'],['gates','GCT gates'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
+port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 sales:[['work','Find work'],['quotes','Quotes'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
@@ -2374,7 +2374,7 @@ function renderMyDay(){const b=mdBox();if(!b)return;b.textContent='';if(!MD){b.h
     const tx=el('span','',it);r.append(cb,tx);if(done){const t=new Date(MD.done[it]);if(!isNaN(t))r.append(el('small','',t.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})))}b.append(r)})};
   part('Start of day',MD.open,hr>=11);part('Before you leave',MD.close,hr>=17);
   b.append(el('p','mdNote','Live work (last free days, PINs, applicants, failed posts) is in Needs attention below.'));
-  if(MD.team&&MD.team.length){const tw=el('details','mdTeam');tw.append(el('summary','','Team today'));MD.team.forEach(t=>{const r=el('div','mdTr');r.append(el('span','',t.n),el('b',t.done===t.total?'go':t.done?'':'muted',t.done+' / '+t.total));tw.append(r)});b.append(tw)}}
+  if(MD.team&&MD.team.length){const tw=el('details','mdTeam');tw.append(el('summary','','Team today'));MD.team.forEach(t=>{const r=el('div','mdTr'),nm=el('span','');try{nm.append(avChip(t.n,24),document.createTextNode(' '))}catch(e){}nm.append(document.createTextNode(t.n));r.append(nm,el('b',t.done===t.total?'go':t.done?'':'muted',t.done+' / '+t.total));tw.append(r)});b.append(tw)}}
 function loadMyDay(){if(!Y().call||!navigator.onLine)return;Y().call('getMyDay',[{}]).then(d=>{MD=d;renderMyDay();try{renderBrief()}catch(e){}}).catch(()=>{})}
 setTimeout(loadMyDay,2500);setInterval(()=>{if(document.visibilityState==='visible')loadMyDay()},10*60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadMyDay()});
 {const st=el('style');st.textContent='.tFresh{font-size:12.5px;color:var(--muted);margin:2px 2px 0}'+
@@ -2391,7 +2391,7 @@ setTimeout(()=>{let seen=0;try{seen=+localStorage.getItem('yardA2HS')||0;localSt
   const x=el('button','','Got it');x.type='button';x.addEventListener('click',()=>{t.remove();try{localStorage.setItem('yardA2HS','99')}catch(e){}});t.append(x);document.body.append(t);
   const st=el('style');st.textContent='.a2hs{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;gap:10px;align-items:center;background:#1F2A5C;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.a2hs button{flex:none;background:#fff;color:#1F2A5C;border:0;border-radius:10px;padding:8px 12px;font-weight:700}';document.head.append(st)},6000);
 // ---------- 5. Today render ----------
-function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{renderMyCard()}catch(e){}try{renderBrief()}catch(e){}try{renderNews()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
+function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{renderMyCard()}catch(e){}try{renderBrief()}catch(e){}try{renderMyWork()}catch(e){}try{renderNews()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
   $('tHello').textContent='';$('tHello').append((hr<4?'Hi':hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(me&&!prefs().noName?', '+(prefs().nick||String(me.n).split(' ')[0]):''),el('small','',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})));
   const ci=Y().contInfo||(x=>x),inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci);
   const late=[...inY,...open].filter(r=>r.cls==='late').length,warn=[...inY,...open].filter(r=>r.cls==='warn').length;
@@ -2709,6 +2709,7 @@ function myOpen(first,focus){const p=prefs(),d={...p},S=el('div','myS'),c=el('di
   const Q=(t,node)=>{c.append(el('div','q',t),node)},opt=(key,list)=>{const w=el('div','opts');list.forEach(([v,l])=>{const b=el('button',d[key]===v?'on':'',l);b.type='button';b.addEventListener('click',()=>{d[key]=v;w.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});w.append(b)});return w};
   const nk=el('input');nk.type='text';nk.maxLength=24;nk.placeholder=String(((Y().S||{}).me||{}).n||'').split(' ')[0]||'Your first name';nk.value=d.nick;nk.addEventListener('input',()=>{d.nick=nk.value.trim()});
   Q('1. What should the app call you?',nk);
+  try{Q('Your photo (optional)',avBox())}catch(e){}
   Q('2. Show your shift briefing on Today?',opt('brief',[[true,'Yes'],[false,'No']]));
   {const nn=el('label','');nn.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px;font-size:14px';const cb=el('input');cb.type='checkbox';cb.checked=!!d.noName;cb.addEventListener('change',()=>{d.noName=cb.checked});nn.append(cb,el('span','',"Don't say my name out loud"));c.append(nn)}
   const vh=el('div','q','3. Pick your assistant\'s voice');vh.id='myVoice';c.append(vh);{const w=el('div','vList'),au=new Audio();VOICES.forEach(([id,nm,ds,url])=>{const r=el('div','vRow'+(d.voice===id?' on':'')),t=el('button','vPick');t.type='button';t.append(el('b','',nm),el('small','',ds));
@@ -2719,6 +2720,7 @@ function myOpen(first,focus){const p=prefs(),d={...p},S=el('div','myS'),c=el('di
   Q('7. A short motivation line?',opt('mot',[[true,'Yes'],[false,'No thanks']]));
   Q('8. Georgia Ports news and terminal KPIs on Today?',opt('news',[[true,'Yes'],[false,'No']]));
   Q('9. Text size',opt('big',[[false,'Normal'],[true,'Larger']]));
+  {const w=el('div','opts'),cur=scMine().map(x=>x[0]);d.sc=cur.slice();SC.filter(scOk).forEach(x=>{const b=el('button',cur.includes(x[0])?'on':'',x[1]);b.type='button';b.addEventListener('click',()=>{const i=d.sc.indexOf(x[0]);if(i>=0)d.sc.splice(i,1);else{if(d.sc.length>=3)d.sc.shift();d.sc.push(x[0])}w.querySelectorAll('button').forEach(z=>z.classList.toggle('on',d.sc.includes(SC.find(q=>q[1]===z.textContent)[0])))});w.append(b)});Q('Your 3 shortcuts on Today (tap to choose)',w)}
   const tb=el('button','btn2','10. Pick your 4 bottom tabs ›');tb.type='button';tb.style.marginTop='14px';tb.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{openMore();EDIT=true;drawMore()}catch(e){}});c.append(tb);
   const e=el('div','end'),sv=el('button','btn','Save'),sk=el('button','btn2',first?'Skip for now':'Cancel');sv.type=sk.type='button';
   sv.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{renderToday()}catch(x){}});sk.addEventListener('click',()=>{if(first)prefSave({asked:true});S.remove();try{renderToday()}catch(x){}});e.append(sk,sv);c.append(e);
@@ -2761,6 +2763,57 @@ function credForm(r){const F=$('crForm');F.textContent='';const f=el('form','gpa
   f.addEventListener('submit',ev=>{ev.preventDefault();sv.disabled=true;msg.textContent='Saving…';Y().call('saveCred',[{id:r.id||'',who:who.value,kind:kind.value,exp:exp.value,ver:ver.value,note:note.value}]).then(d=>{CRED.rows=d.rows;F.textContent='';renderCred();try{renderToday()}catch(e){}}).catch(e=>{sv.disabled=false;msg.textContent=String(e&&e.message||e)})});
   F.append(f);who.focus()}
 setTimeout(loadCred,4000);setInterval(()=>{if(document.visibilityState==='visible')loadCred()},60*60000);
+
+// ---- EMPLOYEE PHOTOS + MY WORK + SHORTCUTS (owner 10/30/2026; Perplexity research) ----
+// Photos are optional (initials by default), added by the person after a consent note, stored privately on the server and
+// shown only inside the app. Cached on the phone by version so the team list costs one small download when someone changes theirs.
+let AV={ver:'',map:{}};try{AV=JSON.parse(localStorage.getItem('yardAv')||'null')||AV}catch(e){}
+const avOf=n=>(AV.map&&AV.map[n])||'';
+const avIni=n=>String(n||'').split(/\s+/).filter(Boolean).map(x=>x[0]).slice(0,2).join('').toUpperCase()||'•';
+function avChip(n,px){const s=el('span','avc');s.style.width=s.style.height=px+'px';s.style.fontSize=Math.round(px*.4)+'px';const u=avOf(n);if(u){s.style.backgroundImage='url('+u+')';s.classList.add('ph')}else s.textContent=avIni(n);s.setAttribute('aria-hidden','true');return s}
+function avApply(){const me=((Y().S||{}).me||{}).n,b=$('abAv');if(b&&me){const u=avOf(me);b.style.backgroundImage=u?'url('+u+')':'';b.classList.toggle('ph',!!u)}try{renderMyWork()}catch(e){}try{renderMyDay()}catch(e){}}
+function avLoad(force){if(!Y().call||!navigator.onLine)return;Y().call('getAvatars',[{ver:force?'':AV.ver}]).then(d=>{if(d&&!d.same){AV={ver:d.ver,map:d.map||{}};try{localStorage.setItem('yardAv',JSON.stringify(AV))}catch(e){}}avApply()}).catch(()=>{})}
+setTimeout(()=>{avApply();avLoad()},5000);setInterval(()=>{if(document.visibilityState==='visible')avLoad()},30*60000);
+// Square-crop a chosen photo to 256 px JPEG on the phone (about 15-25 KB) before it leaves the device.
+function avCrop(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const z=Math.min(im.naturalWidth,im.naturalHeight),c=document.createElement('canvas');c.width=c.height=256;
+  c.getContext('2d').drawImage(im,(im.naturalWidth-z)/2,(im.naturalHeight-z)/2,z,z,0,0,256,256);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.82))};im.onerror=()=>no(new Error('That photo could not be opened. Try another one.'));im.src=u})}
+function avBox(){const me=((Y().S||{}).me||{}).n||'',w=el('div','avBox'),pv=avChip(me,72),side=el('div'),msg=el('div','meta');let img='';
+  const inp=el('input');inp.type='file';inp.accept='image/*';inp.hidden=true;const pick=el('button','btn2',avOf(me)?'Change photo':'Add a photo');pick.type='button';pick.addEventListener('click',()=>inp.click());
+  const cons=el('label','avCons'),cb=el('input');cb.type='checkbox';cons.append(cb,el('span','','I agree this photo is shown next to my name inside the Yard App only, to the team. It is not used for ads, social media, face recognition or AI, and I can remove it anytime.'));cons.hidden=true;
+  const save=el('button','btn','Save photo');save.type='button';save.hidden=true;
+  const rm=el('button','btn2','Remove my photo');rm.type='button';rm.hidden=!avOf(me);
+  inp.addEventListener('change',()=>{const f=inp.files&&inp.files[0];if(!f)return;msg.textContent='';avCrop(f).then(d=>{img=d;pv.style.backgroundImage='url('+d+')';pv.classList.add('ph');pv.textContent='';cons.hidden=false;save.hidden=false}).catch(e=>{msg.textContent=e.message})});
+  save.addEventListener('click',()=>{if(!cb.checked){msg.textContent='Tick the box to agree first.';return}save.disabled=true;msg.textContent='Saving…';Y().call('avatarSet',[{img,consent:true}]).then(()=>{msg.textContent='Saved. Your team will see it.';save.hidden=true;cons.hidden=true;rm.hidden=false;AV.map=AV.map||{};AV.map[me]=img;avApply();avLoad(true)}).catch(e=>{msg.textContent=(e&&e.message)||String(e)}).finally(()=>{save.disabled=false})});
+  rm.addEventListener('click',()=>{rm.disabled=true;Y().call('avatarDel',[{}]).then(()=>{if(AV.map)delete AV.map[me];pv.style.backgroundImage='';pv.classList.remove('ph');pv.textContent=avIni(me);rm.hidden=true;msg.textContent='Removed. Your initials show instead.';avApply();avLoad(true)}).catch(e=>{msg.textContent=(e&&e.message)||String(e)}).finally(()=>{rm.disabled=false})});
+  const btns=el('div','');btns.style.cssText='display:flex;gap:8px;flex-wrap:wrap';btns.append(pick,rm);side.append(btns,el('div','meta','Optional. Your initials show if you skip this. Please use a clear photo of your face, not your GPA badge.'));
+  w.append(pv,side,inp);const out=el('div');out.append(w,cons,save,msg);
+  if(roles().includes('admin')){const names=Object.keys(AV.map||{}).filter(n=>n!==me);if(names.length){const d=el('details','avAdm');d.append(el('summary','','Team photos (admin)'));names.forEach(n=>{const r=el('div','mdTr'),x=el('button','btn2','Remove');x.type='button';x.addEventListener('click',()=>{if(!confirm('Remove '+n+"'s photo?"))return;Y().call('avatarDel',[{who:n}]).then(()=>{delete AV.map[n];r.remove();avLoad(true)})});const l=el('span','');l.append(avChip(n,24),document.createTextNode(' '+n));r.append(l,x);d.append(r)});out.append(d)}}
+  return out}
+// Shortcuts: three one-tap jumps on Today, picked by role; each person can change them in Make it yours.
+const SC=[['pin','Request a PIN','port','#pinSec'],['moves','Gate moves','port','#portSec'],['gates','Gate hours','port','#gctSec'],['cred','Credentials','port','#credSec'],['watch','Watch list','port','#watchSec'],
+  ['inyard','In the yard','yard','#storSec'],['walk','Yard walk','yard','[data-tab="yard"][data-sub="walk"]'],['safety','Safety','safety'],['gps','Truck GPS','gps'],['approvals','Approvals','social'],['ask','Ask AI','ask'],['owner','Owner','owner'],['sales','Work Finder','sales'],['reports','Reports','reports']];
+const scOk=x=>{const b=tabBtn(x[2]);return !!b&&b.style.display!=='none'};
+function scDefault(){const r=roles();const want=r.includes('admin')?['approvals','pin','gates']:r.includes('safety')?['cred','safety','gps']:(r.includes('pin')||r.includes('gate'))?['pin','moves','gates']:r.includes('yard')?['inyard','walk','gates']:['inyard','ask','gates'];
+  return want.filter(k=>{const x=SC.find(s=>s[0]===k);return x&&scOk(x)})}
+function scMine(){const p=prefs().sc;const v=(Array.isArray(p)&&p.length?p:scDefault()).map(k=>SC.find(s=>s[0]===k)).filter(x=>x&&scOk(x));return v.slice(0,3)}
+// "My work": everything waiting on this person, newest first. Tap a row to jump to it.
+function myWorkItems(){const S=Y().S||{},me=(S.me||{}).n,r=roles(),out=[],PN=Y().PN;
+  if(PN&&PN.rows){PN.rows.filter(p=>p.who===me&&/handoff|failed|created|recorded/.test(p.st)&&Date.now()-(p.t||0)<2*864e5).forEach(p=>{const c=p.c||p.b;out.push(p.st==='failed'?['r','Your PIN request for '+c+' failed','Fix and resend','port','#pinSec']:p.st==='handoff'?['y','Waiting for a PIN: '+c,'Requested '+Math.round((Date.now()-p.t)/60000)+' min ago','port','#pinSec']:['g','PIN ready for '+c+(p.pin?': '+p.pin:''),'Send it to the driver','port','#pinSec'])});
+    if(r.includes('admin')||r.includes('pin')){const n=PN.rows.filter(p=>p.st==='handoff'&&p.who!==me).length;if(n)out.push(['y',n+' PIN request'+(n>1?'s':'')+' to create in WebAccess','From the team','port','#pinSec'])}}
+  try{if(SM&&smCan()){const n=(SM.posts||[]).filter(smNeedsMe).length+(SM.jobs||[]).filter(smJNeedsMe).length;if(n)out.push(['y',n+(n>1?' posts or jobs':' post or job')+' waiting for your approval','Social Media','social',null])}}catch(e){}
+  try{if(CRED&&CRED.rows&&can('safety')){const due=CRED.rows.filter(c=>{const d=crDays(c.exp);return d!=null&&d<=30}).length;if(due)out.push(['y',due+' credential'+(due>1?'s':'')+' due within 30 days','TWIC, GPA badge, RFID','port','#credSec'])}}catch(e){}
+  if(MD){const left=MD.open.concat(MD.close).filter(i=>!MD.done[i]);if(left.length)out.push(['',left.length+' left on My day','Next: '+left[0].replace(/\(.*?\)/g,'').trim(),'today','#myDay'])}
+  return out}
+function renderMyWork(){const S=Y().S||{};if(!S.me)return;let b=$('tWork');if(!b){b=el('div');b.id='tWork';const a=$('tBrief')||$('tMy')||$('tHello');if(!a)return;a.after(b)}b.textContent='';
+  const c=el('div','myWork'),h=el('div','mwH');h.append(avChip(S.me.n,36),el('b','','My work'));c.append(h);
+  const sc=scMine();if(sc.length){const row=el('div','mwSc');sc.forEach(x=>{const bt=el('button','',x[1]);bt.type='button';bt.addEventListener('click',()=>go(x[2],x[3]||undefined));row.append(bt)});c.append(row)}
+  const it=myWorkItems();if(!it.length)c.append(el('div','meta','Nothing waiting on you right now.'));
+  it.slice(0,6).forEach(([cl,t,d,tab,tg])=>{const r=el('button','mwI '+cl);r.type='button';r.append(el('b','',t),el('span','',d));r.addEventListener('click',()=>go(tab,tg||undefined));c.append(r)});b.append(c)}
+{const st=el('style');st.textContent='.avc{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#1F2A5C;color:#fff;font-weight:700;flex:none;background-size:cover;background-position:center;vertical-align:middle}.avc.ph{color:transparent}#abAv.ph{background-size:cover;background-position:center;color:transparent!important}'+
+'.avBox{display:flex;gap:14px;align-items:center}.avCons{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:10px 0}.avCons input{width:22px;height:22px;flex:none}.avAdm{margin-top:10px;font-size:14px}.avAdm summary{font-weight:600;padding:6px 0}'+
+'.myWork{border:1px solid var(--line,#d5d9db);border-radius:14px;background:var(--card,#fff);padding:12px 14px;margin:10px 0}.mwH{display:flex;align-items:center;gap:10px;margin-bottom:8px}.mwH b{font-size:17px}'+
+'.mwSc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}.mwSc button{min-height:48px;border-radius:12px!important;border:1px solid var(--line,#d5d9db)!important;background:#f3f5fa!important;color:#1F2A5C!important;font-weight:700;font-size:14px!important;padding:6px!important}'+
+'.mwI{display:block;width:100%;text-align:left;background:transparent!important;border:0!important;border-top:1px solid var(--line2,#eef1f6)!important;border-left:4px solid transparent!important;padding:10px 8px!important;color:inherit!important;min-height:48px}.mwI b{display:block;font-size:15px}.mwI span{font-size:13px;color:var(--mut,#5d686d)}.mwI.r{border-left-color:#C8102E!important}.mwI.y{border-left-color:#d49b00!important}.mwI.g{border-left-color:#1f7a44!important}';document.head.append(st)}
 window.yardMyOpen=()=>myOpen(false);let PNEWS=null;
 function loadNews(){if(!Y().call||!navigator.onLine)return;Y().call('getPortNews',[{}]).then(d=>{PNEWS=d;try{renderNews();renderBrief();renderGates()}catch(e){}}).catch(()=>{})}
 setTimeout(loadNews,3500);setInterval(()=>{if(document.visibilityState==='visible')loadNews()},60*60000);
@@ -2775,7 +2828,7 @@ function gateToday(){const G=PNEWS&&PNEWS.gates;if(!G)return null;const d=new Da
   return {say:'Garden City gates: 3 and 8 open '+(a[0]||'6 AM')+' to '+(a[1]||'5 PM')+', Gate 4 '+(b[0]||'4 AM')+' to '+(b[1]||'6 PM')+'. Dry pick-up cut-off '+(c[0]||'4:30 PM')+'.',lines:L}}
 function gateAhead(days){const G=PNEWS&&PNEWS.gates;if(!G)return [];const now=new Date();now.setHours(0,0,0,0);return (G.holidays||[]).filter(h=>{const t=new Date(h.d+'T12:00:00').getTime()-now.getTime();return t>0&&t<=days*864e5&&/closed/i.test(h.gct)})}
 // Gates get their own Port sub-tab (owner 10/30/2026) instead of sitting on top of every Port screen.
-const gctSec=mk('gctSec','port','gates','<h2>Garden City gates <span class="t">official GPA hours, cut-offs and closings</span></h2><div id="gpaGates" class="pnews"></div>');
+const gctSec=mk('gctSec','port','gates','<h2>Hours of operation <span class="t">Garden City Terminal · official GPA hours, cut-offs and closings</span></h2><div id="gpaGates" class="pnews"></div>');
 {const ps=$('portSec');if(ps)ps.before(gctSec);else wrap.append(gctSec)}
 function renderGates(){const b=$('gpaGates');if(!b||!PNEWS)return;b.textContent='';
   const g=gateToday(),G=PNEWS.gates,h=el('div','pH');h.append(el('b','','Garden City gates today'),el('span','meta','official GPA'));b.append(h);
@@ -2805,7 +2858,7 @@ function renderKpi(c){const K=PNEWS&&PNEWS.kpi;if(!K||!K.turn)return;const f=n=>
 {const st=el('style');st.textContent='.kpi{margin-top:10px;padding-top:10px;border-top:1px solid var(--line,#e2e5e7)}.kpi .kG{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.kpi .kT{background:var(--bg2,#f3f5f7);border-radius:10px;padding:8px 10px}.kpi .kT b{display:block;font-size:20px;color:#1F2A5C}.kpi .kT small{font-size:12px;color:var(--mut,#5d686d)}'+
 '.kpi .kL{font-size:13px;font-weight:700;margin:10px 0 4px}.kpi .kB{display:flex;align-items:flex-end;gap:3px;height:62px}.kpi .kC{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}.kpi .kC i{display:block;width:100%;background:#9aa6c8;border-radius:3px 3px 0 0}.kpi .kC i.hot{background:#C8102E}.kpi .kC small{font-size:10px;color:var(--mut,#5d686d)}'+
 '.kpi .kTip{font-size:13px;margin:6px 0}.kpi .kSrc{display:inline-block;margin-top:6px;font-size:13px}';document.head.append(st)}
-function renderNews(){let b=$('tNews');const anchor=$('tBrief');if(!anchor)return;if(!b){b=el('div');b.id='tNews';anchor.after(b)}b.textContent='';
+function renderNews(){let b=$('tNews');const anchor=$('tWork')||$('tBrief');if(!anchor)return;if(!b){b=el('div');b.id='tNews';anchor.after(b)}b.textContent='';
   if(!prefs().news||!PNEWS||(!PNEWS.news.length&&!PNEWS.alerts.length&&!PNEWS.kpi))return;const c=el('div','pnews'),h=el('div','pH');h.append(el('b','','Georgia Ports news'),el('span','meta','official GPA'));c.append(h);
   PNEWS.alerts.slice(0,2).forEach(a=>c.append(el('div','alert','GPA notice · '+a.t)));
   PNEWS.news.slice(0,3).forEach(n=>{const a=el('a');a.href=n.u;a.target='_blank';a.rel='noopener';a.append(el('b','',n.t),el('small','',n.src+' · '+new Date(n.d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})));c.append(a)});try{renderKpi(c)}catch(e){}b.append(c)}
