@@ -1,6 +1,6 @@
 {
- "name": "Yard App – 2FF Logistics",
- "short_name": "Yard App",
+ "name": "DockRelay – 2FF Logistics",
+ "short_name": "DockRelay",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",

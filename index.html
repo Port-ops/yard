@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Yard App</title>
+<title>DockRelay</title>
 <meta name="theme-color" content="#2e2d6f">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Yard App"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="DockRelay"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <link rel="stylesheet" href="fonts/fonts.css">
 <style>
@@ -306,7 +306,7 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 </head><body>
 <div class="wrap">
 <header>
-<div class="brandbar"><img src="logo.png" alt="2FF Logistics · America 1"><div class="bt"><b>Yard App</b><span>2FF Logistics · An agency of America 1 Logistics</span></div></div>
+<div class="brandbar"><img src="logo.png" alt="2FF Logistics · America 1"><div class="bt"><b>DockRelay</b><span>2FF Logistics · An agency of America 1 Logistics</span></div></div>
 <h1>Yard Day</h1>
 <p class="sub" id="today">Daily checklist. Boxes reset each morning.</p>
 <p class="sub">Shift 8:00 AM–5:00 PM · two 30-minute breaks</p>
@@ -407,7 +407,7 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 <ul>
 <li><label><input type="checkbox" id="c1"><span><b>Gate, fence, lights, cameras</b><small>Gate locks and closes. Fence line intact. Overnight lights worked. Cameras recording. If anything is off, check the footage and tell Lethaniel.</small></span></label></li>
 <li><label><input type="checkbox" id="c2"><span><b>Check overnight arrivals and departures</b><small>Anything that moved after you left must be on the record. Anything not on the record gets logged now, photographed and flagged.</small></span></label></li>
-<li><label><input type="checkbox" id="c25"><span><b>Open the Yard App: Today › Needs attention</b><small>Clear or hand off every red item first: per diem running, free time ending today, chassis can't find, PINs waiting, boxes available to pull.</small></span></label></li>
+<li><label><input type="checkbox" id="c25"><span><b>Open DockRelay: Today › Needs attention</b><small>Clear or hand off every red item first: per diem running, free time ending today, chassis can't find, PINs waiting, boxes available to pull.</small></span></label></li>
 <li><label><input type="checkbox" id="c3"><span><b>Review today's moves with Lethaniel</b><small>Which containers and chassis leave today and come in, appointments and cutoffs, last free days, anything on the Watch list that is available to pull.</small></span></label></li>
 </ul>
 </section>
@@ -649,7 +649,7 @@ return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-
 .finally(()=>t&&clearTimeout(t))};
 function signIn(msg){
 const d=document.createElement('div');d.className='signin';
-d.innerHTML='<form autocomplete="off"><img src="logo.png" alt=""><h2>Yard App</h2><p>Enter your personal Yard App code, or paste the whole link Richard sent you. You only do this once on this phone.</p><input id="siCode" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Your code" aria-label="Your Yard App code"><button class="btn" type="submit">Sign in</button><p class="err" id="siErr"></p></form>';
+d.innerHTML='<form autocomplete="off"><img src="logo.png" alt=""><h2>DockRelay</h2><p>Enter your personal DockRelay code, or paste the whole link Richard sent you. You only do this once on this phone.</p><input id="siCode" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Your code" aria-label="Your DockRelay code"><button class="btn" type="submit">Sign in</button><p class="err" id="siErr"></p></form>';
 document.body.append(d);const f=d.querySelector('form'),inp=d.querySelector('#siCode'),er=d.querySelector('#siErr');if(msg)er.textContent=msg;
 f.addEventListener('submit',e=>{e.preventDefault();const k=keyFrom(inp.value);if(!k){er.textContent='Enter your code.';return}
 if(!navigator.onLine){er.textContent='You need signal to sign in the first time.';return}
@@ -1130,7 +1130,7 @@ const BYH=[[/^Search|Container lookup/,'today'],[/^Chassis location report/,'yar
   if(!t)for(const [re,tab] of BYH)if(re.test(h.trim())){t=tab;break}
   s.dataset.tab=t||'tasks'});
 [...wrap.children].filter(d=>d.tagName==='DIV'&&!d.dataset.tab).forEach(d=>d.dataset.tab='tasks');
-const h1=document.querySelector('header h1');if(h1){h1.textContent='Yard App';if(/\/beta\//.test(location.pathname))h1.append(el('span','betaflag','BETA'))}
+const h1=document.querySelector('header h1');if(h1){h1.textContent='DockRelay';if(/\/beta\//.test(location.pathname))h1.append(el('span','betaflag','BETA'))}
 
 // ---------- 2. Today section ----------
 const today=el('section');today.id='todaySec';today.dataset.tab='today';
@@ -1914,14 +1914,14 @@ async function fcAuthUI(msg){const A=$('fcAuth');A.textContent='';A.hidden=false
   if(FC_RECOVERY&&FC_RECOVERY.err){box.append(el('div','fcMsg bad','That reset link did not work ('+FC_RECOVERY.err+'). Links expire after one hour and work once. Tap "Forgot password" again.'));FC_RECOVERY=null}
   if(FC_RECOVERY&&FC_RECOVERY.a){const {error}=await sb.auth.setSession({access_token:FC_RECOVERY.a,refresh_token:FC_RECOVERY.r});FC_RECOVERY=null;
     if(error){box.append(el('div','fcMsg bad','Reset link expired. Tap "Forgot password" again.'))}
-    else{box.append(el('h3','','Set a new finance password'),el('p','t','At least 12 characters. Different from your Yard App code and your email password.'));
+    else{box.append(el('h3','','Set a new finance password'),el('p','t','At least 12 characters. Different from your DockRelay code and your email password.'));
       const p1=el('input'),p2=el('input');p1.type=p2.type='password';p1.autocomplete=p2.autocomplete='new-password';p1.placeholder='New password';p2.placeholder='Same password again';
       const ok=el('button','btn','Save new password'),m=el('div','fcMsg');ok.type='button';
       ok.addEventListener('click',async()=>{if(p1.value.length<12){m.className='fcMsg bad';m.textContent='Use at least 12 characters.';return}if(p1.value!==p2.value){m.className='fcMsg bad';m.textContent='The two passwords do not match.';return}
         m.className='fcMsg';m.textContent='Saving…';const {error}=await sb.auth.updateUser({password:p1.value});p1.value=p2.value='';if(error){m.className='fcMsg bad';m.textContent=error.message;return}fcAuthUI()});
       box.append(el('label','t','New password'),p1,el('label','t','Again'),p2,ok,m);return}}
   const {data:{session}}=await sb.auth.getSession();
-  if(!session){box.append(el('h3','','Finance sign-in'),el('p','t','Separate from your Yard App code. Only rp@2f-logistics.com, with the 6-digit code from your authenticator app.'));
+  if(!session){box.append(el('h3','','Finance sign-in'),el('p','t','Separate from your DockRelay code. Only rp@2f-logistics.com, with the 6-digit code from your authenticator app.'));
     const em=el('input');em.value=FC_EMAIL;em.readOnly=true;const pw=el('input');pw.type='password';pw.placeholder='Finance password';pw.autocomplete='current-password';
     const go=el('button','btn','Sign in'),mkacct=el('button','btn2','First time: create my finance login'),m=el('div','fcMsg');go.type=mkacct.type='button';const fg=el('button','btn2','Forgot password');fg.type='button';
     fg.addEventListener('click',async()=>{fg.disabled=true;m.className='fcMsg';m.textContent='Sending…';const {error}=await sb.auth.resetPasswordForEmail(FC_EMAIL,{redirectTo:'https://yard.2f-logistics.com/'});
@@ -2387,7 +2387,7 @@ setTimeout(loadMyDay,2500);setInterval(()=>{if(document.visibilityState==='visib
 // ---------- one-time tip to add the app to the Home Screen (after it has been used) ----------
 setTimeout(()=>{let seen=0;try{seen=+localStorage.getItem('yardA2HS')||0;localStorage.setItem('yardA2HS',String(seen+1))}catch(e){return}
   const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;if(standalone||seen!==2)return;
-  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),t=el('div','a2hs');t.append(el('span','',ios?'Add Yard App to your Home Screen: tap Share, then "Add to Home Screen".':'Install Yard App: open the browser menu and tap "Install app" or "Add to Home screen".'));
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),t=el('div','a2hs');t.append(el('span','',ios?'Add DockRelay to your Home Screen: tap Share, then "Add to Home Screen".':'Install DockRelay: open the browser menu and tap "Install app" or "Add to Home screen".'));
   const x=el('button','','Got it');x.type='button';x.addEventListener('click',()=>{t.remove();try{localStorage.setItem('yardA2HS','99')}catch(e){}});t.append(x);document.body.append(t);
   const st=el('style');st.textContent='.a2hs{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;gap:10px;align-items:center;background:#1F2A5C;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.a2hs button{flex:none;background:#fff;color:#1F2A5C;border:0;border-radius:10px;padding:8px 12px;font-weight:700}';document.head.append(st)},6000);
 // ---------- 5. Today render ----------
@@ -2678,11 +2678,14 @@ async function vcStart(){const p=vcPanel();let mode='tap';try{mode=localStorage.
     if(mode==='auto'){setMic(!micOn);paint();return}
     if(micOn){setMic(false);thinking=true;paint();setTimeout(()=>{if(thinking&&!speaking){thinking=false;paint()}},12000)}else{setMic(true);paint()}});
   try{const d=await Y().call('aiVoice',[{}]);id=d.id;const EL=await vcLoad();if(closed)return;
-    s=await EL.Conversation.startSession({signedUrl:d.signed_url,connectionType:'websocket',
+    // WebRTC first (owner 10/30/2026: WebSocket audio had static on iPhone; WebRTC runs at 48 kHz with the phone's echo/noise handling). WebSocket is the fallback.
+    const cb={
       onConnect:()=>{t0=Date.now();setMic(mode==='auto');paint();tick=setInterval(()=>{const g=Math.round((Date.now()-t0)/1000),left=Math.max(0,180-g);hs.textContent='Parked use only · '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0')+' left';if(g>=182)fin("That's 3 minutes")},1000)},
       onModeChange:m=>{const sp=!!(m&&m.mode==='speaking');if(sp&&!speaking){thinking=false;if(cutMsg){cutMsg=null}try{s.setVolume({volume:vol})}catch(e){}if(mode==='tap')setMic(false)}speaking=sp;if(!sp&&mode==='tap'&&!micOn)thinking=false;paint()},
       onMessage:m=>{if(!m||!m.message)return;if(m.source==='user'){add('u',m.message);if(mode==='tap'&&!speaking){thinking=true;paint()}}else lastA=add('a',m.message)},
-      onDisconnect:()=>fin('Voice ended'),onError:e=>{add('a',(e&&e.message)||String(e))}});
+      onDisconnect:()=>fin('Voice ended'),onError:e=>{add('a',(e&&e.message)||String(e))}};
+    if(d.conversation_token){try{s=await EL.Conversation.startSession(Object.assign({conversationToken:d.conversation_token,connectionType:'webrtc'},cb))}catch(e){s=null}}
+    if(!s&&!closed)s=await EL.Conversation.startSession(Object.assign({signedUrl:d.signed_url,connectionType:'websocket'},cb));
     VC={s,fin};setMic(mode==='auto');paint()}
   catch(e){const m=(e&&e.message)||String(e);if(/NEED_EMAIL/.test(m)){p.hidden=true;closed=true;AINE='__voice__';if(TAB!=='ask')go('ask');aiDraw();return}
     if(/Permission|NotAllowed|denied/i.test(m)){fin('Microphone blocked');sub.textContent='Microphone access is blocked. Allow it for this app in iPhone Settings, then try again. You can still type.';return}
@@ -2779,7 +2782,7 @@ function avCrop(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(f
   c.getContext('2d').drawImage(im,(im.naturalWidth-z)/2,(im.naturalHeight-z)/2,z,z,0,0,256,256);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.82))};im.onerror=()=>no(new Error('That photo could not be opened. Try another one.'));im.src=u})}
 function avBox(){const me=((Y().S||{}).me||{}).n||'',w=el('div','avBox'),pv=avChip(me,72),side=el('div'),msg=el('div','meta');let img='';
   const inp=el('input');inp.type='file';inp.accept='image/*';inp.hidden=true;const pick=el('button','btn2',avOf(me)?'Change photo':'Add a photo');pick.type='button';pick.addEventListener('click',()=>inp.click());
-  const cons=el('label','avCons'),cb=el('input');cb.type='checkbox';cons.append(cb,el('span','','I agree this photo is shown next to my name inside the Yard App only, to the team. It is not used for ads, social media, face recognition or AI, and I can remove it anytime.'));cons.hidden=true;
+  const cons=el('label','avCons'),cb=el('input');cb.type='checkbox';cons.append(cb,el('span','','I agree this photo is shown next to my name inside DockRelay only, to the team. It is not used for ads, social media, face recognition or AI, and I can remove it anytime.'));cons.hidden=true;
   const save=el('button','btn','Save photo');save.type='button';save.hidden=true;
   const rm=el('button','btn2','Remove my photo');rm.type='button';rm.hidden=!avOf(me);
   inp.addEventListener('change',()=>{const f=inp.files&&inp.files[0];if(!f)return;msg.textContent='';avCrop(f).then(d=>{img=d;pv.style.backgroundImage='url('+d+')';pv.classList.add('ph');pv.textContent='';cons.hidden=false;save.hidden=false}).catch(e=>{msg.textContent=e.message})});
@@ -2999,7 +3002,7 @@ all();
     function open(){var me=(window.YARD&&YARD.S&&YARD.S.me)||{},rt=document.getElementById('roleTag'),sy=document.getElementById('sync'),qt=document.getElementById('qTag');
       m.innerHTML='';var c=document.createElement('div');c.className='abCard';
       var who=document.createElement('div');who.className='abWho';var a=document.createElement('span');a.className='abAv big';a.textContent=av.textContent;
-      var nm=document.createElement('div');nm.innerHTML='<b></b><small></small>';nm.querySelector('b').textContent=me.n||'Signed in';nm.querySelector('small').textContent=((rt&&rt.textContent)||'').replace(/^Signed in as [^·]*·\s*/,'')||'Yard App';
+      var nm=document.createElement('div');nm.innerHTML='<b></b><small></small>';nm.querySelector('b').textContent=me.n||'Signed in';nm.querySelector('small').textContent=((rt&&rt.textContent)||'').replace(/^Signed in as [^·]*·\s*/,'')||'DockRelay';
       who.append(a,nm);c.append(who);
       var st=document.createElement('div');st.className='abRow';st.innerHTML='<span>Status</span><b></b>';st.querySelector('b').textContent=(sy&&sy.textContent||'').trim()||sp.textContent;c.append(st);
       if(qt&&qt.textContent.trim()){var qq=document.createElement('div');qq.className='abRow';qq.innerHTML='<span>On this phone</span><b></b>';qq.querySelector('b').textContent=qt.textContent.trim();c.append(qq)}
@@ -3009,7 +3012,7 @@ all();
     av.addEventListener('click',function(){m.hidden?open():m.hidden=true});sp.addEventListener('click',open);
     m.addEventListener('click',function(e){if(e.target===m)m.hidden=true});
     function sync(){var me=(window.YARD&&YARD.S&&YARD.S.me)||{},ini=(me.n||'').split(/\s+/).filter(Boolean).map(function(x){return x[0]}).slice(0,2).join('').toUpperCase()||'•';if(av.textContent!==ini)av.textContent=ini;
-      var k=document.body.dataset.tab||'today',btn=document.querySelector('nav.tabbar button[data-k="'+k+'"] .l'),lab=btn?btn.textContent:'Yard App';if(tt.textContent!==lab)tt.textContent=lab}
+      var k=document.body.dataset.tab||'today',btn=document.querySelector('nav.tabbar button[data-k="'+k+'"] .l'),lab=btn?btn.textContent:'DockRelay';if(tt.textContent!==lab)tt.textContent=lab}
     sync();setInterval(sync,1500);new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['data-tab']})}
   setInterval(status,2000);addEventListener('online',status);addEventListener('offline',status);addEventListener('load',function(){setTimeout(status,500)});
   // tables: copy each column header onto its cells so phones can show rows as cards

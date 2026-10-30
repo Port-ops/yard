@@ -1,6 +1,6 @@
 {
- "name": "Yard App BETA – 2FF Logistics",
- "short_name": "Yard BETA",
+ "name": "DockRelay BETA – 2FF Logistics",
+ "short_name": "DockRelay BETA",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
