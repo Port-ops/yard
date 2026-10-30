@@ -2665,7 +2665,7 @@ async function vcStart(){const p=vcPanel();let mode='tap';try{mode=localStorage.
     if(mode==='auto'){orb.className='vcOrb '+(micOn?'listening':'');ttl.textContent=micOn?'Listening':'Microphone off';sub.textContent=micOn?'Just talk. Pause when you are done.':'You can still hear the assistant.';main.className='vcMain'+(micOn?' on':'');main.textContent=micOn?'Mute microphone':'Unmute microphone';return}
     orb.className='vcOrb '+(micOn?'listening':'');ttl.textContent=micOn?'Listening':'Ready';sub.textContent=micOn?'Tap when you are done.':'Mic off. Tap to ask.';main.className='vcMain'+(micOn?' on':'');main.textContent=micOn?'Done talking':'Tap to talk'};
   const add=(who,t)=>{const m=el('div','m'+(who==='u'?' u':''));m.append(el('i','',who==='u'?'You':'Assistant'),document.createTextNode(t));const nearEnd=log.scrollHeight-log.scrollTop-log.clientHeight<80;log.append(m);if(nearEnd)log.scrollTop=log.scrollHeight;return m};
-  const fin=async why=>{if(closed)return;closed=true;clearInterval(tick);try{s&&await s.endSession()}catch(e){}const secs=t0?Math.round((Date.now()-t0)/1000):0;
+  const fin=async why=>{if(closed)return;closed=true;clearInterval(tick);try{s&&await s.endSession()}catch(e){}try{if('audioSession' in navigator)navigator.audioSession.type='auto'}catch(e){}const secs=t0?Math.round((Date.now()-t0)/1000):0;
     if(id)Y().call('aiVoice',[{end:true,id,secs}]).catch(()=>{});VC=null;orb.className='vcOrb';ttl.textContent=why||'Voice ended';sub.textContent=(secs?'Talked '+Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0')+'. ':'')+'Review the conversation above.';
     main.className='vcMain';main.textContent='Back to Ask AI';main.onclick=()=>{p.hidden=true};x.textContent='Close';x.onclick=()=>{p.hidden=true};row.hidden=true};
   x.addEventListener('click',()=>{if(!closed)fin('Voice ended')});
@@ -2677,6 +2677,8 @@ async function vcStart(){const p=vcPanel();let mode='tap';try{mode=localStorage.
     if(thinking)return;
     if(mode==='auto'){setMic(!micOn);paint();return}
     if(micOn){setMic(false);thinking=true;paint();setTimeout(()=>{if(thinking&&!speaking){thinking=false;paint()}},12000)}else{setMic(true);paint()}});
+  // iPhone (Safari 17+): tell iOS this is a two-way call before the mic starts, so it doesn't flip audio modes mid-conversation (crackle fix, Perplexity 10/30/2026).
+  try{if('audioSession' in navigator)navigator.audioSession.type='play-and-record'}catch(e){}
   try{const d=await Y().call('aiVoice',[{}]);id=d.id;const EL=await vcLoad();if(closed)return;
     // WebRTC first (owner 10/30/2026: WebSocket audio had static on iPhone; WebRTC runs at 48 kHz with the phone's echo/noise handling). WebSocket is the fallback.
     const cb={
