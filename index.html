@@ -1562,21 +1562,11 @@ function renderFW(){const T=fwSec.querySelector('#fwT'),R=(SL&&SL.fw)||[],q=Stri
   if(!rows.length){const tr=el('tr'),td=el('td','muted',SL?'Nothing here.':'Loading…');td.colSpan=9;tr.append(td);T.append(tr)}
   rows.forEach(r=>{const tr=el('tr');const sc=el('td');sc.append(slScore(r.score));const co=el('td');co.append(el('b','',r.company||'(unknown)'),el('div','muted',[r.contact,r.email].filter(Boolean).join(' · ')));if(r.subject)co.append(el('div','muted',r.subject));
     const act=el('td');if(r.thread_link){const a=el('a','','Open email');a.href=r.thread_link;a.target='_blank';a.rel='noopener';act.append(a,el('br'))}
-    if(r.status==='open'){[['quoted','Quoted'],['worked','Worked'],['pass','Pass']].forEach(([s,l])=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',()=>{const n=s==='pass'?prompt('Why pass? (no truck, rate too low, not our lane…)',''):'';if(s==='pass'&&n===null)return;slRun('salesFw',{id:r.id,status:s,note:n||''},b)});act.append(b)})}
+    if(r.status==='open'){const qb=el('button','btn2','💲 Quote it');qb.type='button';qb.style.cssText='font-weight:700;background:#C8102E;border-color:#C8102E;color:#fff';qb.addEventListener('click',()=>qdQuoteFw(r,qb));act.append(qb);if(r.claimed_by&&new Date(r.claimed_at).getTime()>Date.now()-2*36e5)act.append(el('div','muted','🔒 '+r.claimed_by+' is on it'));[['quoted','Quoted'],['worked','Worked'],['pass','Pass']].forEach(([s,l])=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',()=>{const n=s==='pass'?prompt('Why pass? (no truck, rate too low, not our lane…)',''):'';if(s==='pass'&&n===null)return;slRun('salesFw',{id:r.id,status:s,note:n||''},b)});act.append(b)})}
     else{const b=el('button','btn2','Reopen');b.type='button';b.addEventListener('click',()=>slRun('salesFw',{id:r.id,status:'open'},b));act.append(b)}
     tr.append(sc,el('td','',slDate(r.received_at||r.found_at)),co,el('td','',[r.move,[r.origin,r.destination].filter(Boolean).join(' → ')].filter(Boolean).join(' · ')),el('td','n',r.boxes==null?'':String(r.boxes)),el('td','',r.owner_label||''),el('td','muted',r.reason||''),
-      el('td',r.status==='open'?'warn':'go',r.status+(r.worked_by?' · '+r.worked_by:'')+(r.notes?' · '+r.notes:'')),act);T.append(tr)});
+      el('td',r.status==='open'?'warn':'go',r.status+(r.worked_by?' · '+r.worked_by:'')+(r.quote_id?' · '+r.quote_id:'')+(r.notes?' · '+r.notes:'')),act);T.append(tr)});
   try{subBadge('sales','work',R.filter(r=>r.status==='open'&&r.score>=70).length,true)}catch(e){}}
-function renderQT(){const T=qtSec.querySelector('#qtT'),R=(SL&&SL.quotes)||[],q=String(qtSec.querySelector('#qtQ').value||'').trim().toLowerCase();
-  const by=s=>R.filter(r=>r.status===s).length,won=R.filter(r=>/won|booked|accepted/i.test(r.status||'')).length;
-  const K=qtSec.querySelector('#qtK');K.textContent='';[['Quotes',R.length],['Waiting',by('Quoted')],['No reply',by('No reply')],['Lost',by('Lost')],['Won',won]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),el('span','t',l));K.append(d)});
-  const sts=[...new Set(R.map(r=>r.status).filter(Boolean))];slChips(qtSec.querySelector('#qtF'),[['all','All',R.length]].concat(sts.map(s=>[s,s,by(s)])),SLQ,k=>{SLQ=k;renderQT()});
-  let rows=R.filter(r=>SLQ==='all'||r.status===SLQ);if(q)rows=rows.filter(r=>[r.company,r.contact,r.place,r.zip,r.move,r.terminal,r.quoted_by].join(' ').toLowerCase().includes(q));
-  T.textContent='';const h=el('tr');['Sent','Company / contact','Move','To','Boxes','Per box','Status','By',''].forEach(x=>h.append(el('th','',x)));T.append(h);
-  if(!rows.length){const tr=el('tr'),td=el('td','muted',SL?'No quotes.':'Loading…');td.colSpan=9;tr.append(td);T.append(tr)}
-  rows.slice(0,200).forEach(r=>{const tr=el('tr'),co=el('td');co.append(el('b','',r.company||''),el('div','muted',[r.contact,r.email].filter(Boolean).join(' · ')));const lk=el('td');if(r.thread_link){const a=el('a','','Email');a.href=r.thread_link;a.target='_blank';a.rel='noopener';lk.append(a)}
-    tr.append(el('td','',slDate(r.created_at)),co,el('td','',[r.move,r.terminal,r.hazmat?'hazmat':'',r.reefer?'reefer':''].filter(Boolean).join(' · ')),el('td','',[r.place,r.zip].filter(Boolean).join(' ')),el('td','n',r.boxes==null?'':String(r.boxes)),el('td','n',slMoney(r.final_price||r.total_per_box)),
-      el('td',/won|booked|accepted/i.test(r.status||'')?'go':r.status==='Lost'?'bad':r.status==='No reply'?'muted':'warn',r.status+(r.lost_reason?' · '+r.lost_reason:'')),el('td','',r.quoted_by||''),lk);T.append(tr)})}
 const IMST=[['drafted','Draft ready'],['sent_by_human','Sent by me'],['replied','Replied'],['qualified','Qualified'],['won','Won'],['lost','Lost'],['researched','Researched'],['compliance_review','Compliance review'],['do_not_contact','Do not contact']];
 const IMCAT={imc:'IMC',steamship_line:'Steamship line',importer_dc:'Importer / DC',forwarder:'Freight forwarder',nvocc:'NVOCC',other:'Other'};
 function renderIM(){const L=imSec.querySelector('#imL'),R=(SL&&SL.imf)||[];
@@ -1597,8 +1587,293 @@ function renderIM(){const L=imSec.querySelector('#imL'),R=(SL&&SL.imf)||[];
     const b=el('button','btn2','Save');b.type='button';b.addEventListener('click',()=>{if(sel.value===r.status&&!nt.value.trim())return;slRun('salesImf',{id:r.id,status:sel.value,note:nt.value.trim()},b)});row.append(sel,nt,b);c.append(row);L.append(c)});
   try{subBadge('sales','finder',R.filter(r=>r.status==='drafted').length,false)}catch(e){}}
 function renderSL(){[fwSec,qtSec,imSec].forEach(s=>s.hidden=!slCan());if(!slCan())return;if(SL)fwSec.querySelector('#fwAsof').textContent='load requests nobody at 2FF has answered yet · updated '+slDate(new Date(SL.at).getTime());renderFW();renderQT();renderIM()}
-fwSec.querySelector('#fwQ').addEventListener('input',renderFW);qtSec.querySelector('#qtQ').addEventListener('input',renderQT);fwSec.querySelector('#slRef').addEventListener('click',()=>loadSL(true));
+fwSec.querySelector('#fwQ').addEventListener('input',renderFW);fwSec.querySelector('#slRef').addEventListener('click',()=>loadSL(true));
 setTimeout(()=>{renderSL();loadSL()},3000);setInterval(()=>{if(document.visibilityState==='visible'&&(TAB==='sales'||TAB==='today'))loadSL()},3*60000); // Today shows hot loads in Needs attention
+// ===== QUOTE DESK (owner 10/30/2026: "make this interactive and the best quote system ever"; Perplexity research 10/30) =====
+// One shared desk for the rates team: claim a load so two people never quote it, build the price on one screen (same engine and
+// rates as the 2FF Quote Desk page: base + $/RT mile, accessorials, 14% floor), see what we quoted and won on that lane before,
+// send a branded quote from your own email (Reply All keeps rates@ on it), then work the pipeline: follow-ups come due in
+// Today > Needs attention; Won / Countered / Lost (with reason) / No reply are logged so win rate and price bands get real.
+// Quote Agent rows keep their own status; the desk writes desk_* columns the agent sync never touches.
+{const st=el('style');st.textContent=
+'.qdTop{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}.qdTop .btn2{font-weight:700}.qdTop .pri{background:#C8102E;border-color:#C8102E;color:#fff}'+
+'.qdK{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:6px 0 10px}.qdK>div{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:8px 10px;background:var(--card,#fff);cursor:pointer}.qdK b{display:block;font:700 22px var(--display,var(--body))}.qdK span{font-size:11px;color:var(--mut,#5d686d);text-transform:uppercase;letter-spacing:.04em}.qdK .r b{color:#b3261e}.qdK .g b{color:#2e7d4f}'+
+'.qdL{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}.qdC{border:1px solid var(--line,#d5d9db);border-radius:12px;padding:10px 12px;background:var(--card,#fff);display:flex;flex-direction:column;gap:4px}'+
+'.qdC.due{border-left:5px solid #b3261e}.qdC .h{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.qdC .h b{font-size:15px}.qdC .m{font-size:12.5px;color:var(--mut,#5d686d)}.qdC .p{font:700 20px var(--display,var(--body))}.qdC .p small{font:500 12px var(--body);color:var(--mut,#5d686d);margin-left:6px}'+
+'.qdC .a{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.qdC .a button,.qdC .a a{padding:5px 9px;font-size:12.5px}.qdC .n{font-size:12px;background:rgba(31,42,92,.05);border-radius:6px;padding:4px 6px;white-space:pre-wrap}'+
+'.qpl{font-size:11px;font-weight:700;border-radius:20px;padding:1px 8px;border:1px solid currentColor}.qpl.Quoted{color:#5d686d}.qpl.Countered{color:#8a6100;background:#fff6dc}.qpl.Won{color:#2e7d4f;background:#e6f2ea}.qpl.Lost{color:#b3261e;background:#fdecea}.qpl.No{color:#8a6100}.qpl.ag{color:#0a66c2}'+
+'.qdSh{position:fixed;inset:0;z-index:80;background:rgba(10,15,30,.45);display:flex;align-items:flex-end;justify-content:center}.qdSh>div{background:var(--bg,#f4f5f7);width:100%;max-width:1180px;max-height:94vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 14px calc(env(safe-area-inset-bottom,0px) + 90px);box-sizing:border-box}'+
+'html.desk .qdSh{align-items:center}html.desk .qdSh>div{border-radius:16px;max-height:92vh;padding-bottom:20px}'+
+'.qdHd{display:flex;align-items:center;gap:8px;margin-bottom:8px}.qdHd h3{margin:0;flex:1;font:700 20px var(--display,var(--body))}'+
+'.qdG{display:grid;grid-template-columns:1fr;gap:12px}html.desk .qdG{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)}'+
+'.qdP{background:var(--card,#fff);border:1px solid var(--line,#d5d9db);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}.qdP h4{margin:4px 0 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut,#5d686d)}'+
+'.qdR{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.qdP label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:var(--mut,#5d686d)}.qdP label.ck{flex-direction:row;align-items:center;gap:8px;color:var(--ink,#1b1f24);font-size:14px;font-weight:500}'+
+'.qdP input,.qdP select,.qdP textarea{text-transform:none;font-size:15px;min-width:0;width:100%;box-sizing:border-box}.qdP input[type=checkbox]{width:20px;height:20px}.qdP textarea{min-height:90px;font:inherit;font-size:14px;padding:8px}'+
+'.qdSeg{display:flex;border:1px solid var(--line,#d5d9db);border-radius:8px;overflow:hidden}.qdSeg button{flex:1;border:0;border-radius:0;padding:9px;font-weight:600;background:var(--card,#fff);color:var(--mut,#5d686d)}.qdSeg button.on{background:#1F2A5C;color:#fff}'+
+'.qdLn{display:grid;grid-template-columns:1.3fr .6fr 1fr .7fr auto;gap:6px;align-items:end}.qdLn button{padding:6px 9px}'+
+'.qdBig{font:700 40px/1 var(--display,var(--body))}.qdBig small{font:600 14px var(--body);color:var(--mut,#5d686d);margin-left:6px}.qdSrc{font-size:12px;border:1px solid var(--line,#d5d9db);border-radius:20px;padding:2px 9px;color:var(--mut,#5d686d)}'+
+'.qdBd{width:100%;border-collapse:collapse}.qdBd td{padding:5px 0;border-bottom:1px solid var(--line,#e3e6e8);font-size:14px}.qdBd td:last-child{text-align:right;font-family:var(--mono)}.qdBd tr.t td{font-weight:700;border-bottom:0}'+
+'.qdCk{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}.qdCk li{display:flex;gap:8px;font-size:13.5px;padding:6px 9px;border-radius:8px}.qdCk li b{font-size:10.5px;text-transform:uppercase;padding:2px 6px;border-radius:5px;color:#fff;flex:none;height:fit-content}'+
+'.qdCk .ok{background:#e6f2ea}.qdCk .ok b{background:#2e7d4f}.qdCk .warn{background:#fff6dc}.qdCk .warn b{background:#8a6100}.qdCk .block{background:#fdecea}.qdCk .block b{background:#b3261e}'+
+'.qdHi{font-size:13.5px;background:rgba(31,42,92,.05);border-radius:8px;padding:8px 10px}.qdHi b{color:#1F2A5C}.qdBand{display:flex;align-items:center;gap:6px;margin-top:6px}.qdBand i{flex:1;height:8px;border-radius:6px;background:linear-gradient(90deg,#e6f2ea,#2e7d4f,#e6f2ea);position:relative}.qdBand i u{position:absolute;top:-4px;width:4px;height:16px;background:#C8102E;border-radius:2px}'+
+'.qdPv{border:1px dashed var(--line,#c9ced1);border-radius:10px;padding:10px;font-size:13.5px;background:var(--card,#fff);overflow-x:auto}.qdPv p{margin:0 0 6px}.qdPv table td{padding:2px 12px 2px 0;border-bottom:1px solid var(--line,#e3e6e8)}'+
+'.qdAct{display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:sticky;bottom:-14px;background:var(--bg,#f4f5f7);padding:8px 0}.qdAct .pri{background:#C8102E;border-color:#C8102E;color:#fff;font-weight:700}.qdAct .ok{color:#2e7d4f;font-weight:600;font-size:13px}'+
+'.qdPick{position:fixed;inset:0;z-index:90;background:rgba(10,15,30,.45);display:flex;align-items:center;justify-content:center;padding:16px}.qdPick>div{background:var(--card,#fff);border-radius:14px;padding:14px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:8px}.qdPick button{text-align:left;padding:10px 12px}.qdPick input{text-transform:none}'+
+'.qdIns{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}.qdIns>div{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:10px;background:var(--card,#fff);font-size:13.5px}.qdIns h5{margin:0 0 6px;font-size:12px;text-transform:uppercase;color:var(--mut,#5d686d);letter-spacing:.06em}.qdIns .bar{display:flex;align-items:center;gap:6px;margin:3px 0}.qdIns .bar i{height:8px;background:#1F2A5C;border-radius:4px}'+
+'.qdSh [hidden],.qdPick [hidden]{display:none!important}body:has(.qdSh) #aiFab{display:none!important}'+'@media (max-width:520px){.qdLn{grid-template-columns:1fr 1fr}.qdL{grid-template-columns:1fr}}';
+document.head.append(st)}
+const QDEF={base:300,perMile:2.8,roadFactor:1.23,minRpm:2.5,maxRpm:6,maxTotal:10000,marginFloor:14,owThresholdLbs:44000,validityDays:7,paymentTerms:'Net 30',band1:0,band2:0,band3:0,band4:0,band5:0,chassis:50,triaxle:85,prepull:150,storage:50,detentionFree:2,detention:100,owFirst:200,owAddl:50,hazmatFee:150,reeferFee:150,layover:250,followHours:24};
+const QSIZES=['20GP','40GP','40HC','45HC','20RF','40RF','40 open top','40 flat rack'];
+const QLOST=['Price too high','No truck / timing','Lane already covered','Customer went quiet','Equipment (OW, haz, reefer)','Credit / terms','Other'];
+const QPORT={lat:32.13,lon:-81.15}; // Garden City Terminal
+let QZIP=null,QZIPP=null,QDF='due',QDQ='';
+const qS=()=>Object.assign({},QDEF,(SL&&SL.qset)||{}),qLanes=()=>(SL&&SL.qlanes)||[];
+const qMe=()=>{try{return String(Y().S.me.n||'')}catch(e){return ''}};
+const qAdmin=()=>roles().includes('admin');
+const qSt=r=>r.status||'Quoted',qOpen=r=>['Quoted','Countered'].includes(qSt(r));
+const qDue=r=>qOpen(r)&&r.follow_up_at&&new Date(r.follow_up_at).getTime()<=Date.now()&&(!r.claimed_by||r.claimed_by===qMe()||qAdmin());
+const qDom=e=>{const m=String(e||'').toLowerCase().match(/@([^>\s]+)/);return m?m[1]:''};
+const qAgo=v=>{if(!v)return '';const m=(Date.now()-new Date(v).getTime())/60000;return m<0?'in '+qIn(-m):m<60?Math.round(m)+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
+const qIn=m=>m<60?Math.round(m)+' min':m<1440?Math.round(m/60)+' h':Math.round(m/1440)+' d';
+const qBoxes=b=>{try{return (Array.isArray(b)?b:JSON.parse(b||'[]')).map(x=>(x.count||1)+'×'+(x.size||'')).join(', ')}catch(e){return ''}};
+const qPer=r=>+(r.final_price||r.total_per_box||0)||null;
+const r5=n=>Math.round(n/5)*5,f$=n=>n==null||isNaN(n)?'—':'$'+Math.round(n).toLocaleString('en-US'),f2=n=>'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const qEsc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function qZip(){if(QZIP)return Promise.resolve(QZIP);if(QZIPP)return QZIPP;QZIPP=fetch('/zipdata.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{const m=new Map();t.split(';').forEach(x=>{const [z,la,lo,c,s]=x.split(',');if(z)m.set(z,{lat:+la,lon:+lo,city:c,st:s})});QZIP=m;return m}).catch(()=>{QZIPP=null;QZIP=new Map();return QZIP});return QZIPP}
+function qHav(a,b){const R=3958.8,t=Math.PI/180,dl=(b.lat-a.lat)*t,dn=(b.lon-a.lon)*t,h=Math.sin(dl/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function qRun(action,data,btn,okMsg){if(btn){btn.disabled=true;btn.dataset.t=btn.textContent;btn.textContent='Saving…'}
+  return Y().call('salesQuote',[{action,data}]).then(d=>{SL=d;renderSL();try{if(TAB==='today')renderToday()}catch(e){}if(okMsg)qToast(okMsg);return d}).catch(e=>{if(btn){btn.disabled=false;btn.textContent=btn.dataset.t||'Try again'}throw e})}
+function qToast(t){let x=document.getElementById('qdToast');if(!x){x=el('div');x.id='qdToast';x.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 96px);z-index:95;background:#1F2A5C;color:#fff;padding:10px 16px;border-radius:24px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:90vw';document.body.append(x)}x.textContent=t;x.hidden=false;clearTimeout(x.__t);x.__t=setTimeout(()=>x.hidden=true,3500)}
+function qPick(title,opts,o){o=o||{};return new Promise(res=>{const sh=el('div','qdPick'),c=el('div');c.append(el('b','',title));let inp=null;
+  if(o.input){inp=el('input');inp.placeholder=o.input;inp.inputMode=o.num?'decimal':'text';if(o.val!=null)inp.value=o.val;c.append(inp)}
+  (opts||[]).forEach(t=>{const b=el('button','btn2',t);b.type='button';b.addEventListener('click',()=>{sh.remove();res({pick:t,val:inp?inp.value.trim():''})});c.append(b)});
+  if(o.okText){const b=el('button','btn2',o.okText);b.type='button';b.style.cssText='font-weight:700;background:#1F2A5C;color:#fff';b.addEventListener('click',()=>{sh.remove();res({pick:o.okText,val:inp?inp.value.trim():''})});c.append(b)}
+  const x=el('button','btn2','Cancel');x.type='button';x.addEventListener('click',()=>{sh.remove();res(null)});c.append(x);sh.append(c);sh.addEventListener('click',e=>{if(e.target===sh){sh.remove();res(null)}});document.body.append(sh);if(inp)setTimeout(()=>inp.focus(),50)})}
+const qErr=e=>alert((e&&e.message)||'Could not save.');
+
+// ---------- lane history: what we quoted / won on this lane and to this customer ----------
+function qHistory(zip,dom,exceptId){const R=((SL&&SL.quotes)||[]).filter(r=>r.id!==exceptId);const z3=String(zip||'').slice(0,3);
+  const lane=z3.length===3?R.filter(r=>String(r.zip||'').slice(0,3)===z3&&qPer(r)):[],same=lane.filter(r=>r.zip===zip);
+  const prices=lane.map(qPer).sort((a,b)=>a-b),won=lane.filter(r=>qSt(r)==='Won').map(qPer).filter(Boolean).sort((a,b)=>a-b),lost=lane.filter(r=>qSt(r)==='Lost');
+  const med=a=>a.length?a[Math.floor(a.length/2)]:null;const cust=dom?R.filter(r=>(r.domain||qDom(r.email))===dom):[];
+  return {lane,same,prices,won,lost,med:med(prices),wonMed:med(won),cust,custWon:cust.filter(r=>qSt(r)==='Won').length,last:cust[0]}}
+
+// ---------- the one-screen builder ----------
+let QB=null;
+function qdOpen(pre){pre=pre||{};const S=qS();QB={id:'D'+new Date().toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,5).toUpperCase(),mv:pre.move==='export'?'export':'import',lines:pre.lines||[{size:'40HC',count:1,weight:'',unit:'lbs'}],fw:pre.fw||null,approved:false,sent:false};
+  document.querySelectorAll('.qdSh').forEach(x=>x.remove());
+  const sh=el('div','qdSh'),bx=el('div');sh.append(bx);
+  bx.innerHTML='<div class="qdHd"><h3>New quote <span class="qdSrc" id="qdId"></span></h3><button class="btn2" type="button" id="qdX">Close</button></div>'+
+  '<div class="qdG"><div class="qdP" id="qdF">'+
+   '<h4>Request</h4><div id="qdFw" class="qdHi" hidden></div>'+
+   '<details id="qdPasteD"><summary style="cursor:pointer;font-weight:700">✨ Paste the customer email – AI fills the form</summary><textarea id="qdPaste" placeholder="Paste the whole email here (we only use it to fill this form)"></textarea><div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button class="btn2" type="button" id="qdRead">✨ Read it</button><span class="t" id="qdReadS"></span></div><div id="qdMiss" class="qdHi" hidden></div></details>'+
+   '<h4>Customer</h4><div class="qdR"><label>Company<input id="qdCo"></label><label>Contact<input id="qdCt"></label><label>Email<input id="qdEm" type="email" inputmode="email"></label></div>'+
+   '<h4>Move</h4><div class="qdSeg" id="qdMv"><button type="button" data-v="import">Import – deliver from port</button><button type="button" data-v="export">Export – load to port</button></div>'+
+   '<div class="qdR"><label>Terminal<select id="qdTm"><option>Garden City Terminal</option><option>Ocean Terminal</option></select></label><label><span id="qdZl">Delivery ZIP</span><input id="qdZip" inputmode="numeric" maxlength="5"></label><label>Round-trip miles<input id="qdRt" inputmode="numeric" placeholder="auto"></label></div>'+
+   '<div class="t"><b id="qdPl" style="color:#1F2A5C"></b> <span id="qdRth"></span></div>'+
+   '<h4>Containers</h4><div id="qdLines" style="display:flex;flex-direction:column;gap:6px"></div><div><button class="btn2" type="button" id="qdAddL">+ Another size</button></div>'+
+   '<div class="qdR"><label class="ck"><input type="checkbox" id="qdHz"> Hazmat</label><label class="ck"><input type="checkbox" id="qdRf"> Reefer (genset)</label><label class="ck"><input type="checkbox" id="qdRes"> Residential</label><label class="ck"><input type="checkbox" id="qdPp"> Pre-pull</label></div>'+
+   '<div class="qdR"><label id="qdHzL" hidden>Hazmat class / UN<input id="qdHzC" placeholder="Class 8 UN3265"></label><label>Overweight states<input id="qdOw" inputmode="numeric"></label><label>Chassis days<input id="qdCh" inputmode="numeric" value="0"></label><label>Storage days<input id="qdSt" inputmode="numeric" value="0"></label></div>'+
+   '<h4>Price check</h4><div class="qdR"><label>Linehaul override<input id="qdLh" inputmode="decimal" placeholder="optional, fuel incl."></label><label>Driver / O-O pay per box<input id="qdPay" inputmode="decimal" placeholder="sets the floor"></label><label>Customer target / box<input id="qdTg" inputmode="decimal"></label><label>Pickup date / LFD<input id="qdLfd" placeholder="LFD Nov 3"></label></div>'+
+  '</div><div class="qdP" id="qdOut" aria-live="polite">'+
+   '<h4>Price per container</h4><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><div class="qdBig" id="qdBig">—</div><span class="qdSrc" id="qdSrc">—</span></div>'+
+   '<table class="qdBd"><tbody id="qdBd"></tbody></table><div id="qdMg" class="t"></div>'+
+   '<h4>This lane and customer before</h4><div class="qdHi" id="qdHist">Enter a ZIP to see what we quoted and won here.</div>'+
+   '<h4>Checks before sending</h4><ul class="qdCk" id="qdCk"></ul><label class="ck" id="qdApL" hidden><input type="checkbox" id="qdAp"> Richard approved this exception</label>'+
+   '<h4>Quote email</h4><div class="qdPv" id="qdPv"></div>'+
+   '<div class="qdAct"><button class="btn2 pri" type="button" id="qdSend">✉️ Open in my email &amp; log it</button><button class="btn2" type="button" id="qdCopy">Copy &amp; log</button><button class="btn2" type="button" id="qdPlain">Copy text only</button><span class="ok" id="qdOk"></span></div>'+
+   '<div class="t">Your email opens with rates@2f-logistics.com on CC so whoever is on shift sees the reply. Nothing goes out until you press Send in your email.</div>'+
+  '</div></div>';
+  document.body.append(sh);const g=id=>bx.querySelector('#'+id);
+  g('qdId').textContent=QB.id;g('qdX').addEventListener('click',()=>{if(!QB.sent&&g('qdCo').value.trim()&&!confirm('Close without logging this quote?'))return;sh.remove();QB=null});
+  sh.addEventListener('click',e=>{if(e.target===sh)g('qdX').click()});
+  const fw=QB.fw;if(fw&&!pre.lines){const mv=String(fw.move||''),sz=/45/.test(mv)?'45HC':/20/.test(mv)?(/r(ee)?f|rf/i.test(mv)?'20RF':'20GP'):/r(ee)?f|rf/i.test(mv)?'40RF':/hc|high/i.test(mv)?'40HC':/40/.test(mv)?'40GP':'40HC';QB.lines=[{size:sz,count:+fw.boxes||1,weight:'',unit:'lbs'}];if(/haz/i.test(mv))pre.hazmat=true;if(/r(ee)?f/i.test(mv))pre.reefer=true}if(fw){const h=g('qdFw');h.hidden=false;h.innerHTML='';h.append(el('b','',(fw.company||'Load')+' · score '+(fw.score==null?'–':fw.score)),el('div','',[fw.move,[fw.origin,fw.destination].filter(Boolean).join(' → '),fw.boxes?fw.boxes+' boxes':''].filter(Boolean).join(' · ')),el('div','t',fw.reason||''));if(fw.thread_link){const a=el('a','','Open the email ↗');a.href=fw.thread_link;a.target='_blank';a.rel='noopener';h.append(a)}}
+  g('qdCo').value=pre.company||(fw&&fw.company)||'';g('qdCt').value=pre.contact||(fw&&fw.contact)||'';g('qdEm').value=pre.email||(fw&&fw.email)||'';
+  const zf=pre.zip||((fw&&(fw.destination+' '+fw.origin)||'').match(/\b\d{5}\b/)||[''])[0];g('qdZip').value=zf||'';
+  if(pre.terminal)g('qdTm').value=pre.terminal;if(pre.hazmat)g('qdHz').checked=true;if(pre.reefer)g('qdRf').checked=true;if(pre.target)g('qdTg').value=pre.target;if(pre.rt)g('qdRt').value=pre.rt;
+  if(fw&&/export/i.test(fw.move||''))QB.mv='export';
+  const drawL=()=>{const L=g('qdLines');L.textContent='';QB.lines.forEach((l,i)=>{const r=el('div','qdLn');const sz=el('select');QSIZES.forEach(s=>{const o=el('option','',s);if(s===l.size)o.selected=true;sz.append(o)});
+    const c=el('input');c.inputMode='numeric';c.value=l.count;const w=el('input');w.inputMode='decimal';w.placeholder='cargo weight';w.value=l.weight;const u=el('select');['lbs','kg'].forEach(s=>{const o=el('option','',s);if(s===l.unit)o.selected=true;u.append(o)});
+    const lab=(t,x)=>{const a=el('label','',t);a.append(x);return a};const d=el('button','btn2','✕');d.type='button';d.disabled=QB.lines.length<2;d.setAttribute('aria-label','Remove this size');
+    sz.addEventListener('change',()=>{l.size=sz.value;qCalc()});c.addEventListener('input',()=>{l.count=c.value;qCalc()});w.addEventListener('input',()=>{l.weight=w.value;qCalc()});u.addEventListener('change',()=>{l.unit=u.value;qCalc()});d.addEventListener('click',()=>{QB.lines.splice(i,1);drawL();qCalc()});
+    r.append(lab('Size',sz),lab('Boxes',c),lab('Weight / box',w),lab('Unit',u),d);L.append(r)})};QB.drawL=drawL;
+  g('qdAddL').addEventListener('click',()=>{QB.lines.push({size:'20GP',count:1,weight:'',unit:'lbs'});drawL();qCalc()});
+  g('qdMv').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{QB.mv=b.dataset.v;qCalc()}));
+  g('qdHz').addEventListener('change',()=>{g('qdHzL').hidden=!g('qdHz').checked});g('qdHzL').hidden=!g('qdHz').checked;
+  g('qdF').addEventListener('input',()=>qCalc());g('qdF').addEventListener('change',()=>qCalc());g('qdAp').addEventListener('change',()=>qCalc());
+  g('qdRead').addEventListener('click',()=>qRead(g));
+  g('qdSend').addEventListener('click',()=>qSend('mail'));g('qdCopy').addEventListener('click',()=>qSend('copy'));g('qdPlain').addEventListener('click',()=>qCopyText(false).then(ok=>qToast(ok?'Copied (not logged).':'Could not copy.')));
+  QB.g=g;drawL();if(!fw&&!pre.company)g('qdPasteD').open=true;qCalc();qZip().then(()=>qCalc())}
+function qRead(g){const t=g('qdPaste').value.trim();if(t.length<20){g('qdReadS').textContent='Paste the email first.';return}
+  const b=g('qdRead');b.disabled=true;g('qdReadS').textContent='Reading…';
+  Y().call('aiAsk',[{mode:'quote_parse',q:t.slice(0,6000)}]).then(r=>{let d=null;const m=String(r.text||'').match(/\{[\s\S]*\}/);try{d=JSON.parse(m?m[0]:'')}catch(e){}
+    if(!d){g('qdReadS').textContent='Could not read that one. Fill the form by hand.';return}
+    const set=(id,v)=>{if(v!=null&&v!==''&&!g(id).value)g(id).value=v};
+    set('qdCo',d.company);set('qdCt',d.contact);set('qdEm',d.email);if(d.zip&&/^\d{5}$/.test(String(d.zip)))g('qdZip').value=d.zip;set('qdTg',d.target);set('qdLfd',d.date);
+    if(d.move==='export'||d.move==='import')QB.mv=d.move;if(/ocean/i.test(d.terminal||''))g('qdTm').value='Ocean Terminal';
+    if(d.hazmat){g('qdHz').checked=true;g('qdHzL').hidden=false;set('qdHzC',d.haz_class)}if(d.reefer)g('qdRf').checked=true;if(d.prepull)g('qdPp').checked=true;
+    if(Array.isArray(d.boxes)&&d.boxes.length){QB.lines=d.boxes.slice(0,6).map(x=>({size:QSIZES.includes(x.size)?x.size:'40HC',count:+x.count||1,weight:x.weight==null?'':String(x.weight),unit:x.unit==='kg'?'kg':'lbs'}));QB.drawL()}
+    const miss=Array.isArray(d.missing)?d.missing.filter(Boolean):[];const M=g('qdMiss');M.hidden=!miss.length&&!d.notes;M.textContent='';
+    if(miss.length){M.append(el('b','','Ask the customer before you quote:'));miss.slice(0,6).forEach(x=>M.append(el('div','','• '+x)))}if(d.notes)M.append(el('div','t','Note: '+d.notes));
+    g('qdReadS').textContent='Filled in. Check every field – the AI can be wrong.';qCalc()})
+  .catch(e=>{g('qdReadS').textContent=(e&&e.message)||'AI is not available right now.'}).finally(()=>{b.disabled=false})}
+function qCalc(){if(!QB)return;const g=QB.g,S=qS(),Z=QZIP;
+  g('qdMv').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===QB.mv));g('qdZl').textContent=QB.mv==='import'?'Delivery ZIP':'Shipper (load) ZIP';
+  const zip=g('qdZip').value.trim(),loc=Z&&/^\d{5}$/.test(zip)?Z.get(zip):null,term=g('qdTm').value,place=loc?loc.city+', '+loc.st+' '+zip:zip;
+  g('qdPl').textContent=loc?loc.city+', '+loc.st:(!Z&&zip.length===5?'Loading ZIP list…':zip.length===5?'ZIP not found':'');
+  const est=loc?Math.round(qHav(QPORT,loc)*S.roadFactor*2):null,ov=parseFloat(g('qdRt').value),rt=ov>0?ov:est;
+  g('qdRth').textContent=est?'· est. '+est+' round-trip miles'+(ov>0?' (you overrode it)':' – type actual miles to override'):'';
+  if(loc)g('qdOw').placeholder=loc.st==='GA'?'1':'2';const owStates=parseInt(g('qdOw').value||g('qdOw').placeholder||'1')||1;
+  const lane=zip?(qLanes().find(l=>l.zip===zip)||qLanes().find(l=>String(l.zip).length===3&&zip.startsWith(l.zip))):null;
+  const adj=!rt?0:rt<300?S.band1:rt<450?S.band2:rt<600?S.band3:rt<900?S.band4:S.band5;
+  const deskLh=lane?+lane.price:(rt?r5((S.base+S.perMile*rt)*(1+adj/100)):null),ownLh=parseFloat(g('qdLh').value)||null,lh=ownLh||deskLh;
+  const haz=g('qdHz').checked,ref=g('qdRf').checked,res=g('qdRes').checked,pp=g('qdPp').checked,chDays=Math.max(0,parseInt(g('qdCh').value)||0),stDays=Math.max(0,parseInt(g('qdSt').value)||0);
+  const pay=parseFloat(g('qdPay').value)||(lane&&+lane.pay)||null,floor=pay?Math.ceil(pay/(1-S.marginFloor/100)):null,target=parseFloat(g('qdTg').value)||null;
+  const lines=QB.lines.map(l=>{const w=parseFloat(l.weight),lbs=isNaN(w)?null:(l.unit==='kg'?Math.round(w*2.20462):w),ow=lbs!=null&&lbs>S.owThresholdLbs;const it=[['Linehaul, fuel included',lh]];
+    if(ow){it.push(['Overweight permit ('+owStates+' state'+(owStates>1?'s':'')+')',S.owFirst+S.owAddl*(owStates-1)]);it.push(['Tri-axle chassis ('+Math.max(chDays,2)+' days)',S.triaxle*Math.max(chDays,2)])}
+    else if(chDays>0)it.push(['Chassis ('+chDays+' day'+(chDays>1?'s':'')+')',S.chassis*chDays]);
+    if(pp)it.push(['Pre-pull',S.prepull]);if(stDays>0)it.push(['Storage ('+stDays+' day'+(stDays>1?'s':'')+')',S.storage*stDays]);
+    if(haz)it.push(['Hazmat',S.hazmatFee]);if(ref&&/RF/.test(l.size))it.push(['Reefer genset',S.reeferFee]);
+    const total=lh==null?null:it.reduce((s,[,v])=>s+(v||0),0);return Object.assign({},l,{lbs,ow,items:it,total,count:Math.max(1,parseInt(l.count)||1)})});
+  const C=[],add=(l,t)=>C.push({l,t});
+  if(!loc)add('block',zip?(Z?'ZIP not recognized – check it or type the round-trip miles.':'Loading the ZIP list…'):'Enter the delivery or shipper ZIP.');
+  if(!g('qdCo').value.trim())add('block','Customer company is missing.');
+  lines.forEach(l=>{if(l.lbs==null)add('block','Weight missing for the '+l.size+' – ask for it (overweight changes the price).')});
+  lines.forEach(l=>{if(l.unit==='kg'&&l.lbs)add('ok',l.size+': '+Number(l.weight).toLocaleString()+' kg = '+l.lbs.toLocaleString()+' lbs.')});
+  if(lh&&rt){const rpm=lh/rt;if(rpm<S.minRpm||rpm>S.maxRpm)add('warn','Linehaul is $'+rpm.toFixed(2)+' per round-trip mile – outside $'+S.minRpm+'–$'+S.maxRpm+'. Check the miles and price.');else add('ok','Linehaul $'+rpm.toFixed(2)+' per round-trip mile ('+rt+' mi).')}
+  lines.forEach(l=>{if(l.total!=null&&l.total>S.maxTotal)add('block',l.size+' total '+f$(l.total)+' is over the $'+S.maxTotal.toLocaleString()+' limit – something is wrong.')});
+  lines.forEach(l=>{if(l.ow)add('warn',l.size+' at '+l.lbs.toLocaleString()+' lbs is overweight – permit and tri-axle are in. Confirm the chassis, axle weights and route before you commit a truck.')});
+  let exc=false;
+  if(lh!=null){if(floor){if(lh<floor){exc=true;add(QB.approved?'warn':'block','Linehaul '+f$(lh)+' is under the '+S.marginFloor+'% floor of '+f$(floor)+' (driver pay '+f$(pay)+'). Richard must approve.')}else add('ok','Above the '+S.marginFloor+'% floor ('+f$(floor)+').')}else add('warn','No driver pay entered for this lane – margin floor not checked.')}
+  if(target&&lines[0]&&lines[0].total){const gp=(lines[0].total-target)/lines[0].total*100;if(gp<=0)add('ok','Target '+f$(target)+' is at or above our price.');
+    else{const who=gp<=5?'you can meet it if it stays above the floor':gp<=10?'Lethaniel decides':'Richard decides';add(gp<=5?'ok':'warn','Target '+f$(target)+' is '+gp.toFixed(0)+'% under our '+f$(lines[0].total)+' – '+who+'. Counter once and ask for something back (more boxes, a better date).')}}
+  if(res)add('warn','Residential delivery – confirm access and add any charge before sending.');
+  if(haz&&!g('qdHzC').value.trim())add('warn','Hazmat: add the class / UN number so the quote and driver match.');
+  if(lane)add('ok','Rate card lane: '+lane.name+' ('+lane.zip+').');
+  if(ownLh&&deskLh){const d=(ownLh-deskLh)/deskLh*100;if(Math.abs(d)>10)add('warn','Your linehaul '+f$(ownLh)+' is '+Math.abs(d).toFixed(0)+'% '+(d>0?'above':'below')+' the desk price '+f$(deskLh)+'.');}
+  const dom=qDom(g('qdEm').value),dup=((SL&&SL.quotes)||[]).find(q=>q.zip===zip&&dom&&(q.domain||qDom(q.email))===dom&&Date.now()-new Date(q.created_at).getTime()<72*3600e3);
+  if(dup)add('warn','Already quoted to '+dom+' for '+(dup.place||zip)+' '+qAgo(dup.created_at)+' by '+(dup.quoted_by==='agent'?'the Quote Agent':dup.quoted_by||'a teammate')+': '+f$(qPer(dup))+' ('+dup.id+'). Answer in that thread instead of a new price.');
+  QB.cur={zip,loc,place,term,rt,lh,ownLh,deskLh,lane,lines,haz,ref,res,pp,chDays,stDays,owStates,pay,floor,target,adj,checks:C,dom};
+  g('qdApL').hidden=!(exc&&qAdmin());QB.approved=qAdmin()&&g('qdAp').checked;
+  // render
+  const first=lines[0];g('qdBig').innerHTML=first&&first.total!=null?f$(first.total)+'<small>'+qEsc(first.size)+(lines.length>1?' + more':'')+'</small>':'—';
+  g('qdSrc').textContent=ownLh?'Your linehaul':lane?'Rate card':lh!=null?'Formula'+(adj?' '+(adj>0?'+':'')+adj+'% band':''):'Waiting for ZIP';
+  const bd=g('qdBd');bd.innerHTML=lines.map(l=>l.items.map(([k,v])=>'<tr><td>'+(lines.length>1?qEsc(l.size)+' · ':'')+qEsc(k)+'</td><td>'+f$(v)+'</td></tr>').join('')+'<tr class="t"><td>Total per '+qEsc(l.size)+(l.count>1?' × '+l.count:'')+'</td><td>'+f$(l.total)+'</td></tr>').join('');
+  g('qdMg').textContent=pay&&first&&first.total?'Margin over driver pay: '+f$(first.total-pay)+' ('+Math.round((first.total-pay)/first.total*100)+'%) per box'+(lines.reduce((s,l)=>s+l.count,0)>1?' · '+f$((first.total-pay)*lines.reduce((s,l)=>s+l.count,0))+' for all boxes':''):'';
+  const H=g('qdHist');H.textContent='';if(zip.length>=3){const h=qHistory(zip,dom);
+    if(h.lane.length){H.append(el('div','','Quoted on this lane (ZIP '+zip.slice(0,3)+'xx) '+h.lane.length+' time'+(h.lane.length>1?'s':'')+' in 120 days: '+f$(h.prices[0])+' – '+f$(h.prices[h.prices.length-1])+', middle '+f$(h.med)+'.'));
+      H.append(el('div','',h.won.length?'Won '+h.won.length+' at '+f$(h.won[0])+(h.won.length>1?' – '+f$(h.won[h.won.length-1]):'')+'.':'No wins logged on this lane yet – the range above is only our own past quotes, not proof of what wins.'));
+      if(h.lost.length)H.append(el('div','','Lost '+h.lost.length+': '+[...new Set(h.lost.map(r=>r.lost_reason).filter(Boolean))].slice(0,3).join('; ')));
+      if(first&&first.total&&h.prices.length>1){const lo=h.prices[0],hi=h.prices[h.prices.length-1],bnd=el('div','qdBand'),bar=el('i'),u=el('u');u.style.left=Math.max(0,Math.min(100,(first.total-lo)/Math.max(1,hi-lo)*100))+'%';bar.append(u);bnd.append(el('span','t',f$(lo)),bar,el('span','t',f$(hi)));H.append(bnd,el('div','t','Red mark = this quote.'))}}
+    else H.append(el('div','','First quote on this lane in 120 days.'));
+    if(dom){if(h.cust.length)H.append(el('div','','This customer ('+dom+'): '+h.cust.length+' quote'+(h.cust.length>1?'s':'')+', '+h.custWon+' won. Last: '+f$(qPer(h.last))+' to '+(h.last.place||h.last.zip||'')+' '+qAgo(h.last.created_at)+' ('+qSt(h.last)+').'));else H.append(el('div','','New customer – no quotes to '+dom+' in 120 days.'))}}
+  const ord={block:0,warn:1,ok:2};g('qdCk').innerHTML=C.slice().sort((a,b)=>ord[a.l]-ord[b.l]).map(x=>'<li class="'+x.l+'"><b>'+(x.l==='block'?'Fix':x.l==='warn'?'Check':'OK')+'</b><span>'+qEsc(x.t)+'</span></li>').join('');
+  const blocked=C.some(x=>x.l==='block');['qdSend','qdCopy','qdPlain'].forEach(id=>{g(id).disabled=blocked||QB.sent});
+  g('qdPv').innerHTML=blocked?'<p class="t">The quote shows here once the red items are fixed.</p>':qHTML()}
+function qRoute(){const c=QB.cur;return QB.mv==='import'?c.term+' → '+c.place+' → empty return to port (import, round trip)':'Empty from '+c.term+' → load at '+c.place+' → '+c.term+' (export, round trip)'}
+function qAcc(){const S=qS();return 'chassis $'+S.chassis+'/day (tri-axle $'+S.triaxle+'/day) beyond the days included above · pre-pull $'+S.prepull+' · storage $'+S.storage+'/day · detention '+S.detentionFree+' hrs free, then $'+S.detention+'/hr · layover $'+S.layover+' · overweight $'+S.owAddl+' per additional state'}
+function qEquip(l){const c=QB.cur,hz=QB.g('qdHzC').value;return l.count+' x '+l.size+', '+(l.lbs!=null?l.lbs.toLocaleString()+' lbs':'weight TBC')+(l.ow?' (overweight)':' (legal weight)')+(c.haz?', hazmat'+(hz?' '+hz:''):'')+(c.ref&&/RF/.test(l.size)?', reefer operating':'')}
+function qFirst(){return (QB.g('qdCt').value.trim().split(/\s+/)[0])||'there'}
+function qAsk(){const lfd=QB.g('qdLfd').value.trim();return "What's your target rate and "+(lfd?'does '+lfd+' still hold':'pickup date or LFD')+'? We can confirm the truck as soon as you reply.'}
+function qSig(){return 'America 1 Logistics – 2FF Agency | MC 752131 | USDOT 2164657\nQuotes & bookings: rates@2f-logistics.com | (877) 940-2647'}
+function qHTML(){const c=QB.cur,S=qS();const tb=c.lines.map(l=>'<p>Equipment: '+qEsc(qEquip(l))+'</p><table>'+l.items.map(([k,v])=>'<tr><td>'+qEsc(k)+'</td><td>'+f2(v)+'</td></tr>').join('')+'<tr><td><b>Total per container</b></td><td><b>'+f2(l.total)+'</b></td></tr></table>').join('');
+  return '<p><b>For the fastest response, please Reply All – this email includes rates@2f-logistics.com, our quote desk, so whoever is on shift can confirm your truck right away.</b></p><p>Hi '+qEsc(qFirst())+', thanks for the request.</p><p><b>Quote '+QB.id+' – '+qEsc(qRoute())+'</b></p>'+tb+
+  '<p><i>If needed: '+qEsc(qAcc())+'.</i></p><p>Valid '+S.validityDays+' days, subject to equipment availability. Payment terms: '+qEsc(S.paymentTerms)+'.</p><p>'+qEsc(qAsk())+'</p><p>'+qEsc(qSig()).replace('\n','<br>')+'</p>'}
+function qText(){const c=QB.cur,S=qS();const t=c.lines.map(l=>'Equipment: '+qEquip(l)+'\n'+l.items.map(([k,v])=>'  '+k+': '+f2(v)).join('\n')+'\n  TOTAL PER CONTAINER: '+f2(l.total)).join('\n\n');
+  return 'For the fastest response, please Reply All – this email includes rates@2f-logistics.com, our quote desk, so whoever is on shift can confirm your truck right away.\n\nHi '+qFirst()+', thanks for the request.\n\nQuote '+QB.id+' – '+qRoute()+'\n'+t+'\n\nIf needed: '+qAcc()+'.\n\nValid '+S.validityDays+' days, subject to equipment availability. Payment terms: '+S.paymentTerms+'.\n\n'+qAsk()+'\n\n'+qSig()}
+function qSubject(){const c=QB.cur;return 'Quote '+QB.id+' – '+(QB.mv==='import'?'Import to ':'Export from ')+(c.loc?c.loc.city+', '+c.loc.st:c.zip)+' – '+c.lines.map(l=>l.count+'x'+l.size).join(', ')}
+async function qCopyText(rich){const text=qText(),html=qHTML();try{if(rich&&window.ClipboardItem)await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]);else await navigator.clipboard.writeText(text);return true}catch(e){try{await navigator.clipboard.writeText(text);return true}catch(x){return false}}}
+function qSend(how){if(!QB||QB.sent)return;const c=QB.cur,g=QB.g;if(c.checks.some(x=>x.l==='block'))return;
+  const data={id:QB.id,company:g('qdCo').value.trim(),contact:g('qdCt').value.trim(),email:g('qdEm').value.trim(),domain:c.dom,move:QB.mv,terminal:c.term,zip:c.zip,place:c.place,rt:c.rt||'',
+    boxes:c.lines.map(l=>({size:l.size,count:l.count,lbs:l.lbs,total:l.total})),linehaul:c.lh,total:c.lines[0].total,hazmat:c.haz,reefer:c.ref,target:c.target||'',fw_id:QB.fw?QB.fw.id:'',
+    thread_link:QB.fw&&QB.fw.thread_link||'',mailbox:QB.fw&&QB.fw.mailbox||'',
+    detail:{items:c.lines.map(l=>({size:l.size,items:l.items})),pay:c.pay,floor:c.floor,adj:c.adj,src:c.ownLh?'override':c.lane?'card':'formula',approved:QB.approved||false,lfd:g('qdLfd').value.trim(),chassisDays:c.chDays,storageDays:c.stDays,prepull:c.pp,owStates:c.owStates}};
+  const go=()=>{if(how==='mail'){const to=data.email,u='mailto:'+encodeURIComponent(to)+'?cc='+encodeURIComponent('rates@2f-logistics.com')+'&subject='+encodeURIComponent(qSubject())+'&body='+encodeURIComponent(qText());location.href=u}};
+  const done=()=>{QB.sent=true;g('qdOk').textContent='✓ Logged as '+QB.id+'. Follow-up set for '+qS().followHours+' h.';['qdSend','qdCopy','qdPlain'].forEach(id=>g(id).disabled=true)};
+  const b=g(how==='mail'?'qdSend':'qdCopy');
+  const p=how==='copy'?qCopyText(true):Promise.resolve(true);
+  p.then(ok=>{if(how==='copy'&&!ok)qToast('Could not copy – use Open in my email.');go();return qRun('save',data,b,'Quote '+QB.id+' logged.')}).then(done).catch(e=>{qErr(e)})}
+
+// ---------- claim a Find Work load, then open the builder ----------
+function qdQuoteFw(r,btn){const go=force=>Y().call('salesQuote',[{action:'claim',data:{id:r.id,force:force?'true':''}}]).then(d=>{SL=d;renderSL();qdOpen({fw:(SL.fw||[]).find(x=>x.id===r.id)||r})});
+  if(btn)btn.disabled=true;go(false).catch(e=>{const m=String((e&&e.message)||'');if(/TAKEN/.test(m)){if(confirm(m.replace(/^.*TAKEN:\s*/,'')+'\n\nTake it over anyway?'))return go(true)}else qErr(e)}).catch(qErr).finally(()=>{if(btn)btn.disabled=false})}
+
+// ---------- the desk: pipeline, follow-ups, outcomes ----------
+qtSec.innerHTML='<h2>Quote desk <span class="t">every quote the desk and the Quote Agent sent · last 120 days</span></h2>'+
+ '<div class="qdTop"><button class="btn2 pri" type="button" id="qdNew">+ New quote</button><button class="btn2" type="button" id="qdPasteB">✨ Paste a request</button><span class="t" id="qdMy"></span></div>'+
+ '<div class="qdK" id="qtK"></div><div class="fchips" id="qtF"></div><div class="drow"><input id="qtQ" placeholder="Search company, place, ZIP, quote #" autocomplete="off" style="text-transform:none;flex:1"></div>'+
+ '<div id="qdHint" class="t"></div><div class="qdL" id="qdL"></div><div id="qdMore"></div>'+
+ '<details id="qdInsD" style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">📊 What wins and what loses</summary><div class="qdIns" id="qdIns"></div></details>'+
+ '<details id="qdRatesD" style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">⚙️ Rates & lanes</summary><div id="qdRates"></div></details>';
+qtSec.querySelector('#qdNew').addEventListener('click',()=>qdOpen());qtSec.querySelector('#qdPasteB').addEventListener('click',()=>qdOpen());
+qtSec.querySelector('#qtQ').addEventListener('input',()=>renderQT());
+let QDN=60;
+function renderQT(){const R=(SL&&SL.quotes)||[],me=qMe(),q=String(qtSec.querySelector('#qtQ').value||'').trim().toLowerCase(),now=Date.now(),d30=now-30*864e5;
+  const m30=R.filter(r=>new Date(r.created_at).getTime()>=d30),dec=m30.filter(r=>['Won','Lost','No reply'].includes(qSt(r))),won=m30.filter(r=>qSt(r)==='Won');
+  const due=R.filter(qDue),mine=R.filter(r=>qOpen(r)&&(r.claimed_by===me||(r.quoted_by===me&&!r.claimed_by)));
+  const spd=R.filter(r=>r.fw_id&&r.source==='desk').map(r=>{const f=((SL&&SL.fw)||[]).find(x=>x.id===r.fw_id);return f&&f.received_at?(new Date(r.created_at)-new Date(f.received_at))/60000:null}).filter(x=>x!=null&&x>=0).sort((a,b)=>a-b);
+  const K=qtSec.querySelector('#qtK');K.textContent='';
+  [['due','Follow up now',due.length,due.length?'r':''],['mine','Mine open',mine.length,''],['30','Quotes · 30 days',m30.length,''],['won','Win rate',dec.length?Math.round(won.length/dec.length*100)+'%':'—',won.length?'g':''],['spd','Median speed',spd.length?qIn(spd[Math.floor(spd.length/2)]):'—','']].forEach(([k,l,n,c])=>{const d=el('div',c);d.append(el('b','',String(n)),el('span','',l));
+    d.title=k==='won'?'Won ÷ (won + lost + no reply), last 30 days. '+dec.length+' of '+m30.length+' quotes have an outcome.':k==='spd'?'From the load email arriving to the desk quote, for loads quoted from Find work.':'';
+    d.addEventListener('click',()=>{QDF=k==='due'?'due':k==='mine'?'mine':k==='won'?'Won':'all';renderQT()});K.append(d)});
+  const cnt=s=>R.filter(r=>qSt(r)===s).length;
+  slChips(qtSec.querySelector('#qtF'),[['due','⏰ Follow up',due.length],['mine','Mine',mine.length],['open','Open',R.filter(qOpen).length],['Countered','Countered',cnt('Countered')],['Won','Won',cnt('Won')],['Lost','Lost',cnt('Lost')],['No reply','No reply',cnt('No reply')],['agent','Quote Agent',R.filter(r=>r.quoted_by==='agent').length],['all','All',R.length]],QDF,k=>{QDF=k;QDN=60;renderQT()});
+  let rows=R.filter(r=>QDF==='all'||(QDF==='due'&&qDue(r))||(QDF==='mine'&&mine.includes(r))||(QDF==='open'&&qOpen(r))||(QDF==='agent'&&r.quoted_by==='agent')||qSt(r)===QDF);
+  if(q)rows=rows.filter(r=>[r.id,r.company,r.contact,r.email,r.place,r.zip,r.move,r.quoted_by,r.claimed_by].join(' ').toLowerCase().includes(q));
+  if(QDF==='due')rows.sort((a,b)=>new Date(a.follow_up_at)-new Date(b.follow_up_at));
+  const out=m30.length-dec.length;qtSec.querySelector('#qdHint').textContent=!SL?'Loading…':QDF==='due'&&!rows.length?'Nothing to follow up right now. 👍':(out>20?out+' quotes from the last 30 days have no outcome yet. Mark them Won, Lost or No reply so the win rate and lane prices mean something.':'');
+  qtSec.querySelector('#qdMy').textContent=me?'Signed in as '+me.split(' ')[0]:'';
+  const L=qtSec.querySelector('#qdL');L.textContent='';rows.slice(0,QDN).forEach(r=>L.append(qCard(r)));
+  const mo=qtSec.querySelector('#qdMore');mo.textContent='';if(rows.length>QDN){const b=el('button','btn2','Show '+Math.min(60,rows.length-QDN)+' more ('+(rows.length-QDN)+' left)');b.type='button';b.addEventListener('click',()=>{QDN+=60;renderQT()});mo.append(b)}
+  try{subBadge('sales','quotes',due.length,true)}catch(e){}
+  qInsights(R,m30);qRates()}
+function qCard(r){const st=qSt(r),c=el('div','qdC'+(qDue(r)?' due':'')),h=el('div','h');
+  h.append(el('span','qpl '+(st==='No reply'?'No':st),st));if(r.quoted_by==='agent')h.append(el('span','qpl ag','Quote Agent'));h.append(el('b','',r.company||'(no company)'));h.append(el('span','t',r.id));c.append(h);
+  c.append(el('div','m',[r.move==='export'?'Export':'Import',r.place||r.zip,qBoxes(r.boxes),r.hazmat?'hazmat':'',r.reefer?'reefer':''].filter(Boolean).join(' · ')));
+  const p=el('div','p',f$(qPer(r)));p.append(el('small','','per box'+(r.target?' · target '+f$(r.target):'')+(st==='Won'&&r.final_price&&+r.final_price!==+r.total_per_box?' · quoted '+f$(r.total_per_box):'')));c.append(p);
+  c.append(el('div','m',['sent '+qAgo(r.created_at),'by '+(r.quoted_by==='agent'?'Quote Agent':r.quoted_by||'?'),r.claimed_by?'owner: '+r.claimed_by:'',qOpen(r)&&r.follow_up_at?(qDue(r)?'⏰ follow-up due '+qAgo(r.follow_up_at):'follow up '+qAgo(r.follow_up_at)):'',r.lost_reason?'why: '+r.lost_reason:'',r.desk_by&&st!=='Quoted'?'marked by '+r.desk_by:''].filter(Boolean).join(' · ')));
+  if(r.desk_notes)c.append(el('div','n',String(r.desk_notes).split(' | ').slice(-2).join('\n')));
+  const a=el('div','a'),B=(t,f,cls)=>{const b=el('button','btn2'+(cls?' '+cls:''),t);b.type='button';b.addEventListener('click',()=>f(b));a.append(b);return b};
+  if(qOpen(r)){
+    B('✅ Won',b=>qPick('Won at what price per box?',[],{input:'price per box',num:true,val:qPer(r)||'',okText:'Save won'}).then(x=>{if(x)qRun('status',{id:r.id,status:'Won',price:x.val},b,'Marked won 🎉').catch(qErr)}));
+    B('↔️ Counter',b=>qPick('Customer countered – their price per box?',[],{input:'their price',num:true,okText:'Save counter'}).then(x=>{if(x)qRun('status',{id:r.id,status:'Countered',note:x.val?'Customer countered at $'+x.val:'Customer countered'},b,'Counter logged – follow up in 4 h.').catch(qErr)}));
+    B('❌ Lost',b=>qPick('Why did we lose it?',QLOST).then(x=>{if(x)qRun('status',{id:r.id,status:'Lost',reason:x.pick},b,'Logged. That makes the price bands smarter.').catch(qErr)}));
+    B('🔕 No reply',b=>qRun('status',{id:r.id,status:'No reply'},b,'Closed as no reply.').catch(qErr));
+    B('⏰ Later',b=>qPick('Follow up when?',['In 2 hours','Tomorrow morning','In 3 days','No follow-up'],{input:'note (optional): left voicemail, asked for weight…'}).then(x=>{if(!x)return;const nx=new Date();nx.setDate(nx.getDate()+1);nx.setHours(9,0,0,0);
+      const hrs=x.pick==='In 2 hours'?2:x.pick==='Tomorrow morning'?Math.max(1,Math.round((nx-Date.now())/36e5)):x.pick==='In 3 days'?72:'';qRun('follow',{id:r.id,hours:hrs,note:x.val},b,hrs?'Follow-up set.':'Follow-up removed.').catch(qErr)}));
+    if(r.claimed_by!==qMe())B('🙋 Mine',b=>qRun('qclaim',{id:r.id},b,'It is yours now.').catch(qErr))}
+  else B('↩️ Reopen',b=>qRun('status',{id:r.id,status:'Quoted'},b,'Reopened.').catch(qErr));
+  B('📋 Requote',()=>{let bx=[];try{bx=Array.isArray(r.boxes)?r.boxes:JSON.parse(r.boxes||'[]')}catch(e){}qdOpen({company:r.company,contact:r.contact,email:r.email,zip:r.zip,move:r.move,terminal:r.terminal,hazmat:r.hazmat,reefer:r.reefer,target:r.target,rt:r.rt_miles,lines:bx.map(x=>({size:x.size||'40HC',count:x.count||1,weight:x.lbs==null?'':String(x.lbs),unit:'lbs'}))})});
+  if(r.thread_link){const l=el('a','btn2','Email ↗');l.href=r.thread_link;l.target='_blank';l.rel='noopener';a.append(l)}
+  else if(r.email){const l=el('a','btn2','✉️ Write');l.href='mailto:'+encodeURIComponent(r.email)+'?cc='+encodeURIComponent('rates@2f-logistics.com')+'&subject='+encodeURIComponent('Re: Quote '+r.id);a.append(l)}
+  c.append(a);return c}
+function qInsights(R,m30){const box=qtSec.querySelector('#qdIns');if(!box)return;box.textContent='';
+  const card=(t,rows,empty)=>{const d=el('div');d.append(el('h5','',t));if(!rows.length)d.append(el('div','t',empty));const mx=Math.max(1,...rows.map(x=>x[1]));rows.forEach(([k,n,s])=>{const b=el('div','bar'),i=el('i');i.style.width=Math.max(4,n/mx*120)+'px';b.append(el('span','',k),i,el('b','',String(n)),el('span','t',s||''));d.append(b)});box.append(d)};
+  const by=(arr,f)=>{const m={};arr.forEach(r=>{const k=f(r);if(k)m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+  card('Why we lose (30 days)',by(m30.filter(r=>qSt(r)==='Lost'),r=>r.lost_reason||'no reason').slice(0,6),'No losses logged yet.');
+  const lanes={};m30.forEach(r=>{const k=(r.place||'').replace(/\s*\d{5}$/,'')||r.zip;if(!k)return;const o=lanes[k]=lanes[k]||{n:0,w:0};o.n++;if(qSt(r)==='Won')o.w++});
+  card('Most requested lanes (30 days)',Object.entries(lanes).sort((a,b)=>b[1].n-a[1].n).slice(0,6).map(([k,o])=>[k,o.n,o.w?o.w+' won':'']),'—');
+  const cu={};m30.forEach(r=>{const k=r.company||r.domain;if(!k)return;const o=cu[k]=cu[k]||{n:0,w:0};o.n++;if(qSt(r)==='Won')o.w++});
+  card('Customers asking most (30 days)',Object.entries(cu).sort((a,b)=>b[1].n-a[1].n).slice(0,6).map(([k,o])=>[k,o.n,o.w?o.w+' won':'0 won – call them?']),'—');
+  const ppl={};m30.forEach(r=>{const k=r.quoted_by==='agent'?'Quote Agent':r.quoted_by;if(!k)return;const o=ppl[k]=ppl[k]||{n:0,w:0,d:0};o.n++;if(qSt(r)==='Won')o.w++;if(['Won','Lost','No reply'].includes(qSt(r)))o.d++});
+  card('Who quoted (30 days)',Object.entries(ppl).sort((a,b)=>b[1].n-a[1].n).map(([k,o])=>[k,o.n,o.d?Math.round(o.w/o.d*100)+'% win':'no outcomes yet']),'—')}
+function qRates(){const box=qtSec.querySelector('#qdRates');if(!box||box.dataset.open==='1')return;box.textContent='';const S=qS(),ad=qAdmin();
+  box.append(el('p','t',ad?'These prices feed every quote built in the app. The Quote Agent still uses the rates on the Quote Desk page – change both until the agent is moved over.':'Only Richard (admin) can change rates.'));
+  const F=[['base','Base $'],['perMile','$ per round-trip mile'],['roadFactor','Road-mile factor'],['marginFloor','Margin floor %'],['followHours','Follow up after (hours)'],['validityDays','Quote valid (days)'],['paymentTerms','Payment terms'],['band1','Adj. under 300 mi %'],['band2','Adj. 300–449 mi %'],['band3','Adj. 450–599 mi %'],['band4','Adj. 600–899 mi %'],['band5','Adj. 900+ mi %'],['minRpm','Flag below $/mi'],['maxRpm','Flag above $/mi'],['maxTotal','Block above $/box'],['owThresholdLbs','Overweight above (lbs cargo)'],['chassis','Chassis $/day'],['triaxle','Tri-axle $/day'],['prepull','Pre-pull $'],['storage','Storage $/day'],['detentionFree','Detention free hrs'],['detention','Detention $/hr'],['owFirst','Overweight 1st state $'],['owAddl','Overweight each add\'l state $'],['hazmatFee','Hazmat $'],['reeferFee','Reefer genset $'],['layover','Layover $']];
+  const g=el('div','qdP');const rr=el('div','qdR');F.forEach(([k,l])=>{const lb=el('label','',l),i=el('input');i.value=S[k];i.dataset.k=k;i.disabled=!ad;if(k!=='paymentTerms')i.inputMode='decimal';i.addEventListener('focus',()=>box.dataset.open='1');lb.append(i);rr.append(lb)});g.append(el('h4','','Formula & accessorials'),rr);
+  const ln=qLanes(),lt=el('div');lt.append(el('h4','','Lane rate card (overrides the formula · match by 5-digit ZIP, then 3-digit prefix)'));
+  if(!ln.length)lt.append(el('div','t','No lanes yet. Add your repeat lanes with the driver pay so the 14% floor is checked.'));
+  ln.forEach((l,i)=>{const row=el('div','m');row.style.cssText='display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line,#e3e6e8)';row.append(el('b','',l.zip),el('span','',l.name),el('span','',f$(l.price)),el('span','t',l.pay?'pay '+f$(l.pay):''),el('span','t',l.note||''));
+    if(ad){const x=el('button','btn2','✕');x.type='button';x.addEventListener('click',()=>{if(!confirm('Remove lane '+l.zip+'?'))return;const nl=ln.slice();nl.splice(i,1);qRun('settings',{lanes:nl},x,'Lane removed.').catch(qErr)});row.append(x)}lt.append(row)});
+  g.append(lt);
+  if(ad){const nr=el('div','qdR'),mkI=(p,num)=>{const i=el('input');i.placeholder=p;if(num)i.inputMode='decimal';i.addEventListener('focus',()=>box.dataset.open='1');nr.append(i);return i};const z=mkI('ZIP or 3-digit prefix'),n=mkI('Lane name'),pr=mkI('Price per box',1),py=mkI('Driver pay',1),nt=mkI('Note');
+    const ab=el('button','btn2','Add / update lane');ab.type='button';ab.addEventListener('click',()=>{const zz=z.value.trim();if(!/^\d{3}(\d{2})?$/.test(zz)||!n.value.trim()||!(+pr.value>0))return alert('ZIP (3 or 5 digits), lane name and price are needed.');
+      const nl=ln.filter(x=>x.zip!==zz).concat([{zip:zz,name:n.value.trim(),price:+pr.value,pay:+py.value||null,note:nt.value.trim()}]);box.dataset.open='';qRun('settings',{lanes:nl},ab,'Lane saved.').catch(qErr)});nr.append(ab);g.append(nr);
+    const sv=el('button','btn2','Save rates');sv.type='button';sv.style.fontWeight='700';sv.addEventListener('click',()=>{const n2=Object.assign({},S);g.querySelectorAll('input[data-k]').forEach(i=>{const k=i.dataset.k,v=i.value.trim();n2[k]=k==='paymentTerms'?v:(isNaN(parseFloat(v))?QDEF[k]:parseFloat(v))});box.dataset.open='';qRun('settings',{settings:n2},sv,'Rates saved – every new quote uses them.').catch(qErr)});
+    const cn=el('button','btn2','Cancel');cn.type='button';cn.addEventListener('click',()=>{box.dataset.open='';qRates()});const ar=el('div','qdAct');ar.append(sv,cn);g.append(ar)}
+  box.append(g)}
+window.yardQuote={open:qdOpen};
+
 // ---------- SOCIAL MEDIA tab: recruiting posts (LinkedIn · Facebook · Instagram + more) and hiring boards ----------
 // Visible only to Richard, Lethaniel, Yanix, Julia and Mari (the server checks too).
 {const st=el('style');st.textContent='.smP{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--card,#fff)}.smP h4{margin:0 0 4px;font-size:15px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}.smP .meta{font-size:12px;color:var(--mut,#5d686d)}.smP pre{white-space:pre-wrap;font:inherit;font-size:14px;margin:6px 0;max-height:220px;overflow:auto}.smP .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}.smP button,.smC button{padding:5px 10px;font-size:13px}'+
@@ -2254,7 +2529,7 @@ const AIT={
  gps:{n:'GPS',help:'Live truck positions from Geotab: trucks, drivers and the map.',chips:[['Summarize the fleet','Summarize what this screen shows about the trucks right now.']]},
  safety:{n:'Safety',help:'Driver events, risk, speeding, collisions, coaching and chassis photos. Coaching stays private and fair; the assistant never declares anyone safe or unsafe.',
   chips:[['Coaching talking points','From this screen, suggest respectful coaching talking points for the most common event type. No names.'],['Explain this screen','Explain what each part of this Safety screen means for a new manager.'],['Safety tip for drivers','Write a short safety tip message for port drivers based on the events on this screen.']]},
- sales:{n:'Sales',help:'Find work, quotes and the freight finder.',chips:[['Draft a follow-up','Draft a short, friendly follow-up email to a shipper after sending a drayage quote. Use [brackets] for details.'],['Explain this screen','Explain how to use this Sales screen in 4 steps.']]},
+ sales:{n:'Sales',help:'Find work (claim a load and press Quote it), the Quote desk (build, send, follow up, mark won/lost) and the freight finder.',chips:[['Answer a counter-offer','A shipper countered my drayage quote with a lower price per container. Write a short, polite reply that holds our price or meets them halfway only if they give something back (more boxes, flexible date). Use [brackets] for numbers.'],['Draft a follow-up','Draft a short, friendly follow-up email to a shipper after sending a drayage quote. Use [brackets] for details.'],['Explain this screen','Explain how to use this Sales screen in 4 steps.']]},
  social:{n:'Social Media',help:'Write, approve and schedule posts for 2FF and 1 Stop, track hiring, and see results.',
   chips:[['What should we post next?','Based on this screen, what should we post next and why? Give 3 ideas, one line each.'],['Explain this screen','Explain this Social Media screen in plain words.']],
   subs:{hiring:{help:'Call new applicants first (within 15 minutes when you can), move them through the steps, and keep private details out of notes.',chips:[['Phone screen questions','Give me 8 job-related phone screen questions for a CDL A port driver.'],['Who needs a call?','From this screen, summarize who is waiting for a call and how long (no names needed).']]},
@@ -2656,7 +2931,7 @@ const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port fee
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
-sales:[['work','Find work'],['quotes','Quotes'],['finder','Freight finder']],
+sales:[['work','Find work'],['quotes','Quote desk'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
@@ -2771,6 +3046,10 @@ function attention(){const S=Y().S||{},A=[],ci=Y().contInfo||(x=>x);
     hot.slice(0,4).forEach(r=>{const urgent=/today|tomorrow|was \d|past|overdue|urgent|hot/i.test((r.reason||'')+' '+(r.subject||''));
       A.push([urgent?'r':'y','Quote: '+(r.company||'load')+' – '+[r.origin,r.destination].filter(Boolean).join(' → ')+(r.boxes?' ('+r.boxes+')':''),'Score '+r.score+' · '+(r.owner_label||'rates desk')+(r.reason?' · '+String(r.reason).slice(0,90):''),'sales','#fwSec'])});
     if(hot.length>4)A.push(['y',(hot.length-4)+' more hot loads to quote','Sales › Find work › Score 70+','sales','#fwSec'])}}catch(e){}
+  // Quote follow-ups that are due (owner 10/30/2026 Quote desk): mine or unassigned; admins see all.
+  try{if(typeof SL!=='undefined'&&SL&&slCan()){const due=(SL.quotes||[]).filter(qDue).sort((x,y)=>new Date(x.follow_up_at)-new Date(y.follow_up_at));
+    due.slice(0,3).forEach(r=>A.push([r.status==='Countered'?'r':'y','Follow up: '+(r.company||'quote')+' – '+(r.place||r.zip||''),(r.status==='Countered'?'Customer countered · ':'')+'quoted '+f$(qPer(r))+' '+qAgo(r.created_at)+(r.claimed_by?' · '+r.claimed_by:''),'sales','#qtSec']));
+    if(due.length>3)A.push(['y',(due.length-3)+' more quote follow-ups due','Sales › Quote desk › Follow up','sales','#qtSec'])}}catch(e){}
   A.sort((a,b)=>(a[0]==='r'?0:1)-(b[0]==='r'?0:1));return A}
 
 // "Done" on Needs attention (owner request 10/30/2026): hides an item on this phone once you've handled it. If the problem gets
