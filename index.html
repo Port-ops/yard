@@ -1630,7 +1630,7 @@ let QZIP=null,QZIPP=null,QDF='due',QDQ='';
 const qS=()=>Object.assign({},QDEF,(SL&&SL.qset)||{}),qLanes=()=>(SL&&SL.qlanes)||[];
 const qMe=()=>{try{return String(Y().S.me.n||'')}catch(e){return ''}};
 const qAdmin=()=>roles().includes('admin');
-const qSt=r=>r.status||'Quoted',qOpen=r=>['Quoted','Countered'].includes(qSt(r));
+const qSt=r=>r.status||'Quoted',qOpen=r=>['Quoted','Countered','Sent','Draft'].includes(qSt(r));
 const qDue=r=>qOpen(r)&&r.follow_up_at&&new Date(r.follow_up_at).getTime()<=Date.now()&&(!r.claimed_by||r.claimed_by===qMe()||qAdmin());
 const qDom=e=>{const m=String(e||'').toLowerCase().match(/@([^>\s]+)/);return m?m[1]:''};
 const qAgo=v=>{if(!v)return '';const m=(Date.now()-new Date(v).getTime())/60000;return m<0?'in '+qIn(-m):m<60?Math.round(m)+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
@@ -1803,6 +1803,7 @@ qtSec.innerHTML='<h2>Quote desk <span class="t">every quote the desk and the Quo
  '<div class="qdTop"><button class="btn2 pri" type="button" id="qdNew">+ New quote</button><button class="btn2" type="button" id="qdPasteB">✨ Paste a request</button><span class="t" id="qdMy"></span></div>'+
  '<div class="qdK" id="qtK"></div><div class="fchips" id="qtF"></div><div class="drow"><input id="qtQ" placeholder="Search company, place, ZIP, quote #" autocomplete="off" style="text-transform:none;flex:1"></div>'+
  '<div id="qdHint" class="t"></div><div class="qdL" id="qdL"></div><div id="qdMore"></div>'+
+ '<details id="qdAgD" style="margin-top:14px" open><summary style="cursor:pointer;font-weight:700">🤖 Quote Agent <span class="t" id="qdAgS"></span></summary><div id="qdAg"></div></details>'+
  '<details id="qdInsD" style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">📊 What wins and what loses</summary><div class="qdIns" id="qdIns"></div></details>'+
  '<details id="qdRatesD" style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">⚙️ Rates & lanes</summary><div id="qdRates"></div></details>';
 qtSec.querySelector('#qdNew').addEventListener('click',()=>qdOpen());qtSec.querySelector('#qdPasteB').addEventListener('click',()=>qdOpen());
@@ -1817,7 +1818,7 @@ function renderQT(){const R=(SL&&SL.quotes)||[],me=qMe(),q=String(qtSec.querySel
     d.title=k==='won'?'Won ÷ (won + lost + no reply), last 30 days. '+dec.length+' of '+m30.length+' quotes have an outcome.':k==='spd'?'From the load email arriving to the desk quote, for loads quoted from Find work.':'';
     d.addEventListener('click',()=>{QDF=k==='due'?'due':k==='mine'?'mine':k==='won'?'Won':'all';renderQT()});K.append(d)});
   const cnt=s=>R.filter(r=>qSt(r)===s).length;
-  slChips(qtSec.querySelector('#qtF'),[['due','⏰ Follow up',due.length],['mine','Mine',mine.length],['open','Open',R.filter(qOpen).length],['Countered','Countered',cnt('Countered')],['Won','Won',cnt('Won')],['Lost','Lost',cnt('Lost')],['No reply','No reply',cnt('No reply')],['agent','Quote Agent',R.filter(r=>r.quoted_by==='agent').length],['all','All',R.length]],QDF,k=>{QDF=k;QDN=60;renderQT()});
+  slChips(qtSec.querySelector('#qtF'),[['Draft','📝 Drafts to approve',cnt('Draft')],['due','⏰ Follow up',due.length],['mine','Mine',mine.length],['open','Open',R.filter(qOpen).length],['Countered','Countered',cnt('Countered')],['Won','Won',cnt('Won')],['Lost','Lost',cnt('Lost')],['No reply','No reply',cnt('No reply')],['agent','Quote Agent',R.filter(r=>r.quoted_by==='agent').length],['all','All',R.length]],QDF,k=>{QDF=k;QDN=60;renderQT()});
   let rows=R.filter(r=>QDF==='all'||(QDF==='due'&&qDue(r))||(QDF==='mine'&&mine.includes(r))||(QDF==='open'&&qOpen(r))||(QDF==='agent'&&r.quoted_by==='agent')||qSt(r)===QDF);
   if(q)rows=rows.filter(r=>[r.id,r.company,r.contact,r.email,r.place,r.zip,r.move,r.quoted_by,r.claimed_by].join(' ').toLowerCase().includes(q));
   if(QDF==='due')rows.sort((a,b)=>new Date(a.follow_up_at)-new Date(b.follow_up_at));
@@ -1826,7 +1827,7 @@ function renderQT(){const R=(SL&&SL.quotes)||[],me=qMe(),q=String(qtSec.querySel
   const L=qtSec.querySelector('#qdL');L.textContent='';rows.slice(0,QDN).forEach(r=>L.append(qCard(r)));
   const mo=qtSec.querySelector('#qdMore');mo.textContent='';if(rows.length>QDN){const b=el('button','btn2','Show '+Math.min(60,rows.length-QDN)+' more ('+(rows.length-QDN)+' left)');b.type='button';b.addEventListener('click',()=>{QDN+=60;renderQT()});mo.append(b)}
   try{subBadge('sales','quotes',due.length,true)}catch(e){}
-  qInsights(R,m30);qRates()}
+  qInsights(R,m30);qRates();qAgent()}
 function qCard(r){const st=qSt(r),c=el('div','qdC'+(qDue(r)?' due':'')),h=el('div','h');
   h.append(el('span','qpl '+(st==='No reply'?'No':st),st));if(r.quoted_by==='agent')h.append(el('span','qpl ag','Quote Agent'));h.append(el('b','',r.company||'(no company)'));h.append(el('span','t',r.id));c.append(h);
   c.append(el('div','m',[r.move==='export'?'Export':'Import',r.place||r.zip,qBoxes(r.boxes),r.hazmat?'hazmat':'',r.reefer?'reefer':''].filter(Boolean).join(' · ')));
@@ -1834,6 +1835,7 @@ function qCard(r){const st=qSt(r),c=el('div','qdC'+(qDue(r)?' due':'')),h=el('di
   c.append(el('div','m',['sent '+qAgo(r.created_at),'by '+(r.quoted_by==='agent'?'Quote Agent':r.quoted_by||'?'),r.claimed_by?'owner: '+r.claimed_by:'',qOpen(r)&&r.follow_up_at?(qDue(r)?'⏰ follow-up due '+qAgo(r.follow_up_at):'follow up '+qAgo(r.follow_up_at)):'',r.lost_reason?'why: '+r.lost_reason:'',r.desk_by&&st!=='Quoted'?'marked by '+r.desk_by:''].filter(Boolean).join(' · ')));
   if(r.desk_notes)c.append(el('div','n',String(r.desk_notes).split(' | ').slice(-2).join('\n')));
   const a=el('div','a'),B=(t,f,cls)=>{const b=el('button','btn2'+(cls?' '+cls:''),t);b.type='button';b.addEventListener('click',()=>f(b));a.append(b);return b};
+  if(qSt(r)==='Draft')B('📤 I sent it',b=>qRun('status',{id:r.id,status:'Sent'},b,'Marked sent – follow-up in 24 h.').catch(qErr),'');
   if(qOpen(r)){
     B('✅ Won',b=>qPick('Won at what price per box?',[],{input:'price per box',num:true,val:qPer(r)||'',okText:'Save won'}).then(x=>{if(x)qRun('status',{id:r.id,status:'Won',price:x.val},b,'Marked won 🎉').catch(qErr)}));
     B('↔️ Counter',b=>qPick('Customer countered – their price per box?',[],{input:'their price',num:true,okText:'Save counter'}).then(x=>{if(x)qRun('status',{id:r.id,status:'Countered',note:x.val?'Customer countered at $'+x.val:'Customer countered'},b,'Counter logged – follow up in 4 h.').catch(qErr)}));
@@ -1858,7 +1860,7 @@ function qInsights(R,m30){const box=qtSec.querySelector('#qdIns');if(!box)return
   const ppl={};m30.forEach(r=>{const k=r.quoted_by==='agent'?'Quote Agent':r.quoted_by;if(!k)return;const o=ppl[k]=ppl[k]||{n:0,w:0,d:0};o.n++;if(qSt(r)==='Won')o.w++;if(['Won','Lost','No reply'].includes(qSt(r)))o.d++});
   card('Who quoted (30 days)',Object.entries(ppl).sort((a,b)=>b[1].n-a[1].n).map(([k,o])=>[k,o.n,o.d?Math.round(o.w/o.d*100)+'% win':'no outcomes yet']),'—')}
 function qRates(){const box=qtSec.querySelector('#qdRates');if(!box||box.dataset.open==='1')return;box.textContent='';const S=qS(),ad=qAdmin();
-  box.append(el('p','t',ad?'These prices feed every quote built in the app. The Quote Agent still uses the rates on the Quote Desk page – change both until the agent is moved over.':'Only Richard (admin) can change rates.'));
+  box.append(el('p','t',ad?'One price list: every quote built in the app AND every quote the Quote Agent sends uses these numbers.':'Only Richard (admin) can change rates.'));
   const F=[['base','Base $'],['perMile','$ per round-trip mile'],['roadFactor','Road-mile factor'],['marginFloor','Margin floor %'],['followHours','Follow up after (hours)'],['validityDays','Quote valid (days)'],['paymentTerms','Payment terms'],['band1','Adj. under 300 mi %'],['band2','Adj. 300–449 mi %'],['band3','Adj. 450–599 mi %'],['band4','Adj. 600–899 mi %'],['band5','Adj. 900+ mi %'],['minRpm','Flag below $/mi'],['maxRpm','Flag above $/mi'],['maxTotal','Block above $/box'],['owThresholdLbs','Overweight above (lbs cargo)'],['chassis','Chassis $/day'],['triaxle','Tri-axle $/day'],['prepull','Pre-pull $'],['storage','Storage $/day'],['detentionFree','Detention free hrs'],['detention','Detention $/hr'],['owFirst','Overweight 1st state $'],['owAddl','Overweight each add\'l state $'],['hazmatFee','Hazmat $'],['reeferFee','Reefer genset $'],['layover','Layover $']];
   const g=el('div','qdP');const rr=el('div','qdR');F.forEach(([k,l])=>{const lb=el('label','',l),i=el('input');i.value=S[k];i.dataset.k=k;i.disabled=!ad;if(k!=='paymentTerms')i.inputMode='decimal';i.addEventListener('focus',()=>box.dataset.open='1');lb.append(i);rr.append(lb)});g.append(el('h4','','Formula & accessorials'),rr);
   const ln=qLanes(),lt=el('div');lt.append(el('h4','','Lane rate card (overrides the formula · match by 5-digit ZIP, then 3-digit prefix)'));
@@ -1872,6 +1874,18 @@ function qRates(){const box=qtSec.querySelector('#qdRates');if(!box||box.dataset
     const sv=el('button','btn2','Save rates');sv.type='button';sv.style.fontWeight='700';sv.addEventListener('click',()=>{const n2=Object.assign({},S);g.querySelectorAll('input[data-k]').forEach(i=>{const k=i.dataset.k,v=i.value.trim();n2[k]=k==='paymentTerms'?v:(isNaN(parseFloat(v))?QDEF[k]:parseFloat(v))});box.dataset.open='';qRun('settings',{settings:n2},sv,'Rates saved – every new quote uses them.').catch(qErr)});
     const cn=el('button','btn2','Cancel');cn.type='button';cn.addEventListener('click',()=>{box.dataset.open='';qRates()});const ar=el('div','qdAct');ar.append(sv,cn);g.append(ar)}
   box.append(g)}
+function qAgent(){const box=qtSec.querySelector('#qdAg');if(!box||box.dataset.open==='1')return;box.textContent='';const S=qS(),A=Object.assign({enabled:true,autoSend:true,startHour:5,endHour:20,followUps:true},S.agent||{}),runs=(SL&&SL.qruns)||[],ad=qAdmin(),last=runs[0];
+  const st=!A.enabled?'⏸ paused':A.autoSend?'▶ sending quotes on its own':'📝 writing drafts for you to approve';qtSec.querySelector('#qdAgS').textContent='· '+st+(last?' · last run '+qAgo(last.run_at):'');
+  box.append(el('p','t','The agent reads Outlook and Gmail every hour at :52 ('+A.startHour+':00–'+A.endHour+':00 ET, weekdays), prices with the rates below and logs every quote here. It skips anything the desk already quoted or claimed.'));
+  const c=el('div','qdP');
+  if(ad){const row=el('div','qdR'),tg=(k,l)=>{const lb=el('label','ck'),i=el('input');i.type='checkbox';i.checked=!!A[k];i.dataset.k=k;i.addEventListener('focus',()=>box.dataset.open='1');lb.append(i,document.createTextNode(l));row.append(lb)};
+    tg('enabled','Agent on');tg('autoSend','Send quotes automatically (off = save as drafts for approval)');tg('followUps','Send the 24-hour follow-up');
+    const hr=(k,l)=>{const lb=el('label','',l),i=el('input');i.inputMode='numeric';i.value=A[k];i.dataset.k=k;i.addEventListener('focus',()=>box.dataset.open='1');lb.append(i);row.append(lb)};hr('startHour','First run (hour, ET)');hr('endHour','Last run (hour, ET)');
+    const sv=el('button','btn2','Save agent settings');sv.type='button';sv.style.fontWeight='700';sv.addEventListener('click',()=>{const n=Object.assign({},A);row.querySelectorAll('input').forEach(i=>{n[i.dataset.k]=i.type==='checkbox'?i.checked:Math.max(0,Math.min(23,parseInt(i.value)||0))});box.dataset.open='';qRun('settings',{settings:Object.assign({},S,{agent:n})},sv,'Agent settings saved – it uses them from its next run.').catch(qErr)});
+    c.append(row,sv)}else c.append(el('div','t','Only Richard can change the agent settings.'));
+  const lg=el('div');lg.append(el('h4','','Last runs'));if(!runs.length)lg.append(el('div','t','No runs logged yet. The agent starts writing here from its next run.'));
+  runs.slice(0,12).forEach(r=>{const d=el('div','m');d.style.cssText='padding:4px 0;border-bottom:1px solid var(--line,#e3e6e8)';d.append(el('b','',new Date(r.run_at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})+' '),document.createTextNode([r.found!=null?r.found+' found':'',r.sent?r.sent+' sent':'',r.drafts?r.drafts+' drafts':'',r.held?r.held+' held':'',r.follow_ups?r.follow_ups+' follow-ups':'',r.accepted?r.accepted+' accepted':'',r.countered?r.countered+' countered':''].filter(Boolean).join(' · ')+(r.summary?' – '+r.summary:'')));if(r.problems){const pr=el('div','');pr.style.color='#b3261e';pr.textContent='⚠️ '+r.problems;d.append(pr)}lg.append(d)});
+  c.append(lg);box.append(c)}
 window.yardQuote={open:qdOpen};
 // ---------- PROFILE VIEWERS (LoadMatch Click Report) · Sales > Profile viewers (owner 10/30/2026) ----------
 // Who looked at our LoadMatch profile, what they are, who really controls their freight, and what to do next. Replaces the 07:30 cloud task.
