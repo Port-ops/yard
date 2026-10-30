@@ -2158,7 +2158,7 @@ function sub(t,k,quiet){const av=subAvail(t);if(!av.includes(k))k=av[0]||SUBS[t]
 function show(){[...wrap.children].forEach(x=>{if(!x.dataset||!x.dataset.tab)return;x.classList.toggle('vis',x.dataset.tab===TAB&&(x.dataset.sub==='*'||x.dataset.sub===CUR[TAB]))})}
 function subBadge(t,k,n,red){const b=SB[t]&&SB[t].querySelector('button[data-k="'+k+'"] .sb');if(b){b.textContent=n?String(n):'';b.className='sb'+(red?' r':'')}}
 let TAB='';
-function go(k,target,quiet){TAB=k;document.body.dataset.tab=k;inn.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.k===k);b.setAttribute('aria-current',b.dataset.k===k?'page':'false')});
+function go(k,target,quiet){TAB=k;document.body.dataset.tab=k;inn.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.k===k);b.setAttribute('aria-current',b.dataset.k===k?'page':'false')});try{moreSync()}catch(e){}
   {const tg=target&&(typeof target==='string'?document.querySelector(target):target);const hs=tg&&tg.closest&&tg.closest('.wrap > [data-sub]');sub(k,hs&&hs.dataset.sub!=='*'?hs.dataset.sub:(CUR[k]||''),true)}
   if(!quiet){try{localStorage.setItem('yardTab',k)}catch(e){}if(history.replaceState)history.replaceState(null,'','#'+k)}
   if(target){setTimeout(()=>{const t=typeof target==='string'?document.querySelector(target):target;if(t){t.scrollIntoView({behavior:'smooth',block:'center'});t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash')}},60)}
@@ -2167,9 +2167,58 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
   if(!TABS.some(t=>t[0]===k)){const r=roles();k=(r.includes('admin')||r.includes('yard'))?'today':(r.includes('pin')||r.includes('gate'))?'port':'today'}go(k,null,true)}
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
+// ---------- My tabs: each person keeps 4 tabs on the bar; the rest live under "More" ----------
+const FAV_BY_NAME={'Richard Prescott':['today','port','social','owner'],'Lethaniel Stanley':['today','port','gps','safety'],'Yanix Serafico':['today','port','sales','reports'],
+  'Julia Perez':['today','safety','social','gps'],'Brandon Sharman':['today','yard','tasks','port'],'Mari Diaz':['today','social','port','reports'],
+  'Prince Santos':['today','port','yard','gps'],'JC Palmos':['today','sales','port','gps'],'Karl Ignacio':['today','sales','port','reports'],'Arvin Cifra':['today','port','gps','safety']};
+const MORE_IC='<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
+const moreBtn=el('button');moreBtn.type='button';moreBtn.dataset.k='more';moreBtn.innerHTML=MORE_IC;moreBtn.append(el('span','l','More'),el('span','bdg'));moreBtn.style.display='none';inn.append(moreBtn);
+const sheet=el('div','moreSheet');sheet.hidden=true;sheet.setAttribute('role','dialog');sheet.setAttribute('aria-label','More sections');document.body.append(sheet);
+moreBtn.addEventListener('click',()=>{sheet.hidden?openMore():closeMore()});
+sheet.addEventListener('click',e=>{if(e.target===sheet)closeMore()});
+let FAV=[],HID=[],EDIT=false;
+function favFor(vis){let f=null;try{f=JSON.parse(localStorage.getItem('yardFav')||'null')}catch(e){}
+  const me=(Y().S&&Y().S.me)||{},r=roles();if(!Array.isArray(f))f=FAV_BY_NAME[me.n]||(r.includes('yard')?['today','yard','tasks','port']:(r.includes('pin')||r.includes('gate'))?['today','port','gps','safety']:[]);
+  f=f.filter(k=>vis.includes(k));if(!f.includes('today')&&vis.includes('today'))f.unshift('today');vis.forEach(k=>{if(f.length<4&&!f.includes(k))f.push(k)});return f.slice(0,4)}
+function pinTabs(){const vis=TABS.map(t=>t[0]).filter(k=>tabBtn(k).style.display!=='none');
+  if(vis.length<=5){FAV=vis;HID=[];vis.forEach(k=>tabBtn(k).classList.remove('inMore'));moreBtn.style.display='none';nav.classList.add('pinned');inn.style.gridTemplateColumns='repeat('+vis.length+',1fr)';moreSync();return}
+  FAV=favFor(vis);HID=vis.filter(k=>!FAV.includes(k));
+  vis.forEach(k=>{const b=tabBtn(k);b.classList.toggle('inMore',!FAV.includes(k))});
+  // keep the bar in the person's order, More last
+  FAV.forEach(k=>inn.append(tabBtn(k)));TABS.forEach(([k])=>{if(!FAV.includes(k))inn.append(tabBtn(k))});inn.append(moreBtn);
+  moreBtn.style.display='';nav.classList.add('pinned');inn.style.gridTemplateColumns='repeat(5,1fr)';moreSync()}
+function moreSync(){const inM=HID.includes(TAB);moreBtn.classList.toggle('on',inM);
+  const lab=moreBtn.querySelector('.l'),lt=inM?(TABS.find(t=>t[0]===TAB)||[])[1]:'More';if(lab.textContent!==lt)lab.textContent=lt;
+  const ick=inM?TAB:'more';if(moreBtn.dataset.ic!==ick){moreBtn.dataset.ic=ick;const svg=moreBtn.querySelector('svg');if(svg)svg.outerHTML=inM?IC[TAB]:MORE_IC}
+  let n=0,red=false;HID.forEach(k=>{const d=tabBtn(k).querySelector('.bdg');if(d&&d.textContent){n+=parseInt(d.textContent,10)||1;if(!d.classList.contains('y'))red=true}});
+  const mb=moreBtn.querySelector('.bdg'),mt=n&&!inM?String(n):'',mc='bdg'+(red?'':' y');if(mb.textContent!==mt)mb.textContent=mt;if(mb.className!==mc)mb.className=mc;if(!sheet.hidden)drawMore()}
+function drawMore(){sheet.textContent='';const card=el('div','msCard'),hd=el('div','msHd');hd.append(el('b','',EDIT?'Pick your 4 tabs':'More'));
+  const eb=el('button','msEdit',EDIT?'Done':'Edit my tabs');eb.type='button';eb.addEventListener('click',()=>{EDIT=!EDIT;drawMore()});hd.append(eb);card.append(hd);
+  const vis=TABS.map(t=>t[0]).filter(k=>tabBtn(k).style.display!=='none'),list=EDIT?vis:HID,g=el('div','msGrid');
+  list.forEach(k=>{const b=el('button','msItem'+(EDIT&&FAV.includes(k)?' pick':'')+(k===TAB?' cur':''));b.type='button';b.innerHTML=IC[k];b.append(el('span','',(TABS.find(t=>t[0]===k)||[])[1]));
+    const d=tabBtn(k).querySelector('.bdg');if(!EDIT&&d&&d.textContent)b.append(el('i',d.classList.contains('y')?'y':'',d.textContent));
+    b.addEventListener('click',()=>{if(!EDIT){closeMore();go(k);return}
+      let f=FAV.slice();if(f.includes(k)){if(k==='today')return;f=f.filter(x=>x!==k)}else{if(f.length>=4)f.pop();f.push(k)}
+      try{localStorage.setItem('yardFav',JSON.stringify(f))}catch(e){}FAV=f;pinTabs();drawMore()});g.append(b)});
+  card.append(g);if(EDIT)card.append(el('p','msNote','Today always stays. Tap to add or remove; the bar keeps 4 plus More. Saved on this phone.'));
+  if(!EDIT){const r=el('button','msReset','Reset to my default tabs');r.type='button';r.addEventListener('click',()=>{try{localStorage.removeItem('yardFav')}catch(e){}pinTabs();drawMore()});card.append(r)}
+  sheet.append(card)}
+function openMore(){EDIT=false;drawMore();sheet.hidden=false;document.body.classList.add('msOpen')}
+function closeMore(){sheet.hidden=true;document.body.classList.remove('msOpen')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)closeMore()});
+{let q=0;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;try{moreSync()}catch(e){}})}).observe(inn,{subtree:true,characterData:true,childList:true})}
+{const st=el('style');st.textContent='nav.tabbar button.inMore{display:none!important}nav.tabbar.pinned .in{display:grid!important;grid-template-columns:repeat(5,1fr)!important;overflow:visible!important;-webkit-mask-image:none!important;mask-image:none!important;padding:0!important}nav.tabbar.pinned button{min-width:0!important;flex:initial!important}'+
+'.moreSheet{position:fixed;inset:0;z-index:60;background:rgba(10,16,32,.38);display:flex;align-items:flex-end;justify-content:center}.moreSheet[hidden]{display:none}'+
+'.msCard{width:100%;max-width:560px;background:var(--panel,#fff);color:var(--ink);border-radius:20px 20px 0 0;padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.2);animation:msUp .18s ease-out}'+
+'@keyframes msUp{from{transform:translateY(30px);opacity:.5}to{transform:none;opacity:1}}.msHd{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 12px}.msHd b{font-size:17px}'+
+'.msEdit,.msReset{background:none;border:0;color:var(--brand-text,#1F2A5C);font:600 14px inherit;cursor:pointer;padding:6px}.msReset{display:block;margin:12px auto 0;color:var(--muted)}'+
+'.msGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.msItem{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border:1px solid var(--line,#e2e6ee);border-radius:14px;background:var(--bg,#f3f5f9);color:var(--ink);font:600 13px inherit;cursor:pointer}'+
+'.msItem svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.msItem.cur{border-color:#1F2A5C}.msItem.pick{background:#1F2A5C;color:#fff;border-color:#1F2A5C}'+
+'.msItem i{position:absolute;top:6px;right:8px;font:700 10px/16px inherit;font-style:normal;min-width:16px;height:16px;border-radius:8px;padding:0 4px;background:#b42318;color:#fff}.msItem i.y{background:#e0a100}.msNote{font-size:12.5px;color:var(--muted);margin:12px 2px 0}';document.head.append(st)}
+
 // hide tabs that are empty for this person
 function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan()};['tasks','yard','reports','gps','safety','port','sales','social','owner'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
-  inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)';
+  try{pinTabs()}catch(e){console.warn('pinTabs',e);inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)'}
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
 // ---------- 4. the risk engine: everything that can cost money or a missed move ----------
