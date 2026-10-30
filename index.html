@@ -3411,6 +3411,14 @@ setInterval(()=>{try{renderToday()}catch(e){}},60000);
 'html.desk nav.tabbar button[data-k=more]{display:none!important}'+
 'html.desk nav.tabbar button[style*="display: none"],html.desk nav.tabbar button[style*="display:none"],html.desk nav.tabbar button[hidden]{display:none!important}'+ // never show a tab the person's role hides
 'html.desk .tbl{overflow-x:auto}'+
+// visible scroll bars (owner 10/30/2026 "add scroll bars"): always-on bars in computer view so wide tables, lists, panels and sub-tab rows show they scroll
+'html.desk{scrollbar-gutter:stable}html.desk,html.desk *{scrollbar-width:auto;scrollbar-color:#9aa3b5 transparent}'+
+'html.desk ::-webkit-scrollbar{display:block!important;width:12px;height:12px}html.desk ::-webkit-scrollbar-track{background:rgba(31,42,92,.05);border-radius:8px}html.desk ::-webkit-scrollbar-thumb{background:#a9b1c2;border-radius:8px;border:3px solid transparent;background-clip:padding-box}html.desk ::-webkit-scrollbar-thumb:hover{background:#7d879c;background-clip:padding-box;border:3px solid transparent}'+
+'html.desk nav.tabbar{scrollbar-color:#3a4460 transparent}html.desk nav.tabbar::-webkit-scrollbar-thumb{background:#3a4460;background-clip:padding-box}html.desk nav.tabbar::-webkit-scrollbar-track{background:transparent}'+
+'html.desk .subbar,html.desk #todaySec .chips{scrollbar-width:thin!important;overflow-x:auto!important;padding-bottom:6px!important}html.desk .subbar::-webkit-scrollbar,html.desk #todaySec .chips::-webkit-scrollbar{height:8px}'+
+'html.desk .tbl{max-height:70vh;overflow:auto}html.desk .tbl table th{position:sticky;top:0;z-index:1;background:var(--card,#fff)}'+
+// phones: a thin bar under wide tables so people know to swipe sideways
+'.tbl{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#a9b1c2 transparent}.tbl::-webkit-scrollbar{height:6px}.tbl::-webkit-scrollbar-thumb{background:#a9b1c2;border-radius:6px}'+
 '.deskBrand{display:none;align-items:center;gap:10px;padding:16px 18px 10px;color:#fff;font:700 17px var(--display,var(--body))}.deskBrand img{width:34px;height:34px;border-radius:8px;background:#fff;object-fit:contain}.deskBrand small{display:block;font:500 11px var(--body);color:#8a93a8}'+
 '.deskFoot{display:none;margin:10px 12px 0;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#8a93a8}html.desk .deskFoot{display:block}.deskFoot button{background:transparent;border:1px solid rgba(255,255,255,.18);color:#cfd5e3;border-radius:8px;padding:6px 10px;font-size:12px;margin-top:6px;cursor:pointer}.deskFoot kbd{background:rgba(255,255,255,.1);border-radius:4px;padding:0 5px;font-size:11px}'+
 'html.desk .wrap{max-width:1320px!important;margin:0 auto!important;padding-left:28px!important;padding-right:28px!important;padding-bottom:40px!important}'+
@@ -3439,6 +3447,33 @@ window.yardView=VW;VW.apply();addEventListener('resize',()=>{clearTimeout(window
 {const m=document.getElementById('abMenu');if(m)new MutationObserver(()=>{const c=m.querySelector('.abCard');if(!c||c.querySelector('.vwRow'))return;const r=el('div','vwRow');r.append(el('span','','Screen layout'));
   [['auto','Auto'],['phone','📱 Phone'],['computer','💻 Computer']].forEach(([k,l])=>{const b=el('button',VW.get()===k?'on':'',l);b.type='button';b.addEventListener('click',()=>{VW.set(k);r.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});r.append(b)});
   const out=c.querySelector('.abOut');c.insertBefore(r,out||null)}).observe(m,{childList:true,subtree:true})}
+// ---- phone scroll bars (owner 10/30/2026 "add scroll bars … on the mobile view as well") ----
+// iPhone Safari never draws permanent scroll bars, so the app draws its own: a bar under every wide table / chip row (drag it or swipe the table)
+// and a slim rail on the right edge showing where you are on the page (drag the thumb to jump). Computer view uses the real scroll bars above.
+{const st=el('style');st.textContent=
+'.hsb{position:relative;height:14px;margin:2px 4px 6px;touch-action:none;cursor:pointer}.hsb::before{content:"";position:absolute;left:0;right:0;top:5px;height:4px;border-radius:4px;background:rgba(31,42,92,.10)}'+
+'.hsb i{position:absolute;top:3px;height:8px;border-radius:6px;background:#8f99ae;min-width:28px}.hsb.drag i,.hsb:active i{background:#1F2A5C}html.desk .hsb{display:none}'+
+'#vsb{position:fixed;right:1px;top:calc(env(safe-area-inset-top,0px) + 70px);bottom:calc(env(safe-area-inset-bottom,0px) + 86px);width:16px;z-index:55;pointer-events:none;opacity:.55;transition:opacity .25s}'+
+'#vsb.on{opacity:1}#vsb i{position:absolute;right:3px;width:5px;border-radius:5px;background:#8f99ae;min-height:34px;pointer-events:auto;touch-action:none}#vsb i::after{content:"";position:absolute;inset:-6px -8px -6px -10px}#vsb.drag i{background:#1F2A5C;width:7px}#vsb[hidden],html.desk #vsb{display:none}';
+document.head.append(st)}
+const HSB_SEL='.tbl,.fchips,#todaySec .chips,.smChs,.smwT,.shQ';
+function hsbFor(sc){if(sc.__hsb)return sc.__hsb;const b=el('div','hsb'),th=el('i');b.append(th);sc.insertAdjacentElement('afterend',b);sc.__hsb=b;
+  const upd=()=>{const cw=sc.clientWidth,sw=sc.scrollWidth,need=sw>cw+4&&sc.offsetParent!==null;b.hidden=!need;if(!need)return;const W=b.clientWidth,tw=Math.max(28,W*cw/sw);th.style.width=tw+'px';th.style.left=((W-tw)*sc.scrollLeft/Math.max(1,sw-cw))+'px'};
+  b.__upd=upd;sc.addEventListener('scroll',upd,{passive:true});
+  const go=x=>{const r=b.getBoundingClientRect(),tw=th.offsetWidth,f=Math.min(1,Math.max(0,(x-r.left-tw/2)/Math.max(1,r.width-tw)));sc.scrollLeft=f*(sc.scrollWidth-sc.clientWidth)};
+  b.addEventListener('pointerdown',e=>{b.classList.add('drag');try{b.setPointerCapture(e.pointerId)}catch(x){}go(e.clientX);e.preventDefault()});
+  b.addEventListener('pointermove',e=>{if(b.classList.contains('drag'))go(e.clientX)});
+  ['pointerup','pointercancel'].forEach(t=>b.addEventListener(t,()=>b.classList.remove('drag')));upd();return b}
+function hsbScan(){if(document.documentElement.classList.contains('desk'))return;document.querySelectorAll(HSB_SEL).forEach(sc=>{const cs=getComputedStyle(sc);if(!/auto|scroll/.test(cs.overflowX)&&!sc.__hsb)return;hsbFor(sc).__upd()})}
+{let t=0;const q=()=>{clearTimeout(t);t=setTimeout(hsbScan,350)};new MutationObserver(q).observe(document.body,{childList:true,subtree:true});addEventListener('resize',q);document.addEventListener('click',()=>setTimeout(hsbScan,400),true);setTimeout(hsbScan,1500)}
+// right-edge page rail
+{const r=el('div'),th=el('i');r.id='vsb';r.append(th);document.body.append(r);let fade=0;
+  const se=()=>document.scrollingElement||document.documentElement;
+  const upd=()=>{const s=se(),H=r.clientHeight,vh=innerHeight,sh=s.scrollHeight;const need=sh>vh+40&&!document.documentElement.classList.contains('desk');r.hidden=!need;if(!need)return;const tl=Math.max(34,H*vh/sh);th.style.height=tl+'px';th.style.top=((H-tl)*s.scrollTop/Math.max(1,sh-vh))+'px';r.classList.add('on');clearTimeout(fade);fade=setTimeout(()=>r.classList.remove('on'),1400)};
+  addEventListener('scroll',upd,{passive:true});addEventListener('resize',upd);new MutationObserver(()=>{clearTimeout(r.__t);r.__t=setTimeout(upd,300)}).observe(document.body,{childList:true,subtree:true});
+  let off=0;const go=y=>{const b=r.getBoundingClientRect(),tl=th.offsetHeight,f=Math.min(1,Math.max(0,(y-b.top-off)/Math.max(1,b.height-tl))),s=se();s.scrollTop=f*(s.scrollHeight-innerHeight)};
+  th.addEventListener('pointerdown',e=>{r.classList.add('drag');off=e.clientY-th.getBoundingClientRect().top;try{th.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault()});
+  th.addEventListener('pointermove',e=>{if(r.classList.contains('drag'))go(e.clientY)});['pointerup','pointercancel'].forEach(t=>th.addEventListener(t,()=>r.classList.remove('drag')));setTimeout(upd,1500)}
 // keyboard shortcuts (computer)
 document.addEventListener('keydown',e=>{const t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable);
   if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();try{const f=document.getElementById('aiFab');if(f&&!f.hidden)aiOpen()}catch(x){}return}
