@@ -2694,10 +2694,31 @@ function renderGates(){const host=$('portSec');if(!host||!PNEWS)return;let b=$('
   const row=el('div','');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';const P=PNEWS.gpa||{};
   const call=el('a','btn','Call GPA customer service');call.href='tel:+19129635526';const em=el('a','btn2','Email GPA');em.href='mailto:'+(P.email||'csv@gaports.com');const pg=el('a','btn2','Full gate rules');if(G){pg.href=G.url;pg.target='_blank';pg.rel='noopener'}
   row.append(call,em);if(G)row.append(pg);b.append(row,el('div','meta','GPA Customer Experience '+(P.phone||'(912) 963-5526')+' · '+(P.hours||'8 AM - 5 PM Mon-Fri')+'. Weekend/holiday gate requests go through the shipping line by 1 PM the day before.'))}
+// ---- TERMINAL KPIs (owner request 10/30/2026): GPA's own numbers from gaports.com/terminal-kpis, shown inside the Georgia Ports news card.
+// Gate turn time (single vs dual move), busiest/quietest gate hours, boxes on terminal, rail import dwell. Garden City Terminal.
+const hr12=h=>(h%12||12)+(h<12?' AM':' PM');
+function kpiHours(){const K=PNEWS&&PNEWS.kpi;const H=(K&&K.hours||[]).filter(x=>x.h>=4&&x.h<=17);if(H.length<4)return null;const mx=Math.max(...H.map(x=>x.n));
+  const busy=H.filter(x=>x.n>=mx*0.9),open=H.filter(x=>x.h>=6&&x.h<=14),q=open.slice().sort((a,b)=>a.n-b.n)[0];
+  return {H,mx,from:busy[0].h,to:busy[busy.length-1].h+1,quiet:q&&q.h}}
+function kpiSay(){const K=PNEWS&&PNEWS.kpi;if(!K||!K.turn)return '';const b=kpiHours();
+  return 'Garden City turn time is '+Math.round(K.turn.single)+' minutes single, '+Math.round(K.turn.dual)+' dual.'+(b?' Busiest gates '+hr12(b.from)+' to '+hr12(b.to)+'.':'')}
+function renderKpi(c){const K=PNEWS&&PNEWS.kpi;if(!K||!K.turn)return;const f=n=>Number(n).toLocaleString();
+  const w=el('div','kpi'),h=el('div','pH');h.append(el('b','','Terminal KPIs · Garden City'),el('span','meta','GPA data'));w.append(h);
+  const g=el('div','kG'),tile=(v,l)=>{const t=el('div','kT');t.append(el('b','',v),el('small','',l));g.append(t)};
+  tile(Math.round(K.turn.single)+' min','Turn time, single move');tile(Math.round(K.turn.dual)+' min','Turn time, dual move');
+  if(K.railDwell!=null)tile(K.railDwell+' days','Rail import dwell (14-day avg)');if(K.inv)tile(f(K.inv.imp+K.inv.exp+K.inv.mty),'Boxes on terminal');w.append(g);
+  if(K.inv)w.append(el('div','meta','On terminal '+K.inv.d+': '+f(K.inv.imp)+' import · '+f(K.inv.exp)+' export · '+f(K.inv.mty)+' empty'+(K.railBoxes?' · '+f(K.railBoxes)+' rail imports waiting':'')));
+  const b=kpiHours();if(b){const bars=el('div','kB');b.H.forEach(x=>{const col=el('div','kC'),bar=el('i');bar.style.height=Math.max(4,Math.round(x.n/b.mx*44))+'px';if(x.n>=b.mx*0.9)bar.className='hot';col.title=hr12(x.h)+': about '+f(x.n)+' gate moves';col.append(bar,el('small','',String(x.h%12||12)));bars.append(col)});
+    w.append(el('div','kL','Gate moves by hour (average)'),bars,el('div','kTip','Busiest '+hr12(b.from)+'–'+hr12(b.to)+'.'+(b.quiet!=null?' Quietest daytime hour: '+hr12(b.quiet)+'.':'')+' Plan dispatch around the rush when you can.'))}
+  const d=(K.days||[]).filter(x=>x.n>5000);if(d.length){const last=d[d.length-1],avg=Math.round(d.reduce((a,x)=>a+x.n,0)/d.length);w.append(el('div','meta','Gate moves '+last.d+': '+f(last.n)+' (weekday average '+f(avg)+')'))}
+  const a=el('a','kSrc','Open GPA Terminal KPIs');a.href=K.src||'https://gaports.com/terminal-kpis/';a.target='_blank';a.rel='noopener';w.append(a);c.append(w)}
+{const st=el('style');st.textContent='.kpi{margin-top:10px;padding-top:10px;border-top:1px solid var(--line,#e2e5e7)}.kpi .kG{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.kpi .kT{background:var(--bg2,#f3f5f7);border-radius:10px;padding:8px 10px}.kpi .kT b{display:block;font-size:20px;color:#1F2A5C}.kpi .kT small{font-size:12px;color:var(--mut,#5d686d)}'+
+'.kpi .kL{font-size:13px;font-weight:700;margin:10px 0 4px}.kpi .kB{display:flex;align-items:flex-end;gap:3px;height:62px}.kpi .kC{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}.kpi .kC i{display:block;width:100%;background:#9aa6c8;border-radius:3px 3px 0 0}.kpi .kC i.hot{background:#C8102E}.kpi .kC small{font-size:10px;color:var(--mut,#5d686d)}'+
+'.kpi .kTip{font-size:13px;margin:6px 0}.kpi .kSrc{display:inline-block;margin-top:6px;font-size:13px}';document.head.append(st)}
 function renderNews(){let b=$('tNews');const anchor=$('tBrief');if(!anchor)return;if(!b){b=el('div');b.id='tNews';anchor.after(b)}b.textContent='';
-  if(!prefs().news||!PNEWS||(!PNEWS.news.length&&!PNEWS.alerts.length))return;const c=el('div','pnews'),h=el('div','pH');h.append(el('b','','Georgia Ports news'),el('span','meta','official GPA'));c.append(h);
+  if(!prefs().news||!PNEWS||(!PNEWS.news.length&&!PNEWS.alerts.length&&!PNEWS.kpi))return;const c=el('div','pnews'),h=el('div','pH');h.append(el('b','','Georgia Ports news'),el('span','meta','official GPA'));c.append(h);
   PNEWS.alerts.slice(0,2).forEach(a=>c.append(el('div','alert','GPA notice · '+a.t)));
-  PNEWS.news.slice(0,3).forEach(n=>{const a=el('a');a.href=n.u;a.target='_blank';a.rel='noopener';a.append(el('b','',n.t),el('small','',n.src+' · '+new Date(n.d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})));c.append(a)});b.append(c)}
+  PNEWS.news.slice(0,3).forEach(n=>{const a=el('a');a.href=n.u;a.target='_blank';a.rel='noopener';a.append(el('b','',n.t),el('small','',n.src+' · '+new Date(n.d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})));c.append(a)});try{renderKpi(c)}catch(e){}b.append(c)}
 function renderMyCard(){let b=$('tMy');const anchor=$('tHello');if(!anchor)return;if(!b){b=el('div');b.id='tMy';anchor.after(b)}b.textContent='';if(prefs().asked)return;
   const c=el('div','myCard'),t=el('div');t.append(el('b','','Make the app yours'),el('span','','6 quick choices · about a minute'));const go2=el('button','btn','Start');go2.type='button';go2.addEventListener('click',()=>myOpen(true));c.append(t,go2);b.append(c)}
 // ---- SHIFT BRIEFING (Perplexity research 10/30/2026): silent card + tap "Listen" (iPhone voice, free). Never auto-plays: iOS blocks it,
@@ -2723,30 +2744,48 @@ function brLines(){const S=Y().S||{},me=S.me||{},r=roles(),first=prefs().nick||S
   try{if(SM&&smCan()){const mine=(SM.posts||[]).filter(smNeedsMe).length+(SM.jobs||[]).filter(smJNeedsMe).length,back=(SM.posts||[]).filter(p=>p.status==='draft'&&p.review_status==='changes_requested').length;
     if(mine)L.push(n(mine,'post or job','posts or jobs')+' waiting for your approval.');if(back&&smMine().role==='editor')L.push(n(back,'post')+' sent back for changes.')}}catch(e){}
   try{const gt=gateToday();if(gt&&ops)L.push(gt.say);const ah=gateAhead(7);if(ah.length)L.push('Heads up: Garden City gates closed '+new Date(ah[0].d+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})+' for '+ah[0].n+'.')}catch(e){}
+  try{const ks=kpiSay();if(ks&&ops)L.push(ks)}catch(e){}
   if(PNEWS&&prefs().news){if(PNEWS.alerts.length)L.push(n(PNEWS.alerts.length,'new GPA notice')+'. Check Georgia Ports news below.');else if(PNEWS.news[0]&&Date.now()-new Date(PNEWS.news[0].d+'T12:00:00').getTime()<2*864e5)L.push('Port news: '+PNEWS.news[0].t+'.')}
   if(MD){const all=MD.open.concat(MD.close),left=all.filter(i=>!MD.done[i]);const part=hr<12?MD.open.filter(i=>!MD.done[i]):left;
     if(all.length)L.push(left.length?n(left.length,'item')+' left on your My day checklist'+(part[0]?'. Next: '+part[0].replace(/\(.*?\)/g,'').trim()+'.':'.'):'Your My day checklist is done. Nice work.')}
   const hi=(hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(first?', '+first:'')+'.';return {hi,L}}
 const BR_MOT=["Every box we move on time is a promise kept. Let's keep a lot of promises today.","Safe beats fast, and smooth is fast. Have a strong one.","The port doesn't wait, and neither do we. Let's go get it.","Small things done right add up to a great day. You've got this.","One move at a time. Clean paperwork, safe miles, happy customers.","Today is a fresh start. Make it count.","Good teams talk early. Flag problems fast and we'll fix them together.","You make this operation run. Thank you for showing up.","Stay sharp, stay safe, and finish strong.","Pros check twice and move once. Let's be pros today.","Win the morning and the rest of the day follows.","Nobody does it alone. Lean on the team, and be someone the team can lean on.","Hustle with a plan. That's how we grow.","Treat every customer like our best customer.","Busy is good. Organized busy is better.","A good attitude is contagious. Spread it around the yard.","Progress, not perfection. Keep moving forward.","Today's effort is tomorrow's reputation.","Take care of the details and the big things take care of themselves.","Be proud of the work. It moves the whole port.","Stay calm, stay clear, stay in touch. That's how we win the day.","Every call answered and every gate move logged builds trust. Keep it up.","Hard days build strong teams. We've got each other.","Let's make it a zero-incident day.","Do the next right thing, then the next one.","Your work keeps freight moving and families fed. That matters.","Start strong, check in often, finish clean.","Consistency beats intensity. Show up and do it right again today.","Great things are built one load at a time.","Thanks for being part of 2FF and 1 Stop. Let's have a great day."];
 function brMot(){const d=new Date(),k=d.getFullYear()*400+d.getMonth()*32+d.getDate();const n=String(((Y().S||{}).me||{}).n||'');let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%997;return BR_MOT[(k+h)%BR_MOT.length]}
-let BR_SPEAK=false;
-function brSpeak(btn){const ss=window.speechSynthesis;if(!ss||typeof SpeechSynthesisUtterance==='undefined'){alert('This phone cannot read aloud here. The briefing is shown on screen.');return}
-  if(BR_SPEAK){ss.cancel();BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen';return}
-  const {hi,L}=brLines(),u=new SpeechSynthesisUtterance([hi,'Here is your briefing.'].concat(L.slice(0,7),prefs().mot?[brMot()]:[]).join(' '));u.lang='en-US';u.rate=prefs().rate||1;
+let BR_SPEAK=false,BR_AUD=null,BR_MP3=null;
+// Listen (fix 10/30/2026): the iPhone's built-in voice stayed silent for Richard even after the iOS fixes, so Listen now plays a real
+// MP3 made by ElevenLabs (same voice as Talk) through an <audio> element, which iPhones play even with the Ring/Silent switch on.
+// The audio element is unlocked inside the tap (silent clip) because the MP3 arrives a second later. Same text replays from memory
+// (no new charge). If the server can't make audio (limit, offline, not deployed yet) it falls back to the phone voice.
+function brSilent(){const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,t)=>{for(let i=0;i<t.length;i++)b[o+i]=t.charCodeAt(i)};w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);b.fill(128,44);let s='';b.forEach(x=>s+=String.fromCharCode(x));return 'data:audio/wav;base64,'+btoa(s)}
+function brText(){const {hi,L}=brLines();return [hi,'Here is your briefing.'].concat(L.slice(0,7),prefs().mot?[brMot()]:[]).join(' ')}
+function brReset(btn){BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen'}
+function brStop(btn){try{if(BR_AUD){BR_AUD.pause();BR_AUD.onended=null}}catch(e){}try{speechSynthesis.cancel()}catch(e){}brReset(btn)}
+function brSpeak(btn){if(BR_SPEAK){brStop(btn);return}
+  const text=brText(),a=BR_AUD||(BR_AUD=new Audio());a.setAttribute('playsinline','');a.preload='auto';
+  try{a.src=brSilent();a.play().catch(()=>{})}catch(e){}
+  BR_SPEAK=true;btn.classList.add('on');btn.textContent='… Getting audio';brSave({heard:brToday()});
+  const play=mp3=>{if(!BR_SPEAK)return;a.onended=()=>brReset(btn);a.onerror=()=>{brReset(btn);brSpeakLocal(btn,text)};a.src='data:audio/mpeg;base64,'+mp3;a.playbackRate=prefs().rate||1;
+    a.play().then(()=>{btn.textContent='■ Stop'}).catch(()=>{brReset(btn);brSpeakLocal(btn,text)})};
+  if(BR_MP3&&BR_MP3.t===text){play(BR_MP3.m);return}
+  if(!Y().call||!navigator.onLine){brReset(btn);brSpeakLocal(btn,text);return}
+  Y().call('aiTts',[{text}]).then(d=>{if(!d||!d.mp3)throw new Error('no audio');BR_MP3={t:text,m:d.mp3};play(d.mp3)}).catch(e=>{if(!BR_SPEAK)return;brReset(btn);brSpeakLocal(btn,text,String(e&&e.message||e))})}
+// Backup: the phone's own voice (free, works offline; silent if the Ring/Silent switch is on).
+function brSpeakLocal(btn,text,why){const ss=window.speechSynthesis;if(why&&/4 times/.test(why)){brTip(btn,why);}
+  if(!ss||typeof SpeechSynthesisUtterance==='undefined'){brTip(btn);return}
+  const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=prefs().rate||1;
   const v=(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang)&&/Samantha|Ava|Allison|Google US English|Natural/i.test(x.name))||(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
-  let started=false;u.onstart=()=>{started=true};u.onend=u.onerror=()=>{BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen'};
-  // iPhone quirks: calling cancel() right before speak() can drop the new speech, and Safari sometimes leaves speech "paused".
-  try{if(ss.speaking||ss.pending)ss.cancel()}catch(e){}try{ss.resume()}catch(e){}ss.speak(u);BR_SPEAK=true;btn.classList.add('on');btn.textContent='■ Stop';brSave({heard:brToday()});
-  setTimeout(()=>{if(!started&&BR_SPEAK){try{ss.cancel()}catch(e){}BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen';brTip(btn)}},2500)}
-function brTip(btn){let t=btn.parentNode.parentNode.querySelector('.bTip');if(!t){t=el('div','bTip');t.style.cssText='font-size:13px;color:#8a6100;background:#fff6dc;border-radius:8px;padding:8px 10px;margin-top:8px';btn.parentNode.after(t)}
-  t.textContent='No sound? Flip the iPhone Ring/Silent switch to Ring (or turn off Silent Mode in Control Center), turn the volume up, then tap Listen again. Bluetooth headphones or the truck radio also work.'}
+  let started=false;u.onstart=()=>{started=true};u.onend=u.onerror=()=>brReset(btn);
+  try{if(ss.speaking||ss.pending)ss.cancel()}catch(e){}try{ss.resume()}catch(e){}ss.speak(u);BR_SPEAK=true;btn.classList.add('on');btn.textContent='■ Stop';
+  setTimeout(()=>{if(!started&&BR_SPEAK){try{ss.cancel()}catch(e){}brReset(btn);brTip(btn)}},2500)}
+function brTip(btn,msg){let t=btn.parentNode.parentNode.querySelector('.bTip');if(!t){t=el('div','bTip');t.style.cssText='font-size:13px;color:#8a6100;background:#fff6dc;border-radius:8px;padding:8px 10px;margin-top:8px';btn.parentNode.after(t)}
+  t.textContent=msg||'No sound? Flip the iPhone Ring/Silent switch to Ring (or turn off Silent Mode in Control Center), turn the volume up, then tap Listen again. Bluetooth headphones or the truck radio also work.'}
 function renderBrief(){const S=Y().S||{};if(!S.me)return;let b=$('tBrief');if(!b){b=el('div');b.id='tBrief';const h=$('tMy')||$('tHello');if(!h)return;h.after(b)}if(!prefs().brief){b.textContent='';try{renderNews()}catch(e){}return}
   const st=brState(),hidden=st.hid===brToday();b.textContent='';
   if(hidden){const m=el('button','briefMini','▶ Today\'s briefing');m.type='button';m.addEventListener('click',()=>{brSave({hid:''});renderBrief()});b.append(m);return}
   const {L}=brLines(),c=el('div','brief'),h=el('div','bH');h.append(el('b','','Your shift briefing'),el('span','meta',new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})));c.append(h);
   const ul=el('ul');L.slice(0,7).forEach(t=>ul.append(el('li','',t)));c.append(ul);if(prefs().mot)c.append(el('p','bMot',brMot()));
   const row=el('div','bRow'),p=el('button','bPlay',BR_SPEAK?'■ Stop':'▶ Listen'),x=el('button','bX','Hide for today');p.type=x.type='button';p.setAttribute('aria-label','Read my briefing out loud, about 15 seconds');
-  p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{try{speechSynthesis.cancel()}catch(e){}BR_SPEAK=false;brSave({hid:brToday()});renderBrief()});row.append(p,x);c.append(row);b.append(c)}
+  p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{brStop(p);brSave({hid:brToday()});renderBrief()});row.append(p,x);c.append(row);b.append(c)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
 all();
 })();
