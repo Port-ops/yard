@@ -1626,7 +1626,8 @@ const smCont=mk('smCont','social','content','<h2>Content <span class="t">write o
 const smHire=mk('smHire','social','hiring','<h2>Hiring <span class="t">call new drivers fast · move them through the steps · applicants from every source land here</span></h2><div class="kpis" id="smHK"></div><div id="smHE"></div><div class="hrChips" id="hrV"></div><div class="hrChips" id="hrK"></div><input id="hrQ" class="hrQ" placeholder="Search name, job, city, note" autocomplete="off"><div id="hrL"></div><details class="hrRule"><summary>Hiring rules (read once)</summary><div id="hrRules"></div></details><h3>Jobs</h3><div class="drow"><button class="btn" type="button" id="smJNew">New job</button><a class="btn2" href="https://yard.2f-logistics.com/jobs/" target="_blank" rel="noopener">Open careers page</a></div><div id="smJE" hidden></div><div id="smJL"></div><h3>Job boards</h3><div id="smBL"></div>');
 const smRes=mk('smRes','social','results','<h2>Results <span class="t">last 30 days</span></h2><div class="kpis" id="smRK"></div><div class="tbl"><table class="score slT" id="smRT"></table></div><h3>Where applicants come from <span class="t">last 90 days</span></h3><div class="tbl"><table class="score slT" id="smRS"></table></div><h3>Likes, comments and reach</h3><p class="t">Each page keeps its own numbers. Open them here:</p><div class="drow"><a class="btn2" href="https://business.facebook.com/latest/insights" target="_blank" rel="noopener">Facebook &amp; Instagram stats</a><a class="btn2" href="https://www.linkedin.com/company/2ff-logistics/admin/analytics/updates/" target="_blank" rel="noopener">LinkedIn page stats</a></div>');
 const smSet=mk('smSet','social','settings','<h2>Settings <span class="t">channels, who approves, house rules</span></h2><div id="smSL"></div>');
-const SM_SECS=[smToday,smCal,smCont,smHire,smRes,smSet];
+const smHome=mk('smHome','social','home','<div id="shB"><p class="t">Loading…</p></div>');
+const SM_SECS=[smHome,smToday,smCal,smCont,smHire,smRes,smSet];
 SM_SECS.forEach(s=>wrap.append(s));
 function smRun(fn,arg,btn){if(btn){btn.disabled=true;btn.dataset.t=btn.textContent;btn.textContent='Saving…'}
   return Y().call(fn,[arg]).then(d=>{SM=d;renderSM();return d}).catch(e=>{alert((e&&e.message)||String(e))}).finally(()=>{if(btn){btn.disabled=false;btn.textContent=btn.dataset.t}})}
@@ -1649,8 +1650,8 @@ function smCard(p,opt){const c=el('div','smP'),h=el('h4');h.append(el('span','pl
   if(p.status==='queued')B('Pull back to draft','btn2',b=>smRun('socialAct',{action:'unschedule',id:p.id},b));
   if(p.status==='failed')B('Try again','btn2',b=>smRun('socialAct',{action:'retry',id:p.id},b));
   if(row.children.length)c.append(row);return c}
-function smCompose(p){SMEDIT=p||null;const box=$('smCmp');box.hidden=false;box.textContent='';const f=el('div','smC');box.append(f);
-  f.append(el('h3','',p?'Edit post #'+p.id+' ('+(SM_PL[p.platform]||p.platform)+')':'New recruiting post'));
+function smCompose(p,pre){SMEDIT=p||null;const box=$('smCmp');box.hidden=false;box.textContent='';const f=el('div','smC');box.append(f);
+  f.append(el('h3','',p?'Edit post #'+p.id+' ('+(SM_PL[p.platform]||p.platform)+')':'New post'));
   const brand=el('select');['2FF','1Stop'].forEach(b=>{const o=el('option','',b==='1Stop'?'1 Stop Logistics':'2FF Logistics');o.value=b;brand.append(o)});if(p)brand.value=p.brand,brand.disabled=true;
   const aud=el('select');SM_AUD.forEach(([k,l])=>{const o=el('option','',l);o.value=k;aud.append(o)});aud.value=p?p.audience||'brand':'company_driver';
   const title=el('input');title.placeholder='Short title for the calendar (not posted)';title.value=p&&p.title||'';
@@ -1667,7 +1668,9 @@ function smCompose(p){SMEDIT=p||null;const box=$('smCmp');box.hidden=false;box.t
     PV.textContent='';[...new Set(plats())].forEach(pl=>{const d=el('div'),hd=el('div','hd');const L=SM_LIM[pl];hd.append(el('span','pl '+pl,SM_PL[pl]||pl),el('span','meta',tx.value.length+(L?' / '+L:'')));d.append(hd);
       let t=tx.value;if(pl==='x'&&t.length>280)t=t.slice(0,277)+'…';d.append(el('pre','',t+(link.value&&pl!=='instagram'?'\n'+link.value:'')));if(img.value.trim()){const im=el('img');im.src=img.value.trim();im.alt='';im.onerror=()=>im.remove();d.append(im)}PV.append(d)})};
   [tx,img,link,title].forEach(x=>x.addEventListener('input',prev));brand.addEventListener('change',()=>{pick.clear();drawCh();prev()});
-  const lab=(t,x)=>{f.append(el('label','',t),x)};lab('Company',brand);lab('Who is it for',aud);lab('Channels',chs);lab('Title',title);lab('Post',tx);f.append(W);lab('Picture',img);lab('Apply link',link);lab('Post at',when);
+  const lab=(t,x)=>{f.append(el('label','',t),x)};lab('Company',brand);lab('Who is it for',aud);lab('Channels',chs);lab('Title',title);const aiRow=el('div','drow'),aiB=el('button','btn2','✨ Help me write');aiB.type='button';aiRow.append(aiB,el('span','meta','AI drafts it, you fix it. Fill every [bracket] with a real detail.'));
+  aiB.addEventListener('click',()=>{const t=(title.value.trim()+' '+tx.value.trim()).trim();if(!t){alert('Type a title or a few words about the post first.');return}aiB.disabled=true;aiB.textContent='Drafting…';shAI(t,brand.value,aud.value).then(r=>{if(r){tx.value=r;prev()}}).catch(e=>alert((e&&e.message)||String(e))).finally(()=>{aiB.disabled=false;aiB.textContent='✨ Help me write'})});
+  lab('Post',tx);f.append(aiRow,W);if(pre&&pre.ai)f.insertBefore(el('div','smW','AI first draft: replace every [bracket] with a real detail and make sure it sounds like us before you send it.'),aiRow);lab('Picture',img);lab('Apply link',link);lab('Post at',when);
   f.append(el('label','','Preview'),PV);
   const row=el('div','drow'),save=el('button','btn',p?'Save changes (goes back for approval)':'Send for approval'),cancel=el('button','btn2','Cancel');save.type=cancel.type='button';
   cancel.addEventListener('click',()=>{box.hidden=true;SMEDIT=null});
@@ -1675,6 +1678,7 @@ function smCompose(p){SMEDIT=p||null;const box=$('smCmp');box.hidden=false;box.t
     if(SM_BAD.some(([re])=>re.test(o.post_text))&&!confirm('This post has wording flagged for compliance (see the red notes). Send it anyway?'))return;
     if(p)Object.assign(o,{action:'edit',id:p.id});else Object.assign(o,{action:'create',brand:brand.value,channels:[...pick]});
     smRun('socialAct',o,save).then(d=>{if(d){box.hidden=true;SMEDIT=null;SMF='review';renderSMC()}})});
+  if(pre&&!p){if(pre.brand)brand.value=pre.brand;if(pre.aud)aud.value=pre.aud;if(pre.title)title.value=pre.title;if(pre.text)tx.value=pre.text}
   row.append(save,cancel);f.append(row);drawCh();prev();box.scrollIntoView({behavior:'smooth',block:'start'})}
 // ---- SOCIAL APPROVALS: queue + full-screen review (Perplexity research: Sprout/Planable/Hootsuite patterns) ----
 {const st=el('style');st.textContent=
@@ -1951,8 +1955,81 @@ function renderSMS(){const L=$('smSL');L.textContent='';L.append(el('h3','','Soc
   (SM.channels||[]).forEach(c=>{const r=el('div','smBd'),l=el('div');l.append(el('b','',c.label),el('div','meta',c.connect_method||''));const s=el('div',c.connected?'on':'offx',c.connected?'posting':'add later');if(c.target_url){const a=el('a','btn2','Open');a.href=c.target_url;a.target='_blank';s.append(document.createTextNode(' '),a)}r.append(l,s);L.append(r)});
   L.append(el('h3','','Who does what'));const ppl=SM.people||{};Object.keys(ppl).forEach(n=>L.append(el('div','smBd',n+' — '+(ppl[n]==='manager'?'writes, approves':ppl[n]==='recruiting'?'writes, approves':'writes, sends for approval'))));
   L.append(el('h3','','House rules'));['Every post is a draft until approved. The Chrome publisher only posts approved ones.','Pay, home time, equipment, bonus or "guarantee": one approval (Julia, Lethaniel or Richard). Numbers must match the CareerPlug job and the ADP pay rate.','Two kinds of driver seats, never in the same post: company drivers (W-2, paid through ADP; only promise benefits we offer) and owner-operators (lease-on, paid by settlement; never call them employees).','No age, gender or national-origin wording. Say "drivers" and "you".','Mix: about 40% open seats, 25% day in the life, 20% driver stories (with the driver\'s OK), 15% company news.','Boosted job ads on Facebook/Instagram must use Meta\'s Employment special ad category.','Every post ends with how to apply (the CareerPlug link) so we can count applicants by channel.'].forEach(t=>L.append(el('div','smBd',t)))}
+// ---- SOCIAL HOME (owner 10/30/2026; Perplexity research: Buffer/Later/Hootsuite/Sprout/Meta Business Suite patterns) ----
+// A newsroom, not a dashboard: what needs me now, a weekly goal, today's idea (with an AI first draft the team edits),
+// the content mix vs our house rule, and what the team did. Goals are team goals, no rankings.
+{const st=el('style');st.textContent='.shNx{border-radius:12px;padding:12px;margin:8px 0;background:#1F2A5C;color:#fff;display:flex;gap:10px;align-items:center}.shNx b{display:block;font-size:16px}.shNx span{font-size:13px;opacity:.85}.shNx button{margin-left:auto;background:#fff;color:#1F2A5C;border:0;border-radius:10px;padding:9px 14px;font-weight:700;min-height:44px;white-space:nowrap}.shNx.ok{background:#e6f2ea;color:#1e5b38}.shNx.ok button{background:#2e7d4f;color:#fff}'+
+'.shQ{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.shQ button{border:1px solid var(--line,#d5d9db);background:var(--card,#fff);color:var(--ink,#1b1f24);border-radius:12px;padding:12px 8px;font-size:15px;font-weight:600;min-height:58px;text-align:left}.shQ button i{font-style:normal;display:block;font-size:12px;font-weight:400;color:var(--mut,#5d686d);margin-top:2px}'+
+'.shBox{border:1px solid var(--line,#d5d9db);border-radius:12px;padding:12px;margin:10px 0;background:var(--card,#fff)}.shBox h3{margin:0 0 6px;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:6px}.shBox h3 small{font-weight:400;color:var(--mut,#5d686d);font-size:12px}'+
+'.shIdea{font-size:17px;line-height:1.35;margin:6px 0 4px}.shTag{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:1px 8px;background:#e7f1fb;color:#0a66c2;margin-right:4px}.shRow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.shRow button{min-height:42px;font-size:14px}'+
+'.shBar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}.shBar>span:first-child{width:118px;flex:none}.shBar .tr{flex:1;height:10px;border-radius:5px;background:#e3e6e8;overflow:hidden;position:relative}.shBar .tr i{position:absolute;left:0;top:0;bottom:0;background:#2e7d4f;border-radius:5px}.shBar .tr u{position:absolute;top:-2px;bottom:-2px;width:2px;background:#1F2A5C}.shBar>span:last-child{width:58px;text-align:right;color:var(--mut,#5d686d);flex:none}'+
+'.shFeed div{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--line,#eceef0);font-size:13px}.shFeed div:last-child{border:0}.shFeed .ic{flex:none;width:22px;text-align:center}.shFeed .tm{margin-left:auto;color:var(--mut,#5d686d);white-space:nowrap;padding-left:6px}'+
+'@media (prefers-color-scheme:dark){.shQ button,.shBox{background:#1d2330;color:#e8eaee;border-color:#2f3747}}';document.head.append(st)}
+const SH_IDEAS=[
+ ['2FF','People','Meet a driver: how long have they run the port, and what do they like about it? (Get their OK first.)','brand'],
+ ['2FF','Port life','What did the port look like this morning? One photo from a safe, parked spot and one sentence.','brand'],
+ ['2FF','Safety','One pre-trip check that catches problems at the port: chassis lights, tires or twist locks.','brand'],
+ ['2FF','Open seats','Company driver seat: what does a normal home-daily day at the port look like, start to finish?','company_driver'],
+ ['2FF','People','Thank a dispatcher or office teammate for one thing that saved a driver time this week.','brand'],
+ ['2FF','Open seats','Owner-operators: how our settlements work, in plain words, with no pay promises we cannot back up.','owner_operator'],
+ ['2FF','Know-how','Quick tip for shippers: what happens when a container\'s last free day is tomorrow, and how we handle it.','brand'],
+ ['2FF','Safety','A weather or heat tip for drivers this week.','brand'],
+ ['2FF','News','A milestone: a new lane, a new truck on the road, or a good month of moves.','brand'],
+ ['1Stop','Yard life','Yard photo: a clean row of stacked containers or chassis. One line about what we store.','brand'],
+ ['1Stop','Know-how','What 1 Stop offers truckers near Garden City: parking, container storage, chassis. One line each.','brand'],
+ ['1Stop','Safety','Yard safety: walking paths, safety vests, and staying clear of the top-pick.','brand'],
+ ['1Stop','People','Meet the yard crew (with their OK): what keeps the yard moving.','brand'],
+ ['1Stop','Open seats','Yard, shop or office opening: what the job is really like.','yard_crew']];
+const SH_PIL=[['Open seats',40],['People & stories',20],['Day in the life',25],['Safety & tips',15]];
+const shPillar=p=>{const t=((p.title||'')+' '+(p.post_text||'')).toLowerCase();if(p.audience&&p.audience!=='brand')return 'Open seats';if(/meet |spotlight|years with|anniversary|thank|welcome|team/.test(t))return 'People & stories';if(/safety|tip|pre-trip|inspect|weather|heat|how to|what happens/.test(t))return 'Safety & tips';return 'Day in the life'};
+let SHI=null;
+const shWeek=()=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
+function smGo(k){try{const b=document.querySelector('.subbar[data-tab=social] button[data-k='+k+']');if(b)b.click()}catch(e){}}
+function shAI(topic,brand,aud){const q='Write ONE social media post for '+(brand==='1Stop'?'1 Stop Logistics, a container yard near Garden City, Savannah GA':'2FF Logistics, a port container drayage company in Savannah GA')+'. Topic: '+topic+
+  ' Rules: under 500 characters; friendly, plain English; 2 or 3 hashtags at the end; no pay amounts, no "up to", no "guaranteed"; no age, gender or national-origin words; do not invent names, numbers, customers or facts: put [brackets] where the team must fill in a real detail; '+(aud&&aud!=='brand'?'end with "Apply: [link]". ':'end with a short, friendly call to action. ')+'Reply with the post text only.';
+  return Y().call('aiAsk',[{mode:'ask',q,tab:'social'}]).then(d=>String(d.text||'').replace(/^["“]|["”]$/g,'').trim())}
+function renderSMHome(){const B=$('shB');if(!B||!SM)return;B.textContent='';const P=SM.posts||[],G=aqGroups(P),me=smMine(),now=Date.now();
+  // 1) next action
+  const mine=G.filter(g=>aqState(g)==='mine'),back=G.filter(g=>aqState(g)==='back'),fail=G.filter(g=>g.some(p=>p.status==='failed'));
+  const lastQ=P.filter(p=>p.status==='queued'&&p.scheduled_for).map(p=>new Date(p.scheduled_for).getTime()).sort().pop()||0;
+  const nx=el('div','shNx'),tx=el('div'),go=el('button');go.type='button';nx.append(tx,go);
+  if(mine.length){tx.append(el('b','',mine.length+' post'+(mine.length>1?'s need':' needs')+' your OK'),el('span','','Tap to review. About 30 seconds each.'));go.textContent='Review';go.onclick=()=>smGo('today')}
+  else if(back.length){tx.append(el('b','',back.length+' post'+(back.length>1?'s were':' was')+' sent back'),el('span','','A manager asked for a change.'));go.textContent='Fix it';go.onclick=()=>smGo('today')}
+  else if(fail.length){tx.append(el('b','',fail.length+' post'+(fail.length>1?'s':'')+' did not go out'),el('span','','Open it and tap Try again.'));go.textContent='Open';go.onclick=()=>smGo('today')}
+  else if(lastQ<now+3*864e5){tx.append(el('b','',lastQ?'Nothing scheduled after '+new Date(lastQ).toLocaleDateString(undefined,{weekday:'short',month:'numeric',day:'numeric'}):'Nothing is scheduled'),el('span','','Add a post so the pages stay active.'));go.textContent='Write one';go.onclick=()=>shNew()}
+  else{nx.classList.add('ok');tx.append(el('b','','You\'re all caught up'),el('span','','Posts are scheduled through '+new Date(lastQ).toLocaleDateString(undefined,{weekday:'short',month:'numeric',day:'numeric'})+'.'));go.textContent='Add an idea';go.onclick=()=>shNew()}
+  B.append(nx);
+  // 2) quick create
+  const Q=el('div','shQ'),qb=(t,s,f)=>{const b=el('button');b.type='button';b.append(document.createTextNode(t),el('i','',s));b.addEventListener('click',f);Q.append(b)};
+  qb('✍️ Write a post','You write it, a manager OKs it',()=>shNew());qb('✨ AI first draft','Pick a topic, edit the draft',()=>{const t=prompt('What is the post about? (one line, real details only)');if(t)shDraft(t,'2FF','brand')});
+  qb('🗓 Calendar','What goes out and when',()=>smGo('calendar'));qb('💼 Post a job','Careers page + job boards',()=>{smGo('hiring');setTimeout(()=>{if(SM)smJobEdit(null)},250)});B.append(Q);
+  // 3) idea of the day
+  if(SHI==null){const d=new Date(),doy=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);SHI=doy%SH_IDEAS.length}
+  const I=SH_IDEAS[SHI%SH_IDEAS.length],ib=el('div','shBox');ib.id='shIdeaBox';const ih=el('h3');ih.append(document.createTextNode('💡 Idea of the day'),el('small','',(I[0]==='1Stop'?'1 Stop':'2FF')));ib.append(ih);
+  const tg=el('div');tg.append(el('span','shTag',I[1]));ib.append(tg,el('div','shIdea',I[2]));const ir=el('div','shRow'),b1=el('button','btn','Use this idea'),b2=el('button','btn2','✨ Draft it for me'),b3=el('button','btn2','Another idea');[b1,b2,b3].forEach(b=>b.type='button');
+  b1.onclick=()=>shNew({brand:I[0],aud:I[3],title:I[1]+': '+I[2].split(/[:.?]/)[0].slice(0,60),text:''});b2.onclick=()=>shDraft(I[2],I[0],I[3],b2);b3.onclick=()=>{SHI++;renderSMHome()};ir.append(b1,b2,b3);ib.append(ir);B.append(ib);
+  // 4) weekly goal (unique stories, not one per channel)
+  const wk=shWeek(),inWk=g=>g.some(p=>['posted','queued'].includes(p.status)&&new Date(p.posted_at||p.scheduled_for||0).getTime()>=wk&&new Date(p.posted_at||p.scheduled_for||0).getTime()<wk+7*864e5);
+  const gb=el('div','shBox'),gh=el('h3');gh.append(document.createTextNode('🎯 This week\'s goal'),el('small','','3 stories per company'));gb.append(gh);
+  [['2FF','2FF Logistics'],['1Stop','1 Stop Logistics']].forEach(([k,l])=>{const n=G.filter(g=>/1\s?stop/i.test(g[0].brand)===(k==='1Stop')).filter(inWk).length;const r=el('div','shBar'),tr=el('div','tr'),i=el('i');i.style.width=Math.min(100,n/3*100)+'%';tr.append(i);r.append(el('span','',l),tr,el('span','',n+' of 3'+(n>=3?' ✓':'')));gb.append(r)});
+  B.append(gb);
+  // 5) content mix vs house rule (last 30 days)
+  const R=G.filter(g=>g.some(p=>['posted','queued'].includes(p.status)&&now-new Date(p.posted_at||p.scheduled_for||p.created_at)<30*864e5)),cnt={};R.forEach(g=>{const k=shPillar(g[0]);cnt[k]=(cnt[k]||0)+1});
+  const mb=el('div','shBox'),mh=el('h3');mh.append(document.createTextNode('🧭 Our mix'),el('small','','last 30 days · line = target'));mb.append(mh);let gap=null,gv=-1;
+  SH_PIL.forEach(([k,tgt])=>{const pc=R.length?Math.round((cnt[k]||0)/R.length*100):0;if(tgt-pc>gv){gv=tgt-pc;gap=k}const r=el('div','shBar'),tr=el('div','tr'),i=el('i'),u=el('u');i.style.width=pc+'%';u.style.left=tgt+'%';tr.append(i,u);r.append(el('span','',k),tr,el('span','',pc+'%'));mb.append(r)});
+  if(R.length)mb.append(el('div','meta','Next post idea: something for '+gap.toLowerCase()+'.'));else mb.append(el('div','meta','No posts yet this month.'));B.append(mb);
+  // 6) team activity
+  const ev=[];G.forEach(g=>{const ps=g.filter(p=>p.status==='posted'&&p.posted_at);if(ps.length)ev.push([ps.map(p=>p.posted_at).sort().pop(),'✅','Posted on '+[...new Set(ps.map(p=>(SM_PL[p.platform]||p.platform).replace(/ page$/i,'')))].join(' + ')+': '+(g[0].title||(g[0].post_text||'').slice(0,50))])});P.forEach(p=>{
+    (p.approvals||[]).forEach(a=>{if(a.at)ev.push([a.at,'👍',(a.who||'').split(' ')[0]+' approved '+(p.title||'a post')])});if(p.review_status==='changes_requested'&&p.updated_at)ev.push([p.updated_at,'✏️','Changes asked on '+(p.title||'a post')]);
+    if(p.status==='failed'&&p.updated_at)ev.push([p.updated_at,'⚠️','Did not post: '+(p.title||'a post')])});
+  const seen=new Set(),E=ev.sort((a,b)=>new Date(b[0])-new Date(a[0])).filter(e=>{const k=e[2];if(seen.has(k))return false;seen.add(k);return true}).slice(0,7);
+  const fb=el('div','shBox'),fh=el('h3');fh.append(document.createTextNode('📣 Team activity'));fb.append(fh);const fd=el('div','shFeed');
+  if(!E.length)fd.append(el('div','','Nothing yet. The first post this week starts it.'));E.forEach(([t,ic,m])=>{const r=el('div');r.append(el('span','ic',ic),el('span','',m),el('span','tm',hrAge(now-new Date(t).getTime())+' ago'));fd.append(r)});fb.append(fd);B.append(fb)}
+function shNew(pre){smGo('content');setTimeout(()=>{if(SM)smCompose(null,pre||null)},200)}
+function shDraft(topic,brand,aud,btn){if(btn){btn.disabled=true;btn.textContent='Drafting…'}
+  shAI(topic,brand,aud).then(t=>shNew({brand,aud,title:topic.split(/[:.?]/)[0].slice(0,60),text:t,ai:true})).catch(e=>{const m=(e&&e.message)||String(e);alert(/NEED_EMAIL/.test(m)?'Verify your company email in Ask AI first, then try again.':m)}).finally(()=>{if(btn){btn.disabled=false;btn.textContent='✨ Draft it for me'}})}
 function renderSM(){SM_SECS.forEach(s=>s.hidden=!smCan());if(!smCan()||!SM)return;
-  const fns=[renderSMT,renderSMCal,renderSMC,renderSMH,renderSMR,renderSMRS,renderSMS];fns.forEach(f=>{try{f()}catch(e){console.error(e)}});try{tabVis()}catch(e){}}
+  const fns=[renderSMHome,renderSMT,renderSMCal,renderSMC,renderSMH,renderSMR,renderSMRS,renderSMS];fns.forEach(f=>{try{f()}catch(e){console.error(e)}});try{tabVis()}catch(e){}}
 smCont.querySelector('#smNew').addEventListener('click',()=>{if(SM)smCompose(null)});smHire.querySelector('#smJNew').addEventListener('click',()=>{if(SM)smJobEdit(null)});smCont.querySelector('#smRef').addEventListener('click',()=>loadSM(true));smCont.querySelector('#smQ').addEventListener('input',()=>{if(SM)renderSMC()});
 SM_SECS.forEach(s=>s.hidden=true);
 setTimeout(()=>{renderSM();loadSM()},3500);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='social')loadSM()},3*60000);
@@ -2311,7 +2388,7 @@ yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / 
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 sales:[['work','Find work'],['quotes','Quotes'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
-social:[['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
+social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
 safety:[['overview','Overview'],['risk','Driver risk'],['events','Events'],['speed','Speeding'],['collisions','Collisions'],['coach','Coaching'],['photos','Chassis photos']]};
