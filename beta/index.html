@@ -2349,6 +2349,17 @@ function attention(){const S=Y().S||{},A=[],ci=Y().contInfo||(x=>x);
     if(dow>0&&dow<6&&hr>=7&&hr<19&&age>3*3600000&&!(PT.lastNotify&&Date.now()-PT.lastNotify<3600000))A.push(['y','Port data is '+(PT.lastSync?Math.round(age/3600000)+' h':'not')+' synced','Run Port Sync from GPA WebAccess (goes away when the GPA API is on).','port','#portSec'])}
   A.sort((a,b)=>(a[0]==='r'?0:1)-(b[0]==='r'?0:1));return A}
 
+// "Done" on Needs attention (owner request 10/30/2026): hides an item on this phone once you've handled it. If the problem gets
+// worse (the text changes, e.g. per diem 2d -> 3d) it comes back; anything still there after 3 days comes back too, so nothing is lost.
+const DONE_KEY='yardDone',DONE_TTL=3*864e5;
+function doneMap(){let m={};try{m=JSON.parse(localStorage.getItem(DONE_KEY)||'{}')}catch(e){}const now=Date.now();Object.keys(m).forEach(k=>{if(now-m[k]>DONE_TTL)delete m[k]});return m}
+function doneSet(k,on){const m=doneMap();if(on)m[k]=Date.now();else delete m[k];try{localStorage.setItem(DONE_KEY,JSON.stringify(m))}catch(e){}}
+function attVisible(){const m=doneMap();return attention().filter(a=>!m[a[1]])}
+function attHidden(){const m=doneMap();return attention().filter(a=>m[a[1]])}
+function doneToast(k){let t=$('doneT');if(t)t.remove();t=el('div','doneT');t.id='doneT';t.append(el('span','','Marked done. Hidden on this phone.'));const u=el('button','','Undo');u.type='button';u.addEventListener('click',()=>{doneSet(k,false);t.remove();renderToday()});t.append(u);document.body.append(t);setTimeout(()=>{try{t.remove()}catch(e){}},5000)}
+{const st=el('style');st.textContent='#tAtt li .done{flex:none;margin-left:6px;background:#e7f3ec!important;color:#1f7a44!important;border:0!important;border-radius:16px!important;padding:6px 12px!important;font-size:13px!important;font-weight:700;min-height:34px}#tAtt li.hid{opacity:.6}'+
+'.doneT{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:9300;display:flex;gap:10px;align-items:center;justify-content:space-between;background:#1b1f24;color:#fff;border-radius:12px;padding:12px 14px;font-size:14px}.doneT button{background:transparent;border:0;color:#9ec5ff;font-weight:700;font-size:14px}';document.head.append(st)}
+
 
 // ---------- My day: this person's opening + closing checks (server keeps the log in the "Daily Checks" tab) ----------
 let MD=null;
@@ -2380,7 +2391,7 @@ setTimeout(()=>{let seen=0;try{seen=+localStorage.getItem('yardA2HS')||0;localSt
   const st=el('style');st.textContent='.a2hs{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;gap:10px;align-items:center;background:#1F2A5C;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.a2hs button{flex:none;background:#fff;color:#1F2A5C;border:0;border-radius:10px;padding:8px 12px;font-weight:700}';document.head.append(st)},6000);
 // ---------- 5. Today render ----------
 function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{renderMyCard()}catch(e){}try{renderBrief()}catch(e){}try{renderNews()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
-  $('tHello').textContent='';$('tHello').append((hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(me?', '+(prefs().nick||String(me.n).split(' ')[0]):''),el('small','',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})));
+  $('tHello').textContent='';$('tHello').append((hr<4?'Hi':hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(me&&!prefs().noName?', '+(prefs().nick||String(me.n).split(' ')[0]):''),el('small','',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})));
   const ci=Y().contInfo||(x=>x),inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci);
   const late=[...inY,...open].filter(r=>r.cls==='late').length,warn=[...inY,...open].filter(r=>r.cls==='warn').length;
   const PT=Y().PT||{rows:[]},t0=day0(Date.now()),pt=(PT.rows||[]).filter(r=>r.t>=t0);
@@ -2394,12 +2405,14 @@ function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{renderMyC
   chip(pt.length,'port moves today ('+pt.filter(r=>r.dir==='OUT').length+' out · '+pt.filter(r=>r.dir==='IN').length+' in)','','port','#portSec');
   if(WT&&canWatch()){const wo=(WT.rows||[]).filter(r=>/watching|available/.test(r.st)),wa=wo.filter(r=>r.st==='available').length;chip(wa+' / '+wo.length,'watched boxes available to pull',wa?'g':'','port','#watchSec')}
   if(pinOpen!=null)chip(pinOpen,'PIN requests waiting for a PIN',pinOpen?'y':'g','port','#pinSec');
-  const A=attention(),U=$('tAtt');U.textContent='';const red=A.filter(a=>a[0]==='r').length;
+  const A=attVisible(),H=attHidden(),U=$('tAtt');U.textContent='';const red=A.filter(a=>a[0]==='r').length;
   $('tAttN').textContent=A.length?(red?red+' urgent · ':'')+A.length+' total':'';
   if(!A.length){U.append(el('li','g','Nothing needs attention right now.'))}
-  A.slice(0,12).forEach(([c,w,d,tab,tgt])=>{const li=el('li',c);li.tabIndex=0;li.setAttribute('role','button');li.append(el('span','aw',w),el('span','go','Open ›'),el('span','ad',d));
+  A.slice(0,12).forEach(([c,w,d,tab,tgt])=>{const li=el('li',c);li.tabIndex=0;li.setAttribute('role','button');const dn=el('button','done','✓ Done');dn.type='button';dn.setAttribute('aria-label','Mark done: '+w);
+    dn.addEventListener('click',e=>{e.stopPropagation();doneSet(w,true);li.remove();doneToast(w);renderToday()});li.append(el('span','aw',w),dn,el('span','go','Open ›'),el('span','ad',d));
     const f=()=>go(tab,tgt);li.addEventListener('click',f);li.addEventListener('keydown',e=>{if(e.key==='Enter')f()});U.append(li)});
   if(A.length>12)U.append(el('li','more','+ '+(A.length-12)+' more · the rest are on the Yard and Port tabs'));
+  if(H.length){const m=el('li','more');m.style.cursor='pointer';m.textContent=H.length+' marked done · tap to show';m.addEventListener('click',()=>{m.remove();H.forEach(([c,w,d])=>{const li=el('li',c+' hid'),ub=el('button','done','Undo');ub.type='button';ub.addEventListener('click',e=>{e.stopPropagation();doneSet(w,false);renderToday()});li.append(el('span','aw',w),ub,el('span','ad',d));U.append(li)})});U.append(m)}
   subBadge('today','att',A.length,red>0);subBadge('port','pins',PN&&PN.rows?PN.rows.filter(p=>p.st==='handoff'||p.st==='failed').length:0,PN&&PN.rows&&PN.rows.some(p=>p.st==='failed'));
   const b=tabBtn('today').querySelector('.bdg');b.textContent=A.length?String(A.length):'';b.className='bdg'+(red?'':' y');
   const pb=tabBtn('port').querySelector('.bdg');const pw=A.filter(a=>a[3]==='port').length;pb.textContent=pw?String(pw):'';pb.className='bdg'+(A.some(a=>a[3]==='port'&&a[0]==='r')?'':' y');
@@ -2649,7 +2662,9 @@ async function vcStart(){const p=vcPanel(),top=el('div','vcTop'),orb=el('div','v
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&VC)VC.fin('Ended (app closed)')});
 // ---- MAKE IT YOURS (Perplexity research 10/30/2026): role defaults first, optional 60-second setup, everything editable later in one place.
 // Personal look/sound only; company rules, access and safety stay locked. Saved on this phone (localStorage).
-const PREF_KEY='yardPrefs';const PREF_DEF={nick:'',brief:true,rate:1,mot:true,news:true,big:false,asked:false};
+const PREF_KEY='yardPrefs';const PREF_DEF={nick:'',noName:false,brief:true,rate:1,mot:true,news:true,big:false,asked:false,voice:'cjVigY5qzO86Huf0OWal',tone:'calm',len:'full'};
+// Briefing voices (owner 10/30/2026: let each person pick how their assistant sounds). Curated ElevenLabs voices; samples are ElevenLabs' public previews.
+const VOICES=[['cjVigY5qzO86Huf0OWal','Eric','Smooth and steady · man','https://storage.googleapis.com/eleven-public-prod/premade/voices/cjVigY5qzO86Huf0OWal/d098fda0-6456-4030-b3d8-63aa048c9070.mp3'],['EXAVITQu4vr4xnSDxMaL','Sarah','Warm and reassuring · woman','https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/01a3e33c-6e99-4ee7-8543-ff2216a32186.mp3'],['hpp4J3VqNfWAUOO0d1Us','Bella','Bright and professional · woman','https://storage.googleapis.com/eleven-public-prod/premade/voices/hpp4J3VqNfWAUOO0d1Us/dab0f5ba-3aa4-48a8-9fad-f138fea1126d.mp3'],['CwhRBWXzGAHq8TQ4Fs17','Roger','Laid-back and easy · man','https://storage.googleapis.com/eleven-public-prod/premade/voices/CwhRBWXzGAHq8TQ4Fs17/58ee3ff5-f6f2-4628-93b8-e38eb31806b0.mp3'],['XrExE9yKIg1WjnnlVkGX','Matilda','Upbeat and clear · woman','https://storage.googleapis.com/eleven-public-prod/premade/voices/XrExE9yKIg1WjnnlVkGX/b930e18d-6b4d-466e-bab2-0ae97c6d8535.mp3'],['bIHbv24MWmeRgasZH58o','Will','Relaxed and friendly · man','https://storage.googleapis.com/eleven-public-prod/premade/voices/bIHbv24MWmeRgasZH58o/8caf8f3d-ad29-4980-af41-53f20c72d7a4.mp3'],['SAz9YHcvj6GT2YYXdXww','River','Calm and neutral','https://storage.googleapis.com/eleven-public-prod/premade/voices/SAz9YHcvj6GT2YYXdXww/e6c95f0b-2227-491a-b3d7-2249240decb7.mp3'],['Xb7hH8MSUJpSbSDYk0k2','Alice','Clear British · woman','https://storage.googleapis.com/eleven-public-prod/premade/voices/Xb7hH8MSUJpSbSDYk0k2/d10f7534-11f6-41fe-a012-2de1e482d336.mp3']];
 function prefs(){let p={};try{p=JSON.parse(localStorage.getItem(PREF_KEY)||'{}')}catch(e){}return Object.assign({},PREF_DEF,p)}
 function prefSave(o){try{localStorage.setItem(PREF_KEY,JSON.stringify(Object.assign(prefs(),o)))}catch(e){}prefApply()}
 function prefApply(){document.documentElement.classList.toggle('bigText',!!prefs().big)}
@@ -2658,22 +2673,27 @@ prefApply();
 '.myS{position:fixed;inset:0;z-index:9400;background:rgba(10,15,30,.5);display:flex;align-items:flex-end;justify-content:center}.myS>div{background:var(--card,#fff);color:var(--ink,#1b1f24);width:100%;max-width:560px;max-height:90vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px)}'+
 '.myS h3{margin:0 0 4px}.myS .q{margin:14px 0 6px;font-weight:700}.myS input[type=text]{width:100%;box-sizing:border-box;font-size:16px;padding:10px;border-radius:10px;border:1px solid var(--line,#ccd);text-transform:none}'+
 '.myS .opts{display:flex;gap:8px;flex-wrap:wrap}.myS .opts button{border:1px solid var(--line,#ccd)!important;background:var(--card,#fff)!important;color:inherit!important;border-radius:20px!important;padding:8px 14px!important;font-size:15px!important;min-height:42px}.myS .opts button.on{background:#1F2A5C!important;color:#fff!important;border-color:#1F2A5C!important}'+
-'.myS .end{display:flex;gap:8px;margin-top:18px}.myS .end button{flex:1;min-height:50px;font-size:16px;border-radius:12px}.myCard{border:1px dashed #1F2A5C;border-radius:14px;padding:12px 14px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}.myCard b{display:block}.myCard span{font-size:13px;color:var(--mut,#5d686d)}'+
+'.myS .vList{display:flex;flex-direction:column;gap:6px}.myS .vRow{display:flex;gap:6px;align-items:stretch;border:1px solid var(--line,#ccd);border-radius:12px;overflow:hidden}.myS .vRow.on{border-color:#1F2A5C;box-shadow:0 0 0 2px #1F2A5C inset}.myS .vPick{flex:1;text-align:left;background:transparent!important;border:0!important;color:inherit!important;padding:8px 12px!important;min-height:48px}.myS .vPick b{display:block;font-size:15px}.myS .vPick small{color:var(--mut,#5d686d);font-size:13px}.myS .vRow.on .vPick b::after{content:"  ✓";color:#1F2A5C}.myS .vPlay{width:52px;background:#eef1f8!important;border:0!important;color:#1F2A5C!important;font-size:16px!important}.myS .end{display:flex;gap:8px;margin-top:18px}.myS .end button{flex:1;min-height:50px;font-size:16px;border-radius:12px}.myCard{border:1px dashed #1F2A5C;border-radius:14px;padding:12px 14px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}.myCard b{display:block}.myCard span{font-size:13px;color:var(--mut,#5d686d)}'+
 '.pnews{border:1px solid var(--line,#d5d9db);border-radius:14px;background:var(--card,#fff);padding:12px 14px;margin:10px 0}.pnews .pH{display:flex;justify-content:space-between;align-items:center}.pnews a{display:block;padding:8px 0;border-top:1px solid var(--line,#eceef0);text-decoration:none;color:inherit}.pnews a:first-of-type{border-top:0}.pnews a b{font-size:15px;line-height:1.35;display:block}.pnews a small{color:var(--mut,#5d686d)}.pnews .alert{background:#fdecea;color:#b3261e;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:14px}';document.head.append(st)}
-function myOpen(first){const p=prefs(),d={...p},S=el('div','myS'),c=el('div');S.append(c);document.body.append(S);
-  c.append(el('h3','',first?'Make it yours (1 minute)':'Make it yours'),el('div','meta','Change any of this later: tap your initials at the top, then Make it yours. Only changes this phone.'));
+function myOpen(first,focus){const p=prefs(),d={...p},S=el('div','myS'),c=el('div');S.append(c);document.body.append(S);
+  c.append(el('h3','',first?'Make it yours (2 minutes)':'Make it yours'),el('div','meta','Change any of this later: tap your initials at the top, then Make it yours. Only changes this phone.'));
   const Q=(t,node)=>{c.append(el('div','q',t),node)},opt=(key,list)=>{const w=el('div','opts');list.forEach(([v,l])=>{const b=el('button',d[key]===v?'on':'',l);b.type='button';b.addEventListener('click',()=>{d[key]=v;w.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});w.append(b)});return w};
   const nk=el('input');nk.type='text';nk.maxLength=24;nk.placeholder=String(((Y().S||{}).me||{}).n||'').split(' ')[0]||'Your first name';nk.value=d.nick;nk.addEventListener('input',()=>{d.nick=nk.value.trim()});
   Q('1. What should the app call you?',nk);
   Q('2. Show your shift briefing on Today?',opt('brief',[[true,'Yes'],[false,'No']]));
-  Q('3. When you tap Listen, how fast should it talk?',opt('rate',[[0.9,'Slower'],[1,'Normal'],[1.15,'Faster']]));
-  Q('4. A short motivation line each day?',opt('mot',[[true,'Yes'],[false,'No thanks']]));
-  Q('5. Georgia Ports news on Today?',opt('news',[[true,'Yes'],[false,'No']]));
-  Q('6. Text size',opt('big',[[false,'Normal'],[true,'Larger']]));
-  const tb=el('button','btn2','7. Pick your 4 bottom tabs ›');tb.type='button';tb.style.marginTop='14px';tb.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{openMore();EDIT=true;drawMore()}catch(e){}});c.append(tb);
+  {const nn=el('label','');nn.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px;font-size:14px';const cb=el('input');cb.type='checkbox';cb.checked=!!d.noName;cb.addEventListener('change',()=>{d.noName=cb.checked});nn.append(cb,el('span','',"Don't say my name out loud"));c.append(nn)}
+  const vh=el('div','q','3. Pick your assistant\'s voice');vh.id='myVoice';c.append(vh);{const w=el('div','vList'),au=new Audio();VOICES.forEach(([id,nm,ds,url])=>{const r=el('div','vRow'+(d.voice===id?' on':'')),t=el('button','vPick');t.type='button';t.append(el('b','',nm),el('small','',ds));
+    t.addEventListener('click',()=>{d.voice=id;w.querySelectorAll('.vRow').forEach(x=>x.classList.toggle('on',x===r))});const pl=el('button','vPlay','▶');pl.type='button';pl.setAttribute('aria-label','Hear '+nm);pl.addEventListener('click',()=>{try{au.pause();au.src=url;au.play().catch(()=>{})}catch(e){}});r.append(t,pl);w.append(r)});c.append(w)}
+  Q('4. How should it sound?',opt('tone',[['calm','Calm and steady'],['upbeat','Upbeat coach']]));
+  Q('5. Talking speed',opt('rate',[[0.9,'Slower'],[1,'Normal'],[1.1,'Faster']]));
+  Q('6. Briefing length',opt('len',[['short','Short (about 20 sec)'],['full','Full (about 1 min)']]));
+  Q('7. A short motivation line?',opt('mot',[[true,'Yes'],[false,'No thanks']]));
+  Q('8. Georgia Ports news and terminal KPIs on Today?',opt('news',[[true,'Yes'],[false,'No']]));
+  Q('9. Text size',opt('big',[[false,'Normal'],[true,'Larger']]));
+  const tb=el('button','btn2','10. Pick your 4 bottom tabs ›');tb.type='button';tb.style.marginTop='14px';tb.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{openMore();EDIT=true;drawMore()}catch(e){}});c.append(tb);
   const e=el('div','end'),sv=el('button','btn','Save'),sk=el('button','btn2',first?'Skip for now':'Cancel');sv.type=sk.type='button';
   sv.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{renderToday()}catch(x){}});sk.addEventListener('click',()=>{if(first)prefSave({asked:true});S.remove();try{renderToday()}catch(x){}});e.append(sk,sv);c.append(e);
-  S.addEventListener('click',ev=>{if(ev.target===S)S.remove()})}
+  S.addEventListener('click',ev=>{if(ev.target===S)S.remove()});if(focus==='voice')setTimeout(()=>{try{$('myVoice').scrollIntoView({block:'start'})}catch(e){}},50)}
 window.yardMyOpen=()=>myOpen(false);let PNEWS=null;
 function loadNews(){if(!Y().call||!navigator.onLine)return;Y().call('getPortNews',[{}]).then(d=>{PNEWS=d;try{renderNews();renderBrief();renderGates()}catch(e){}}).catch(()=>{})}
 setTimeout(loadNews,3500);setInterval(()=>{if(document.visibilityState==='visible')loadNews()},60*60000);
@@ -2720,35 +2740,69 @@ function renderNews(){let b=$('tNews');const anchor=$('tBrief');if(!anchor)retur
   PNEWS.alerts.slice(0,2).forEach(a=>c.append(el('div','alert','GPA notice · '+a.t)));
   PNEWS.news.slice(0,3).forEach(n=>{const a=el('a');a.href=n.u;a.target='_blank';a.rel='noopener';a.append(el('b','',n.t),el('small','',n.src+' · '+new Date(n.d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})));c.append(a)});try{renderKpi(c)}catch(e){}b.append(c)}
 function renderMyCard(){let b=$('tMy');const anchor=$('tHello');if(!anchor)return;if(!b){b=el('div');b.id='tMy';anchor.after(b)}b.textContent='';if(prefs().asked)return;
-  const c=el('div','myCard'),t=el('div');t.append(el('b','','Make the app yours'),el('span','','6 quick choices · about a minute'));const go2=el('button','btn','Start');go2.type='button';go2.addEventListener('click',()=>myOpen(true));c.append(t,go2);b.append(c)}
+  const c=el('div','myCard'),t=el('div');t.append(el('b','','Make the app yours'),el('span','','Your name, voice, speed and more · 2 minutes'));const go2=el('button','btn','Start');go2.type='button';go2.addEventListener('click',()=>myOpen(true));c.append(t,go2);b.append(c)}
 // ---- SHIFT BRIEFING (Perplexity research 10/30/2026): silent card + tap "Listen" (iPhone voice, free). Never auto-plays: iOS blocks it,
 // and people open the app in meetings, near customers and in trucks. Spoken text uses counts only (no driver/customer names or container numbers).
 // Facts come from the app's own data (port feed, PINs, My day, approvals), not AI web research, so it can't read out made-up gate hours.
-{const st=el('style');st.textContent='.brief{border:1px solid var(--line,#d5d9db);border-left:4px solid #1F2A5C;border-radius:14px;background:var(--card,#fff);padding:12px 14px;margin:10px 0}.brief .bH{display:flex;align-items:center;justify-content:space-between;gap:8px}.brief .bH b{font-size:16px}.brief .bMot{font-style:italic;color:#1F2A5C;margin:0 0 10px;font-size:15px}.brief ul{margin:8px 0 10px;padding-left:18px}.brief li{margin:4px 0;font-size:15px;line-height:1.35}'+
+{const st=el('style');st.textContent='.brief{border:1px solid var(--line,#d5d9db);border-left:4px solid #1F2A5C;border-radius:14px;background:var(--card,#fff);padding:12px 14px;margin:10px 0}.brief .bH{display:flex;align-items:center;justify-content:space-between;gap:8px}.brief .bH b{font-size:16px}.brief .bMot{font-style:italic;color:#1F2A5C;margin:0 0 10px;font-size:15px}.brief ul{margin:8px 0 10px;padding-left:18px}.brief li{margin:4px 0;font-size:15px;line-height:1.35}.brief .bHi{font-weight:600;margin-top:4px}.brief .bLast{font-size:12.5px;color:var(--mut,#5d686d);margin:0 0 8px}'+
 '.brief .bRow{display:flex;gap:8px;flex-wrap:wrap}.brief .bPlay{background:#1F2A5C!important;color:#fff!important;border:0!important;border-radius:22px!important;padding:10px 16px!important;font-weight:700;font-size:15px!important;min-height:44px}.brief .bPlay.on{background:#C8102E!important}.brief .bX{background:transparent!important;border:0!important;color:var(--mut,#5d686d)!important;font-size:14px!important;min-height:44px}'+
 '.briefMini{display:inline-flex;align-items:center;gap:6px;margin:6px 0;background:transparent!important;border:1px solid var(--line,#ccd)!important;border-radius:20px!important;padding:6px 12px!important;font-size:14px!important;color:inherit!important}';document.head.append(st)}
-const BR_KEY='yardBrief';const brToday=()=>new Date().toISOString().slice(0,10);
+const BR_KEY='yardBrief';const brToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function brState(){try{return JSON.parse(localStorage.getItem(BR_KEY)||'{}')}catch(e){return {}}}
 function brSave(o){try{localStorage.setItem(BR_KEY,JSON.stringify(Object.assign(brState(),o)))}catch(e){}}
-function brLines(){const S=Y().S||{},me=S.me||{},r=roles(),first=prefs().nick||String(me.n||'').split(' ')[0],L=[],hr=new Date().getHours(),ci=Y().contInfo||(x=>x);
-  const inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci),late=[...inY,...open].filter(x=>x.cls==='late').length,warn=[...inY,...open].filter(x=>x.cls==='warn').length;
-  const PT=Y().PT||{rows:[]},pt=(PT.rows||[]).filter(x=>x.t>=day0(Date.now())),PN=Y().PN,pins=PN&&PN.rows?PN.rows.filter(p=>p.st==='handoff').length:null,pinBad=PN&&PN.rows?PN.rows.filter(p=>p.st==='failed').length:0;
-  let A=[];try{A=attention()}catch(e){}const red=A.filter(a=>a[0]==='r').length;
-  const n=(k,s,p)=>k+' '+(k===1?s:(p||s+'s'));
-  const ops=r.includes('admin')||r.includes('yard')||r.includes('pin')||r.includes('gate')||!r.includes('limited');
-  if(A.length)L.push((red?n(red,'urgent item')+' and ':'')+n(A.length,'item')+' need attention.');else L.push('Nothing needs attention right now.');
-  if(ops&&late)L.push(n(late,'box','boxes')+' on per diem.');
-  if(ops&&warn)L.push(n(warn,'box','boxes')+' with free time ending today or tomorrow.');
-  if(ops&&pt.length)L.push(n(pt.length,'port move')+' so far today, '+pt.filter(x=>x.dir==='OUT').length+' out and '+pt.filter(x=>x.dir==='IN').length+' in.');
-  if(pins)L.push(n(pins,'PIN request')+' waiting for a PIN.');if(pinBad)L.push(n(pinBad,'PIN request')+' failed. Check the PINs tab.');
-  try{if(SM&&smCan()){const mine=(SM.posts||[]).filter(smNeedsMe).length+(SM.jobs||[]).filter(smJNeedsMe).length,back=(SM.posts||[]).filter(p=>p.status==='draft'&&p.review_status==='changes_requested').length;
-    if(mine)L.push(n(mine,'post or job','posts or jobs')+' waiting for your approval.');if(back&&smMine().role==='editor')L.push(n(back,'post')+' sent back for changes.')}}catch(e){}
-  try{const gt=gateToday();if(gt&&ops)L.push(gt.say);const ah=gateAhead(7);if(ah.length)L.push('Heads up: Garden City gates closed '+new Date(ah[0].d+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})+' for '+ah[0].n+'.')}catch(e){}
-  try{const ks=kpiSay();if(ks&&ops)L.push(ks)}catch(e){}
-  if(PNEWS&&prefs().news){if(PNEWS.alerts.length)L.push(n(PNEWS.alerts.length,'new GPA notice')+'. Check Georgia Ports news below.');else if(PNEWS.news[0]&&Date.now()-new Date(PNEWS.news[0].d+'T12:00:00').getTime()<2*864e5)L.push('Port news: '+PNEWS.news[0].t+'.')}
-  if(MD){const all=MD.open.concat(MD.close),left=all.filter(i=>!MD.done[i]);const part=hr<12?MD.open.filter(i=>!MD.done[i]):left;
-    if(all.length)L.push(left.length?n(left.length,'item')+' left on your My day checklist'+(part[0]?'. Next: '+part[0].replace(/\(.*?\)/g,'').trim()+'.':'.'):'Your My day checklist is done. Nice work.')}
-  const hi=(hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(first?', '+first:'')+'.';return {hi,L}}
+// ---- TIME-AWARE BRIEFING (owner request 10/30/2026; Perplexity research): "delta-first". First Listen of the day = the picture;
+// later Listens = what changed since your last one + the next deadline. Greeting and content follow Savannah time:
+// overnight 12-4 AM, opening 4-9, execution 9-11:30, midday 11:30-1:30, cut-off prep 1:30-3, cut-off crunch 3-4:30 (no news or
+// motivation), close-out 4:30-6, evening hand-off 6-midnight. Saturday uses Saturday gate times; Sunday and closed holidays = prep for the next port day.
+const BR_PH=[[0,'night','Overnight update'],[240,'open','Opening plan'],[540,'exec','Morning update'],[690,'mid','Midday update'],[810,'prep','Afternoon priorities'],[900,'crunch','Cut-off watch'],[990,'close','Close-out'],[1080,'eve','Evening hand-off']];
+function brPhase(d){d=d||new Date();const m=d.getHours()*60+d.getMinutes();let p=BR_PH[0];BR_PH.forEach(x=>{if(m>=x[0])p=x});return {k:p[1],label:p[2],m}}
+function brGreet(d,first){const h=(d||new Date()).getHours(),n=first?', '+first:'';return h<4?'Hi'+n+'. Here is your overnight update.':h<12?'Good morning'+n+'.':h<17?'Good afternoon'+n+'.':'Good evening'+n+'.'}
+function brPortDay(d){const G=PNEWS&&PNEWS.gates,x=new Date(d||Date.now());x.setHours(12,0,0,0);for(let i=0;i<8;i++){const dow=x.getDay(),iso=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  const hol=G&&(G.holidays||[]).find(h=>h.d===iso&&/closed/i.test(h.gct));if(dow!==0&&!hol)return {d:new Date(x),sat:dow===6};x.setDate(x.getDate()+1)}return {d:x,sat:false}}
+function brCut(sat){return sat?{pick:930,drop:960,reefer:null,g4:1020}:{pick:990,drop:1020,reefer:975,g4:1080}} // minutes after midnight (GPA published times)
+const brMin=m=>{const h=Math.floor(m/60),mi=m%60;return (h%12||12)+(mi?':'+String(mi).padStart(2,'0'):'')+(h<12?' AM':' PM')};
+const brIn=x=>x>=60?Math.floor(x/60)+' hour'+(x>=120?'s':'')+(x%60?' '+x%60+' minutes':''):x+' minutes';
+function brSnap(){const S=Y().S||{},ci=Y().contInfo||(x=>x),all=[...((S.cont&&S.cont.inYard)||[]),...((S.cont&&S.cont.open)||[])].map(ci),PT=Y().PT||{rows:[]},PN=Y().PN;let A=[];try{A=attVisible()}catch(e){}
+  const pt=(PT.rows||[]).filter(x=>x.t>=day0(Date.now()));let md=null;if(MD){const it=MD.open.concat(MD.close);md=it.filter(i=>!MD.done[i]).length}
+  return {t:Date.now(),att:A.length,red:A.filter(a=>a[0]==='r').length,late:all.filter(x=>x.cls==='late').length,warn:all.filter(x=>x.cls==='warn').length,moves:pt.length,out:pt.filter(x=>x.dir==='OUT').length,inn:pt.filter(x=>x.dir==='IN').length,
+    pins:PN&&PN.rows?PN.rows.filter(p=>p.st==='handoff').length:null,pinBad:PN&&PN.rows?PN.rows.filter(p=>p.st==='failed').length:0,md}}
+function brLines(){const S=Y().S||{},me=S.me||{},r=roles(),P=prefs(),first=P.nick||String(me.n||'').split(' ')[0],L=[],now=new Date(),ph=brPhase(now),sn=brSnap();
+  const n=(k,s,p)=>k+' '+(k===1?s:(p||s+'s'));const ops=r.includes('admin')||r.includes('yard')||r.includes('pin')||r.includes('gate')||!r.includes('limited');
+  const td=brPortDay(ph.k==='eve'?new Date(now.getTime()+864e5):now),today=td.d.toDateString()===now.toDateString(),cut=brCut(td.sat),dayName=td.d.toLocaleDateString(undefined,{weekday:'long'});
+  // 1. safety / urgent first
+  if(sn.att)L.push((sn.red?n(sn.red,'urgent item')+' and ':'')+n(sn.att,'item')+(sn.att===1&&!sn.red?' needs':' need')+' attention.');else L.push('Nothing needs attention right now.');
+  if(ops&&sn.late)L.push(n(sn.late,'box','boxes')+' on per diem.');
+  if(ops&&sn.warn)L.push(n(sn.warn,'box','boxes')+' with free time ending today or tomorrow.');
+  if(sn.pinBad)L.push(n(sn.pinBad,'PIN request')+' failed. Check the PINs tab.');
+  // 2. the clock: what matters right now
+  const P1=x=>{if(x)L.push(x)};
+  if(!today||ph.k==='eve'||ph.k==='night'){
+    const gt=brGateSay(td);P1((today?'Later today. ':'Next port day is '+(td.d.getTime()-now.getTime()<1.5*864e5?'tomorrow, '+dayName:dayName)+'. ')+gt);
+    if(sn.pins)P1(n(sn.pins,'PIN request')+' still waiting for a PIN. Get them ready before the gates open.');
+    if(ops&&ph.k==='eve'&&sn.moves)P1('Today we made '+n(sn.moves,'port move')+', '+sn.out+' out and '+sn.inn+' in.');
+  }else if(ph.k==='open'){P1(brGateSay(td));if(sn.pins)P1(n(sn.pins,'PIN request')+' waiting for a PIN.');try{const k=kpiSay();if(ops&&k)P1(k)}catch(e){}}
+  else if(ph.k==='exec'||ph.k==='mid'){if(ops)P1(sn.moves?n(sn.moves,'port move')+' so far today, '+sn.out+' out and '+sn.inn+' in.':'No port moves logged yet today.');if(sn.pins)P1(n(sn.pins,'PIN request')+' waiting for a PIN.');
+    try{const b=kpiHours();if(b&&ph.m/60>=b.from&&ph.m/60<b.to)P1('Gates are in the busy stretch until '+hr12(b.to)+'. Expect longer turn times.')}catch(e){}}
+  else if(ph.k==='prep'||ph.k==='crunch'){const left=cut.pick-ph.m;
+    if(left>0)P1('Dry pick-up cut-off is '+brMin(cut.pick)+(ph.k==='crunch'?', '+brIn(left)+' from now':'')+'.'+(cut.reefer&&ph.k==='crunch'?' Reefer pick-up cut-off '+brMin(cut.reefer)+'.':''));
+    if(sn.pins)P1(n(sn.pins,'PIN request')+' still waiting for a PIN. Those moves are at risk.');if(ops&&sn.moves)P1(n(sn.moves,'port move')+' so far today.')}
+  else if(ph.k==='close'){P1(ph.m>=cut.pick?'Dry pick-up cut-off has passed. Drop-offs until '+brMin(cut.drop)+(cut.g4?', Gate 4 closes '+brMin(cut.g4):'')+'.':'');if(ops&&sn.moves)P1(n(sn.moves,'port move')+' today, '+sn.out+' out and '+sn.inn+' in.');if(sn.pins)P1(n(sn.pins,'PIN request')+' still open. Roll them to tomorrow or cancel them.')}
+  try{const ah=gateAhead(7);if(ah.length)L.push('Heads up: Garden City gates closed '+new Date(ah[0].d+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})+' for '+ah[0].n+'.')}catch(e){}
+  try{if(SM&&smCan()){const mine=(SM.posts||[]).filter(smNeedsMe).length+(SM.jobs||[]).filter(smJNeedsMe).length;if(mine)L.push(n(mine,'post or job','posts or jobs')+' waiting for your approval.')}}catch(e){}
+  if(sn.md!=null&&MD){const part=ph.m<720?MD.open.filter(i=>!MD.done[i]):MD.open.concat(MD.close).filter(i=>!MD.done[i]);if(MD.open.concat(MD.close).length)L.push(sn.md?n(sn.md,'item')+' left on My day'+(part[0]?'. Next: '+part[0].replace(/\(.*?\)/g,'').trim()+'.':'.'):'Your My day checklist is done. Nice work.')}
+  if(P.news!==false&&PNEWS&&ph.k!=='crunch'){if(PNEWS.alerts.length)L.push(n(PNEWS.alerts.length,'new GPA notice')+'. Check Georgia Ports news below.');else if(PNEWS.news[0]&&Date.now()-new Date(PNEWS.news[0].d+'T12:00:00').getTime()<2*864e5)L.push('Port news: '+PNEWS.news[0].t+'.')}
+  return {hi:brGreet(now,P.noName?'':first),L,ph,sn,mot:P.mot&&ph.k!=='crunch'}}
+function brGateSay(td){const G=PNEWS&&PNEWS.gates;if(td.sat)return 'Saturday: Gate 4 only, 8 AM to 5 PM, dry boxes only. Pick-up cut-off 3:30, drop-off 4.';
+  try{const g=gateToday();if(g&&!g.closed&&td.d.toDateString()===new Date().toDateString())return g.say}catch(e){}return 'Garden City gates 3 and 8 open 6 AM, Gate 4 opens 4 AM. Dry pick-up cut-off 4:30 PM.'}
+// What to say out loud. Short = 3 lines, Full = 7. Repeat Listens in the same day (within 5 hours) say only what changed.
+function brText(){const B=brLines(),P=prefs(),st=brState(),last=st.snap&&st.snapDay===brToday()?st.snap:null,max=P.len==='short'?3:7;
+  if(last&&Date.now()-last.t<5*3600000){const d=[],s=B.sn,n=(k,a,b)=>k+' '+(k===1?a:b),at=new Date(last.t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+    const dv=(k,up,down)=>{const x=(s[k]||0)-(last[k]||0);if(s[k]==null||last[k]==null||!x)return;d.push(x>0?up(x):down(-x))};
+    dv('moves',x=>n(x,'more port move','more port moves')+', '+s.moves+' today',x=>'');dv('pins',x=>n(x,'new PIN request','new PIN requests'),x=>n(x,'PIN request','PIN requests')+' cleared');
+    dv('att',x=>n(x,'new item needs','new items need')+' attention',x=>n(x,'item','items')+' cleared from Needs attention');dv('late',x=>n(x,'more box','more boxes')+' on per diem',x=>n(x,'box','boxes')+' off per diem');dv('md',x=>'',x=>n(x,'My day item','My day items')+' done');
+    const crit=B.L.filter(l=>/cut-off|busy stretch|failed|urgent|Next port day|Later today/i.test(l)).slice(0,2);
+    return [d.filter(Boolean).length?'Since your last update at '+at+': '+d.filter(Boolean).join('. ')+'.':'No changes since '+at+'.'].concat(crit).join(' ')}
+  return [B.hi].concat(B.L.slice(0,max),B.mot&&P.len!=='short'?[brMot()]:[]).join(' ')}
 const BR_MOT=["Every box we move on time is a promise kept. Let's keep a lot of promises today.","Safe beats fast, and smooth is fast. Have a strong one.","The port doesn't wait, and neither do we. Let's go get it.","Small things done right add up to a great day. You've got this.","One move at a time. Clean paperwork, safe miles, happy customers.","Today is a fresh start. Make it count.","Good teams talk early. Flag problems fast and we'll fix them together.","You make this operation run. Thank you for showing up.","Stay sharp, stay safe, and finish strong.","Pros check twice and move once. Let's be pros today.","Win the morning and the rest of the day follows.","Nobody does it alone. Lean on the team, and be someone the team can lean on.","Hustle with a plan. That's how we grow.","Treat every customer like our best customer.","Busy is good. Organized busy is better.","A good attitude is contagious. Spread it around the yard.","Progress, not perfection. Keep moving forward.","Today's effort is tomorrow's reputation.","Take care of the details and the big things take care of themselves.","Be proud of the work. It moves the whole port.","Stay calm, stay clear, stay in touch. That's how we win the day.","Every call answered and every gate move logged builds trust. Keep it up.","Hard days build strong teams. We've got each other.","Let's make it a zero-incident day.","Do the next right thing, then the next one.","Your work keeps freight moving and families fed. That matters.","Start strong, check in often, finish clean.","Consistency beats intensity. Show up and do it right again today.","Great things are built one load at a time.","Thanks for being part of 2FF and 1 Stop. Let's have a great day."];
 function brMot(){const d=new Date(),k=d.getFullYear()*400+d.getMonth()*32+d.getDate();const n=String(((Y().S||{}).me||{}).n||'');let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%997;return BR_MOT[(k+h)%BR_MOT.length]}
 let BR_SPEAK=false,BR_AUD=null,BR_MP3=null;
@@ -2757,20 +2811,19 @@ let BR_SPEAK=false,BR_AUD=null,BR_MP3=null;
 // The audio element is unlocked inside the tap (silent clip) because the MP3 arrives a second later. Same text replays from memory
 // (no new charge). If the server can't make audio (limit, offline, not deployed yet) it falls back to the phone voice.
 function brSilent(){const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,t)=>{for(let i=0;i<t.length;i++)b[o+i]=t.charCodeAt(i)};w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);b.fill(128,44);let s='';b.forEach(x=>s+=String.fromCharCode(x));return 'data:audio/wav;base64,'+btoa(s)}
-function brText(){const {hi,L}=brLines();return [hi,'Here is your briefing.'].concat(L.slice(0,7),prefs().mot?[brMot()]:[]).join(' ')}
 function brReset(btn){BR_SPEAK=false;btn.classList.remove('on');btn.textContent='▶ Listen'}
 function brStop(btn){try{if(BR_AUD){BR_AUD.pause();BR_AUD.onended=null}}catch(e){}try{speechSynthesis.cancel()}catch(e){}brReset(btn)}
 function brSpeak(btn){if(BR_SPEAK){brStop(btn);return}
-  const text=brText(),a=BR_AUD||(BR_AUD=new Audio());a.setAttribute('playsinline','');a.preload='auto';
+  const text=brText(),snap=brSnap(),P=prefs(),vo={voice:P.voice,speed:P.rate,tone:P.tone},key=text+'|'+JSON.stringify(vo),a=BR_AUD||(BR_AUD=new Audio());a.setAttribute('playsinline','');a.preload='auto';
   try{a.src=brSilent();a.play().catch(()=>{})}catch(e){}
   BR_SPEAK=true;btn.classList.add('on');btn.textContent='… Getting audio';brSave({heard:brToday()});
-  const play=mp3=>{if(!BR_SPEAK)return;a.onended=()=>brReset(btn);a.onerror=()=>{brReset(btn);brSpeakLocal(btn,text)};a.src='data:audio/mpeg;base64,'+mp3;a.playbackRate=prefs().rate||1;
-    a.play().then(()=>{btn.textContent='■ Stop'}).catch(()=>{brReset(btn);brSpeakLocal(btn,text)})};
-  if(BR_MP3&&BR_MP3.t===text){play(BR_MP3.m);return}
+  const play=mp3=>{if(!BR_SPEAK)return;a.onended=()=>brReset(btn);a.onerror=()=>{brReset(btn);brSpeakLocal(btn,text)};a.src='data:audio/mpeg;base64,'+mp3;
+    a.play().then(()=>{btn.textContent='■ Stop';brSave({snap,snapDay:brToday()})}).catch(()=>{brReset(btn);brSpeakLocal(btn,text)})};
+  if(BR_MP3&&BR_MP3.t===key){play(BR_MP3.m);return}
   if(!Y().call||!navigator.onLine){brReset(btn);brSpeakLocal(btn,text);return}
-  Y().call('aiTts',[{text}]).then(d=>{if(!d||!d.mp3)throw new Error('no audio');BR_MP3={t:text,m:d.mp3};play(d.mp3)}).catch(e=>{if(!BR_SPEAK)return;brReset(btn);brSpeakLocal(btn,text,String(e&&e.message||e))})}
+  Y().call('aiTts',[Object.assign({text},vo)]).then(d=>{if(!d||!d.mp3)throw new Error('no audio');BR_MP3={t:key,m:d.mp3};play(d.mp3)}).catch(e=>{if(!BR_SPEAK)return;brReset(btn);brSpeakLocal(btn,text,String(e&&e.message||e))})}
 // Backup: the phone's own voice (free, works offline; silent if the Ring/Silent switch is on).
-function brSpeakLocal(btn,text,why){const ss=window.speechSynthesis;if(why&&/4 times/.test(why)){brTip(btn,why);}
+function brSpeakLocal(btn,text,why){const ss=window.speechSynthesis;if(why&&/times today|budget/.test(why)){brTip(btn,why);}
   if(!ss||typeof SpeechSynthesisUtterance==='undefined'){brTip(btn);return}
   const u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=prefs().rate||1;
   const v=(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang)&&/Samantha|Ava|Allison|Google US English|Natural/i.test(x.name))||(ss.getVoices()||[]).find(x=>/en-US/.test(x.lang));if(v)u.voice=v;
@@ -2782,10 +2835,11 @@ function brTip(btn,msg){let t=btn.parentNode.parentNode.querySelector('.bTip');i
 function renderBrief(){const S=Y().S||{};if(!S.me)return;let b=$('tBrief');if(!b){b=el('div');b.id='tBrief';const h=$('tMy')||$('tHello');if(!h)return;h.after(b)}if(!prefs().brief){b.textContent='';try{renderNews()}catch(e){}return}
   const st=brState(),hidden=st.hid===brToday();b.textContent='';
   if(hidden){const m=el('button','briefMini','▶ Today\'s briefing');m.type='button';m.addEventListener('click',()=>{brSave({hid:''});renderBrief()});b.append(m);return}
-  const {L}=brLines(),c=el('div','brief'),h=el('div','bH');h.append(el('b','','Your shift briefing'),el('span','meta',new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})));c.append(h);
-  const ul=el('ul');L.slice(0,7).forEach(t=>ul.append(el('li','',t)));c.append(ul);if(prefs().mot)c.append(el('p','bMot',brMot()));
-  const row=el('div','bRow'),p=el('button','bPlay',BR_SPEAK?'■ Stop':'▶ Listen'),x=el('button','bX','Hide for today');p.type=x.type='button';p.setAttribute('aria-label','Read my briefing out loud, about 15 seconds');
-  p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{brStop(p);brSave({hid:brToday()});renderBrief()});row.append(p,x);c.append(row);b.append(c)}
+  const B=brLines(),c=el('div','brief'),h=el('div','bH');h.append(el('b','',B.ph.label),el('span','meta',new Date().toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})));c.append(h,el('div','bHi',B.hi));
+  const ul=el('ul');B.L.slice(0,prefs().len==='short'?3:7).forEach(t=>ul.append(el('li','',t)));c.append(ul);if(B.mot)c.append(el('p','bMot',brMot()));
+  {const s=brState();if(s.snap&&s.snapDay===brToday())c.append(el('div','bLast','Last listened '+new Date(s.snap.t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+'. Listen again for just what changed.'))}
+  const row=el('div','bRow'),p=el('button','bPlay',BR_SPEAK?'■ Stop':'▶ Listen'),x=el('button','bX','Hide for today');p.type=x.type='button';p.setAttribute('aria-label','Read my briefing out loud');const vb=el('button','bX','Voice ›');vb.type='button';vb.addEventListener('click',()=>myOpen(false,'voice'));
+  p.addEventListener('click',()=>brSpeak(p));x.addEventListener('click',()=>{brStop(p);brSave({hid:brToday()});renderBrief()});row.append(p,vb,x);c.append(row);b.append(c)}
 setInterval(()=>{try{renderToday()}catch(e){}},60000);
 all();
 })();
