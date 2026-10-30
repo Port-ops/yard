@@ -2237,7 +2237,7 @@ document.body.append(nav);document.body.classList.add('tabs');
 const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
-port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks']],
+port:[['moves','Gate moves'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 sales:[['work','Find work'],['quotes','Quotes'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['settings','Settings']],
@@ -2347,6 +2347,7 @@ function attention(){const S=Y().S||{},A=[],ci=Y().contInfo||(x=>x);
   if(WT&&WT.rows&&canWatch())WT.rows.filter(r=>r.st==='available').forEach(r=>A.push(['y',r.c+': available to pull','GPA says it is ready'+(r.lfd?' · LFD '+(typeof r.lfd==='number'?fmtD(r.lfd):r.lfd):'')+(r.load?' · '+r.load:'')+'. Request the PIN.','port','#wList li[data-c="'+r.c+'"]']));
   const PT=Y().PT;if(PT){const hr=new Date().getHours(),dow=new Date().getDay(),age=PT.lastSync?Date.now()-PT.lastSync:1e12;
     if(dow>0&&dow<6&&hr>=7&&hr<19&&age>3*3600000&&!(PT.lastNotify&&Date.now()-PT.lastNotify<3600000))A.push(['y','Port data is '+(PT.lastSync?Math.round(age/3600000)+' h':'not')+' synced','Run Port Sync from GPA WebAccess (goes away when the GPA API is on).','port','#portSec'])}
+  try{if(CRED&&CRED.rows&&(can('safety')))CRED.rows.forEach(c=>{const d=crDays(c.exp);if(d==null||d>14)return;A.push([d<0?'r':'y',c.who+': '+c.kind+(d<0?' expired '+(-d)+'d ago':d===0?' expires today':' expires in '+d+'d'),d<0?'Do not send to the port until renewed. GPA Credentialing (912) 963-5539.':'Renew now. GPA Credentialing Mon-Fri 6 AM-5:30 PM, (912) 963-5539.','port','#credSec'])})}catch(e){}
   A.sort((a,b)=>(a[0]==='r'?0:1)-(b[0]==='r'?0:1));return A}
 
 // "Done" on Needs attention (owner request 10/30/2026): hides an item on this phone once you've handled it. If the problem gets
@@ -2694,6 +2695,44 @@ function myOpen(first,focus){const p=prefs(),d={...p},S=el('div','myS'),c=el('di
   const e=el('div','end'),sv=el('button','btn','Save'),sk=el('button','btn2',first?'Skip for now':'Cancel');sv.type=sk.type='button';
   sv.addEventListener('click',()=>{prefSave(Object.assign(d,{asked:true}));S.remove();try{renderToday()}catch(x){}});sk.addEventListener('click',()=>{if(first)prefSave({asked:true});S.remove();try{renderToday()}catch(x){}});e.append(sk,sv);c.append(e);
   S.addEventListener('click',ev=>{if(ev.target===S)S.remove()});if(focus==='voice')setTimeout(()=>{try{$('myVoice').scrollIntoView({block:'start'})}catch(e){}},50)}
+
+// ---- PORT > CREDENTIALS (owner request 10/30/2026; GPA credentialing page + Perplexity research) ----
+// Dates that keep each driver and truck able to work Garden City: TWIC, GPA badge, facial recognition, tractor RFID tag,
+// plus company items. Dates only, never card or badge numbers. The server checks every weekday morning on Google's servers
+// and emails Richard at 60, 30 and 7 days and on expiry (Mondays: full list), so nobody's computer has to be on.
+// GPA has no public API for badge/RFID status, so "Verified" = the date someone looked at the card or the GPA portal.
+let CRED=null;
+const credSec=mk('credSec','port','cred','<h2>Port credentials <span class="t" id="crN">TWIC · GPA badge · RFID</span></h2>'+
+'<div class="pnews" id="crInfo"></div><div id="crList"></div><div id="crForm"></div>');
+{const tg=$('tagSec');if(tg)tg.after(credSec);else wrap.append(credSec)}
+const crDays=e=>e?Math.round((new Date(e+'T12:00:00').getTime()-day0(Date.now()))/864e5):null;
+function credInfo(){const b=$('crInfo');if(!b||b.dataset.done)return;b.dataset.done='1';
+  const h=el('div','pH');h.append(el('b','','GPA Credentialing Center'),el('span','meta','official GPA'));b.append(h,
+  el('div','','102 Main Street (GPA Annex 2), Garden City, GA 31408 · Mon–Fri 6:00 AM – 5:30 PM · closed weekends and holidays'),
+  el('div','meta','Drivers who visit the terminal 5+ times a year need a GPA badge and a TWIC. Every tractor needs a GPA RFID tag. First GPA badge is free; lost badge $25. Facial recognition lanes need the TWIC on file (not the PIN). Report a driver who leaves right away in the GPA portal.'));
+  const row=el('div','');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';
+  const L=[['Call credentialing','tel:+19129635539','btn'],['GPA credential portal','https://webapps.gaports.com/Registration/main.html','btn2'],['TWIC renewal (TSA)','https://www.tsa.gov/twic','btn2'],['Facial recognition rules','https://gaports.com/wp-content/uploads/2026/05/260522-GPA-Facial-Recognition-Guidelines.pdf','btn2'],['Credentialing page','https://gaports.com/departments/protective-services-2/credentialing/','btn2']];
+  L.forEach(([t,u,c])=>{const a=el('a',c,t);a.href=u;if(!/^tel:/.test(u)){a.target='_blank';a.rel='noopener'}row.append(a)});b.append(row)}
+function loadCred(){if(!Y().call||!navigator.onLine||!(can('safety')||can('pin')||can('gate')||can('yard')))return;Y().call('getCreds',[{}]).then(d=>{CRED=d;renderCred();try{renderToday()}catch(e){}}).catch(e=>{CRED={rows:[],err:String(e&&e.message||e)};renderCred()})}
+function renderCred(){credInfo();const L=$('crList'),F=$('crForm');if(!L)return;L.textContent='';F.textContent='';
+  if(!CRED){L.append(el('p','meta','Loading…'));return}if(CRED.err){L.append(el('p','meta',CRED.err));return}
+  const rows=CRED.rows.slice().sort((a,b)=>(crDays(a.exp)??99999)-(crDays(b.exp)??99999));
+  const bad=rows.filter(r=>{const d=crDays(r.exp);return d!=null&&d<=30}).length;$('crN').textContent=rows.length?(bad?bad+' due within 30 days · ':'')+rows.length+' tracked':'TWIC · GPA badge · RFID';
+  if(!rows.length)L.append(el('p','help','Nothing tracked yet. Add each driver\'s TWIC and GPA badge expiry and each truck\'s RFID tag below. Dates only: never type card or badge numbers.'));
+  const ul=el('ul','cboard');rows.forEach(r=>{const d=crDays(r.exp),cls=d==null?'':d<0?'r':d<=30?'y':'g',li=el('li',cls);
+    li.append(el('b','',r.who+' · '+r.kind),el('span','',(d==null?'No expiry date on file':d<0?'EXPIRED '+(-d)+' days ago':d===0?'Expires TODAY':'Expires in '+d+' days')+(r.exp?' ('+new Date(r.exp+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+')':'')+(r.ver?' · checked '+r.ver+(r.by?' by '+r.by:''):'')+(r.note?' · '+r.note:'')));
+    if(CRED.edit){const e=el('button','btn2','Edit');e.type='button';e.addEventListener('click',()=>credForm(r));li.append(e)}ul.append(li)});L.append(ul);
+  if(CRED.edit){const a=el('button','btn','+ Add a credential');a.type='button';a.addEventListener('click',()=>credForm({}));F.append(a)}}
+function credForm(r){const F=$('crForm');F.textContent='';const f=el('form','gpaCard');f.append(el('b','',r.id?'Update '+r.who+' · '+r.kind:'Add a credential'));
+  const who=el('input');who.placeholder='Driver name or truck #';who.value=r.who||'';const kind=el('select');(CRED.kinds||['TWIC','GPA badge','RFID tag']).forEach(k=>{const o=el('option','',k);o.value=k;if(k===r.kind)o.selected=true;kind.append(o)});
+  const lab=(t,i)=>{const l=el('label','');l.style.cssText='display:flex;flex-direction:column;gap:2px;font-size:13px';l.append(el('span','',t),i);return l};
+  const exp=el('input');exp.type='date';exp.value=r.exp||'';const ver=el('input');ver.type='date';ver.value=r.ver||brToday();const note=el('input');note.placeholder='Note (optional) · no card numbers';note.value=r.note||'';
+  const msg=el('div','meta'),sv=el('button','btn','Save'),cx=el('button','btn2','Cancel');sv.type='submit';cx.type='button';cx.addEventListener('click',()=>{F.textContent='';renderCred()});
+  f.append(who,kind,lab('Expires',exp),lab('Checked on (you looked at the card or the GPA portal)',ver),note,msg);const btns=el('div','');btns.style.cssText='display:flex;gap:8px';btns.append(sv,cx);
+  if(r.id){const del=el('button','btn2','Remove');del.type='button';del.addEventListener('click',()=>{if(!confirm('Remove '+r.who+' · '+r.kind+'?'))return;Y().call('saveCred',[{id:r.id,del:true}]).then(d=>{CRED.rows=d.rows;renderCred()}).catch(e=>{msg.textContent=String(e&&e.message||e)})});btns.append(del)}f.append(btns);
+  f.addEventListener('submit',ev=>{ev.preventDefault();sv.disabled=true;msg.textContent='Saving…';Y().call('saveCred',[{id:r.id||'',who:who.value,kind:kind.value,exp:exp.value,ver:ver.value,note:note.value}]).then(d=>{CRED.rows=d.rows;F.textContent='';renderCred();try{renderToday()}catch(e){}}).catch(e=>{sv.disabled=false;msg.textContent=String(e&&e.message||e)})});
+  F.append(f);who.focus()}
+setTimeout(loadCred,4000);setInterval(()=>{if(document.visibilityState==='visible')loadCred()},60*60000);
 window.yardMyOpen=()=>myOpen(false);let PNEWS=null;
 function loadNews(){if(!Y().call||!navigator.onLine)return;Y().call('getPortNews',[{}]).then(d=>{PNEWS=d;try{renderNews();renderBrief();renderGates()}catch(e){}}).catch(()=>{})}
 setTimeout(loadNews,3500);setInterval(()=>{if(document.visibilityState==='visible')loadNews()},60*60000);
