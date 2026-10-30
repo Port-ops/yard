@@ -1,5 +1,5 @@
 // Keeps the Yard App screens on the phone so it opens with no signal.
-const CACHE='yardbeta-a872752a53';const FILES=["./","index.html","logo.png","icon-192.png","icon-512.png","apple-touch-icon.png","fonts/fonts.css","fonts/IBMPlexMono-500.woff2","fonts/Lato-400.woff2","fonts/Lato-700.woff2","fonts/Oswald-500.woff2","fonts/Oswald-600.woff2"];
+const CACHE='yardbeta-ddd69ca6c3';const FILES=["./","index.html","logo.png","icon-192.png","icon-512.png","apple-touch-icon.png","fonts/fonts.css","fonts/IBMPlexMono-500.woff2","fonts/Lato-400.woff2","fonts/Lato-700.woff2","fonts/Oswald-500.woff2","fonts/Oswald-600.woff2"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE&&k.indexOf('yardbeta-')===0&&!(k.indexOf('yardbeta-')===0&&'yardbeta-'==='yard-')).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin)return;
