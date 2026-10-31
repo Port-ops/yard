@@ -3017,14 +3017,84 @@ const pl=$('pList');let PF='all';
 if(pl){const fc=el('div','fchips');fc.id='pChips';[['all','All'],['today','Today'],['OUT','Out-gates'],['IN','In-gates']].forEach(([k,l])=>{const b=el('button',k==='all'?'on':'',l);b.type='button';b.dataset.k=k;
   b.addEventListener('click',()=>{PF=k;fc.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));decoratePort()});fc.append(b)});pl.before(fc)}
 
+// ---------- Texts (RingCentral SMS from the company lines) · owner 10/31/2026 ----------
+// Each person sees their own line; admins see every line except Richard's own (Richard-only). Pulled every 5 min.
+const txSec=mk('txSec','texts','inbox','<h2>Texts <span class="t" id="txAsof">RingCentral texts from your company line</span></h2>'+
+ '<div class="kpis" id="txK"></div><div class="fchips" id="txLn"></div><div class="fchips" id="txF"></div>'+
+ '<div class="drow"><input id="txQ" placeholder="Search name, number or words" autocomplete="off" style="text-transform:none;flex:1"><button class="btn2" type="button" id="txAll">Mark all read</button></div>'+
+ '<div class="txW"><div class="txL" id="txL"></div><div class="txT" id="txT"><p class="t txPh">Pick a conversation.</p></div></div>');
+txSec.hidden=true;wrap.append(txSec);
+{const st=el('style');st.textContent=
+'.txW{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:12px;align-items:start}'+
+'.txL{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--panel,#fff);max-height:70vh;overflow-y:auto}'+
+'.txI{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 12px;border:0;border-bottom:1px solid var(--line2,#eef1f6);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}'+
+'.txI:hover{background:var(--line2,#eef1f6)}.txI.on{background:rgba(31,42,92,.08);box-shadow:inset 3px 0 0 var(--brand,#1F2A5C)}'+
+'.txI b{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.txI .tm{font-size:12px;color:var(--muted);white-space:nowrap}'+
+'.txI .sn{grid-column:1/-1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.txI.un b,.txI.un .sn{color:var(--ink)}'+
+'.txI .ln{font-size:11.5px;color:var(--muted)}.txI .u{background:var(--accent,#C8102E);color:#fff;border-radius:9px;padding:0 6px;font-size:11.5px;font-weight:700;justify-self:end}'+
+'.txI .wt{color:var(--warn,#a15c00);font-weight:600}'+
+'.txT{border:1px solid var(--line);border-radius:12px;background:var(--panel,#fff);min-height:320px;display:flex;flex-direction:column}'+
+'.txH{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line)}.txH b{font-size:16px}.txH .t{flex:1}'+
+'.txB{display:flex;flex-direction:column;gap:6px;padding:12px;max-height:56vh;overflow-y:auto}'+
+'.txM{max-width:78%;padding:7px 11px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:14.5px;line-height:1.35}'+
+'.txM.in{align-self:flex-start;background:var(--line2,#eef1f6);border-bottom-left-radius:4px}.txM.out{align-self:flex-end;background:var(--brand,#1F2A5C);color:#fff;border-bottom-right-radius:4px}'+
+'.txM small{display:block;font-size:11px;opacity:.7;margin-top:2px}.txDay{align-self:center;font-size:11.5px;color:var(--muted);margin:6px 0 2px}'+
+'.txC{border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:6px}.txC textarea{font:inherit;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:44px}'+
+'.txN{font-size:13px;color:var(--muted);padding:0 12px 10px}.txN p{margin:3px 0}.txBack{display:none}.txPh{padding:16px}'+
+'@media (max-width:760px){.txW{grid-template-columns:1fr}.txL{max-height:none}.txW.open .txL{display:none}.txW:not(.open) .txT{display:none}.txBack{display:inline-flex}.txB{max-height:none}}';
+document.head.append(st)}
+let TX=null,TXLN='',TXF='all',TXC=null,TXQ='',TXOK=false,TXBusy=false;
+const txFmtN=n=>{const d=String(n||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6):String(n||'')};
+const txLine=num=>((TX&&TX.lines)||[]).find(l=>l.number===num)||{};
+const txWait=t=>t.dir==='Inbound'&&(Date.now()-new Date(t.at).getTime())>10*60000&&(Date.now()-new Date(t.at).getTime())<3*86400000;
+function loadTX(force){if(!Y().call||!navigator.onLine||TXBusy)return;if(!force&&TAB!=='texts'&&TX)return;TXBusy=true;
+  Y().call('getTexts',[{line:TXLN,q:TXQ}]).then(d=>{TX=d;TXOK=!!(d&&d.lines&&d.lines.length);renderTX();try{tabVis()}catch(e){}}).catch(e=>{TXOK=false;try{tabVis()}catch(x){}$('txAsof').textContent=(e&&e.message)||'Could not load texts.'}).finally(()=>{TXBusy=false})}
+function renderTX(){txSec.hidden=!TXOK;if(!TX)return;const T=TX.threads||[];
+  $('txAsof').textContent=(TX.lines.length===1?'Line '+txFmtN(TX.lines[0].number)+' · ':TX.lines.length+' lines · ')+'updated every 5 min · as of '+new Date(TX.at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  const un=T.filter(t=>t.unread>0),wait=T.filter(txWait),today=T.filter(t=>new Date(t.at)>=new Date(new Date().setHours(0,0,0,0)));
+  const K=$('txK');K.textContent='';[['Unread',un.length],['Waiting on us 10+ min',wait.length],['Active today',today.length],['Conversations',T.length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),el('span','',l));K.append(d)});
+  const LN=$('txLn');LN.hidden=TX.lines.length<2;if(TX.lines.length>1)slChips(LN,[['','All lines',null]].concat(TX.lines.map(l=>[l.number,(l.person||'').split(' ')[0]+(TX.mine.includes(l.number)?' (mine)':''),null])),TXLN,k=>{TXLN=k;TXC=null;loadTX(true)});
+  slChips($('txF'),[['all','All',T.length],['unread','Unread',un.length],['wait','Waiting on us',wait.length],['drivers','Drivers',T.filter(t=>/driver/i.test(t.kind||'')).length],['group','Group texts',T.filter(t=>t.group).length]],TXF,k=>{TXF=k;renderTX()});
+  const rows=T.filter(t=>TXF==='all'||(TXF==='unread'?t.unread>0:TXF==='wait'?txWait(t):TXF==='drivers'?/driver/i.test(t.kind||''):t.group));
+  const L=$('txL');L.textContent='';if(!rows.length)L.append(el('p','t txPh',T.length?'Nothing here.':'No texts in the last 45 days.'));
+  rows.forEach(t=>{const b=el('button','txI'+(t.unread>0?' un':'')+(TXC&&TXC.conv===t.conv&&TXC.number===t.number?' on':''));b.type='button';
+    b.append(el('b','',(t.group?'👥 ':'')+(t.name||txFmtN(t.other))+(t.group?' +'+Math.max(0,(t.n||1)-1):'')),el('span','tm',qAgo(t.at)));
+    const ln=el('span','ln');ln.textContent=(TX.lines.length>1?(txLine(t.number).person||'').split(' ')[0]+' · ':'')+(t.kind?t.kind+' · ':'')+(t.name?txFmtN(t.other):'');b.append(ln);
+    if(t.unread>0)b.append(el('span','u',String(t.unread)));else if(txWait(t))b.append(el('span','tm wt','reply?'));else b.append(el('span',''));
+    b.append(el('span','sn',(t.dir==='Outbound'?'You: ':'')+(t.media?'📷 ':'')+(t.body||(t.media?'Photo':''))));
+    b.addEventListener('click',()=>txOpen(t));L.append(b)});
+  try{const n=T.filter(t=>TX.mine.includes(t.number)&&(t.unread>0||txWait(t))).length;const bd=tabBtn('texts').querySelector('.bdg');bd.textContent=n?String(n):'';subBadge('texts','inbox',un.length,wait.length>0)}catch(e){}
+  if(TXC){const cur=T.find(t=>t.conv===TXC.conv&&t.number===TXC.number);if(cur&&new Date(cur.at).getTime()!==TXC.last)txOpen(cur,true)}}
+function txOpen(t,quiet){TXC={conv:t.conv,number:t.number,last:new Date(t.at).getTime(),t};const W=txSec.querySelector('.txW');W.classList.add('open');
+  const P=$('txT');if(!quiet){P.textContent='';P.append(el('p','t txPh','Loading…'))}
+  Y().call('textThread',[{number:t.number,conv:t.conv}]).then(d=>{if(!TXC||TXC.conv!==t.conv)return;t.unread=0;txDraw(t,d);renderTX()}).catch(e=>{P.textContent='';P.append(el('p','t txPh',(e&&e.message)||'Could not open.'))})}
+function txDraw(t,d){const P=$('txT');P.textContent='';const ln=txLine(t.number),H=el('div','txH');
+  const bk=el('button','btn2 txBack','‹ Back');bk.type='button';bk.addEventListener('click',()=>{txSec.querySelector('.txW').classList.remove('open');TXC=null;renderTX()});H.append(bk);
+  H.append(el('b','',(t.group?'👥 Group text':(t.name||txFmtN(t.other)))),el('span','t',(t.group?(t.n||'')+' people':txFmtN(t.other))+' · on '+(ln.person||'')+"'s line "+txFmtN(t.number)));
+  if(!t.group){const cp=el('button','btn2','Copy number');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(txFmtN(t.other));cp.textContent='Copied ✓'}catch(e){}});H.append(cp)}
+  P.append(H);const B=el('div','txB');let lastDay='';
+  (d.msgs||[]).forEach(m=>{const dt=new Date(m.at),dk=dt.toDateString();if(dk!==lastDay){lastDay=dk;B.append(el('div','txDay',dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})))}
+    const b=el('div','txM '+(m.dir==='Outbound'?'out':'in'));b.append(document.createTextNode((m.body||'')+(m.media?(m.body?'\n':'')+'📷 '+m.media+' photo'+(m.media>1?'s':'')+' (open in RingCentral)':'')));
+    b.append(el('small','',(t.group&&m.dir==='Inbound'?(m.fname||txFmtN(m.from))+' · ':'')+(m.dir==='Outbound'&&m.fname?m.fname.split(' ')[0]+' · ':'')+dt.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+(m.st&&m.dir==='Outbound'&&m.st!=='Delivered'&&m.st!=='Sent'?' · '+m.st:'')));B.append(b)});
+  P.append(B);setTimeout(()=>{B.scrollTop=B.scrollHeight},20);
+  const N=el('div','txN');(d.notes||[]).slice(0,5).forEach(n=>{N.append(el('p','','📝 '+n.note+' — '+(n.who||'')+', '+qAgo(n.at)))});P.append(N);
+  const C=el('div','txC'),mine=TX.mine.includes(t.number);
+  if(TX.send&&mine){/* send turns on after the person connects their own RingCentral */}
+  else{const p=el('p','t');p.innerHTML=mine?'Reply from the RingCentral app for now. Replying right here turns on once you connect your own RingCentral (one-time, coming next).':'This is '+((ln.person||'their').split(' ')[0])+"'s line. Only they can text from it.";C.append(p);
+    const a=el('div','drow');const o=el('a','btn','Reply in RingCentral ↗');o.href='https://app.ringcentral.com/messages';o.target='_blank';o.rel='noopener';if(mine)a.append(o);
+    const nb=el('button','btn2','Add note');nb.type='button';nb.addEventListener('click',()=>{const v=prompt('Note for the team (only in DockRelay, the driver/customer never sees it):','');if(!v)return;nb.disabled=true;Y().call('textNote',[{number:t.number,conv:t.conv,note:v}]).then(d2=>txDraw(t,d2)).catch(e=>{alert((e&&e.message)||'Could not save.');nb.disabled=false})});a.append(nb);C.append(a)}
+  P.append(C)}
+$('txQ').addEventListener('input',(()=>{let tm;return e=>{clearTimeout(tm);tm=setTimeout(()=>{TXQ=e.target.value.trim();loadTX(true)},450)}})());
+$('txAll').addEventListener('click',e=>{const b=e.target;b.disabled=true;Y().call('textsSeenAll',[{line:TXLN}]).then(d=>{TX=d;renderTX()}).catch(x=>alert((x&&x.message)||'Could not save.')).finally(()=>{b.disabled=false})});
+setTimeout(()=>loadTX(true),4000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='texts')loadTX(true)},60000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB!=='texts')loadTX(true)},5*60000);
 const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
 // ---------- 3. bottom tab bar ----------
-const IC={ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+const IC={texts:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H10l-4 3.5V16H4z"/><path d="M8 9h8M8 12h6"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg>',
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
 reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',sales:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',owner:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M12 15v2"/></svg>',social:'<svg viewBox="0 0 24 24"><path d="M4 11v2a1 1 0 001 1h2l5 4V6L7 10H5a1 1 0 00-1 1z"/><path d="M16 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['owner','Owner'],['ask','Ask AI']];
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','Texts'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['owner','Owner'],['ask','Ask AI']];
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
@@ -3034,6 +3104,7 @@ const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port fee
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
+texts:[['inbox','Texts']],
 sales:[['work','Find work'],['quotes','Quote desk'],['viewers','Profile viewers'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
@@ -3118,7 +3189,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)close
 '.msItem i{position:absolute;top:6px;right:8px;font:700 10px/16px inherit;font-style:normal;min-width:16px;height:16px;border-radius:8px;padding:0 4px;background:#b42318;color:#fff}.msItem i.y{background:#e0a100}.msNote{font-size:12.5px;color:var(--muted);margin:12px 2px 0}';document.head.append(st)}
 
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan()};['tasks','yard','reports','gps','safety','port','sales','social','owner'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),texts:TXOK};['tasks','yard','reports','gps','safety','port','sales','social','owner','texts'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   try{pinTabs()}catch(e){console.warn('pinTabs',e);inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)'}
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
