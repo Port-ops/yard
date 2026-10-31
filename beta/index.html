@@ -3122,11 +3122,11 @@ function renderTD(){tdSec.hidden=!TXOK;if(!TD)return;const T=TD.tasks||[],me=TD.
   const rows=(TDF==='mine'?mine:TDF==='open'?open:TDF==='late'?late:TDF==='free'?open.filter(t=>!t.owner):done),L=$('tdL');L.textContent='';
   if(!rows.length)L.append(el('p','t txPh',TDF==='done'?'Nothing closed in the last 24 hours.':'Nothing waiting. 👍'));
   rows.forEach(t=>{const c=el('div','tdC'+(tdLate(t)?' late':'')+(t.urgent?' urg':'')+(t.status==='done'?' done':'')),h=el('div','h');
-    h.append(el('span','k',t.kind==='voicemail'?'🎙 Voicemail':t.kind==='text'?'💬 Text':t.kind==='ai_message'?'🤖 After-hours message':'📞 Missed call'),el('b','',(t.urgent?'⚑ ':'')+(t.other_name||txFmtN(t.other_number))));
+    h.append(el('span','k',t.kind==='voicemail'?'🎙 Voicemail':t.kind==='text'?'💬 Text':t.kind==='ai_message'?'🤖 Carter took a message':'📞 Missed call'),el('b','',(t.urgent?'⚑ ':'')+(t.other_name||txFmtN(t.other_number))));
     h.append(el('span','du '+(t.status==='done'?'ok':tdLate(t)?'late':''),t.status==='done'?'✓ '+(t.outcome||'done')+' · '+(t.done_by||''):t.status==='snoozed'?'snoozed until '+new Date(t.snooze_until).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):tdIn(t.due_at)));c.append(h);
     c.append(el('span','m',[t.other_name?txFmtN(t.other_number):'',t.line==='main'?'Main line':t.line?'Line: '+((txLine(t.line).person||'').split(' ')[0]||txFmtN(t.line)):'',qAgo(t.last_at),t.hits>1?t.hits+' tries':'',t.owner?'Owner: '+t.owner:'No owner yet'].filter(Boolean).join(' · ')));
     if(t.preview&&(t.kind==='text'||t.kind==='ai_message'||(t.kind==='voicemail'&&/^🎙/.test(t.preview))))c.append(el('div','p','“'+t.preview+'”'));
-    if(t.ai_note&&t.status!=='done'){const n=t.ai_note,x=el('div','ai');x.append(el('b','','🤖 Callback prep (AI draft, check before using)'));
+    if(t.ai_note&&t.status!=='done'){const n=t.ai_note,x=el('div','ai');x.append(el('b','','🤖 Carter · callback prep (draft, check before using)'));
       x.append(el('span','',[n.priority?'':'',n.who].filter(Boolean).join('')));if(n.priority){const pr=el('span','pr '+n.priority,n.priority==='now'?'Call now':n.priority==='today'?'Call today':'Routine');x.prepend(pr)}
       if(n.likely_need)x.append(el('span','','Likely need: '+n.likely_need));if(n.callback_script)x.append(el('span','','Say: “'+n.callback_script+'”'));if(n.watch_out)x.append(el('span','w','⚠ '+n.watch_out));c.append(x)}
     if(t.status!=='done'){const a=el('div','a'),B=(lab,fn,cls)=>{const b=el('button',cls||'btn2',lab);b.type='button';b.addEventListener('click',()=>fn(b));a.append(b);return b};
@@ -3145,13 +3145,13 @@ function renderTD(){tdSec.hidden=!TXOK;if(!TD)return;const T=TD.tasks||[],me=TD.
   try{subBadge('texts','todo',open.length,late.length>0);const bd=tabBtn('texts').querySelector('.bdg');const n=late.length+mine.filter(t=>!tdLate(t)).length;bd.textContent=n?String(n):''}catch(e){}}
 setTimeout(loadTD,5000);{let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='texts'||n%8===0))loadTD()},15000)}
 // ---- AI brain: CEO brief + proposals (Richard only). The AI proposes; Richard decides. ----
-const brSec=mk('brSec','owner','brain','<h2>CEO brief <span class="t" id="brAsof">AI · proposes only, you decide</span></h2><div id="brB"></div><h3>Proposals waiting for you</h3><div id="brL"></div><p class="t" id="brCost"></p>');
+const brSec=mk('brSec','owner','brain','<h2>Carter · CEO brief <span class="t" id="brAsof">proposes only, you decide</span></h2><div id="brB"></div><h3>Proposals waiting for you</h3><div id="brL"></div><p class="t" id="brCost"></p>');
 brSec.hidden=true;wrap.append(brSec);let BR=null;
 function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR()}).catch(()=>{brSec.hidden=true;BR=null})}
-function brAct(a,status,btn){const note=status==='rejected'?prompt('Why not? (teaches the AI)',''):'';if(note===null)return;if(btn)btn.disabled=true;Y().call('brainAct',[{id:a.id,status,note:note||''}]).then(d=>{BR=d;renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
+function brAct(a,status,btn){const note=status==='rejected'?prompt('Why not? (teaches Carter)',''):'';if(note===null)return;if(btn)btn.disabled=true;Y().call('brainAct',[{id:a.id,status,note:note||''}]).then(d=>{BR=d;renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
 function renderBR(){if(!BR)return;brSec.hidden=false;const B=$('brB');B.textContent='';const br=BR.brief,b=br&&br.body;
   if(!b){B.append(el('p','t','No brief yet. The first one runs at 6:07 AM.'))}else{
-    $('brAsof').textContent='written '+new Date(br.at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})+' · AI proposes, you decide';
+    $('brAsof').textContent='written '+new Date(br.at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})+' · Carter proposes, you decide';
     B.append(el('div','brH',b.headline||''));
     if((b.scorecard||[]).length){const g=el('div','brSc');b.scorecard.forEach(m=>{const d=el('div',m.read||'');d.append(el('b','',m.value||''),el('div','t',m.metric||''),el('div','t',m.note||''));g.append(d)});B.append(g)}
     const list=(title,arr,fn)=>{if(!(arr||[]).length)return;const c=el('div','brC');c.append(el('h3','',title));const u=el('ul');arr.forEach(x=>u.append(el('li','',fn(x))));c.append(u);B.append(c)};
