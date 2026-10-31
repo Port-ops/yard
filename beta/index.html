@@ -1130,6 +1130,7 @@ const BYH=[[/^Search|Container lookup/,'today'],[/^Chassis location report/,'yar
   if(!t)for(const [re,tab] of BYH)if(re.test(h.trim())){t=tab;break}
   s.dataset.tab=t||'tasks'});
 [...wrap.children].filter(d=>d.tagName==='DIV'&&!d.dataset.tab).forEach(d=>d.dataset.tab='tasks');
+{const f=wrap.querySelector(':scope > footer');if(f)f.dataset.tab='yard'} // yard-sheet note belongs on the Yard tab only
 const h1=document.querySelector('header h1');if(h1){h1.textContent='DockRelay';if(/\/beta\//.test(location.pathname))h1.append(el('span','betaflag','BETA'))}
 
 // ---------- 2. Today section ----------
@@ -3064,7 +3065,7 @@ function renderTX(){txSec.hidden=!TXOK;if(!TX)return;const T=[],gs={};(TX.thread
     if(t.unread>0)b.append(el('span','u',String(t.unread)));else if(txWait(t))b.append(el('span','tm wt','reply?'));else b.append(el('span',''));
     b.append(el('span','sn',(t.dir==='Outbound'?'You: ':'')+(t.media?'📷 ':'')+(t.body||(t.media?'Photo':''))));
     b.addEventListener('click',()=>txOpen(t));L.append(b)});
-  try{const n=T.filter(t=>TX.mine.includes(t.number)&&(t.unread>0||txWait(t))).length;const bd=tabBtn('texts').querySelector('.bdg');bd.textContent=n?String(n):'';subBadge('texts','inbox',un.length,wait.length>0)}catch(e){}
+  try{subBadge('texts','inbox',un.length,wait.length>0)}catch(e){}
   if(TXC){const cur=T.find(t=>t.conv===TXC.conv&&t.number===TXC.number);if(cur&&new Date(cur.at).getTime()!==TXC.last)txOpen(cur,true)}}
 function txOpen(t,quiet){TXC={conv:t.conv,number:t.number,last:new Date(t.at).getTime(),t};const W=txSec.querySelector('.txW');W.classList.add('open');
   const P=$('txT');if(!quiet){P.textContent='';P.append(el('p','t txPh','Loading…'))}
@@ -3091,7 +3092,44 @@ function txDraw(t,d){const P=$('txT');P.textContent='';const ln=txLine(t.number)
   P.append(C)}
 $('txQ').addEventListener('input',(()=>{let tm;return e=>{clearTimeout(tm);tm=setTimeout(()=>{TXQ=e.target.value.trim();loadTX(true)},450)}})());
 $('txAll').addEventListener('click',e=>{const b=e.target;b.disabled=true;Y().call('textsSeenAll',[{line:TXLN}]).then(d=>{TX=d;renderTX()}).catch(x=>alert((x&&x.message)||'Could not save.')).finally(()=>{b.disabled=false})});
-setTimeout(()=>loadTX(true),4000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='texts')loadTX(true)},60000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB!=='texts')loadTX(true)},5*60000);
+setTimeout(()=>loadTX(true),4000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='texts')loadTX(true)},15000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB!=='texts')loadTX(true)},5*60000);
+// ---- RingCentral > To-do: shared callback list (one task per caller/texter, owner + deadline) ----
+const tdSec=mk('tdSec','texts','todo','<h2>Phone to-do <span class="t" id="tdAsof">every missed call, voicemail and unanswered text gets one owner and a deadline</span></h2><div class="kpis" id="tdK"></div><div class="fchips" id="tdF"></div><div id="tdL"></div><p class="t" style="margin-top:10px">Deadline: 5 minutes during office hours (Mon–Fri 8–7, Sat 8–1), otherwise 8:05 AM next business day. A task closes itself when anyone at 2FF calls or texts that number back.</p>');
+tdSec.hidden=true;wrap.append(tdSec);
+{const st=el('style');st.textContent='.tdC{border:1px solid var(--line);border-radius:12px;background:var(--panel,#fff);padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:5px}.tdC.late{border-color:var(--stop,#b42318);box-shadow:inset 3px 0 0 var(--stop,#b42318)}.tdC.urg{box-shadow:inset 3px 0 0 var(--accent,#C8102E)}.tdC.done{opacity:.6}'+
+'.tdC .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tdC .h b{font-size:15.5px}.tdC .k{font-size:12px;font-weight:700;border-radius:8px;padding:1px 8px;background:var(--line2,#eef1f6)}.tdC .du{margin-left:auto;font-size:12.5px;font-weight:650}.tdC .du.late{color:var(--stop,#b42318)}.tdC .du.ok{color:var(--ok,#1f7a44)}'+
+'.tdC .m{font-size:12.5px;color:var(--muted)}.tdC .p{font-size:14px;white-space:pre-wrap}.tdC .a{display:flex;gap:6px;flex-wrap:wrap}.tdC select{font:inherit;font-size:13px;padding:4px;border-radius:8px;border:1px solid var(--line)}';document.head.append(st)}
+let TD=null,TDF='mine';
+const tdLate=t=>t.status!=='done'&&t.status!=='snoozed'&&new Date(t.due_at)<new Date();
+const tdIn=v=>{const m=(new Date(v)-Date.now())/60000;return m<0?Math.round(-m)<60?Math.round(-m)+' min late':Math.round(-m/60)+' h late':m<60?'due in '+Math.max(1,Math.round(m))+' min':'due '+new Date(v).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})};
+function loadTD(){if(!TXOK||!Y().call)return;Y().call('getTasks',[{}]).then(d=>{TD=d;renderTD()}).catch(e=>{$('tdAsof').textContent=(e&&e.message)||'Could not load the to-do list.'})}
+function tdAct(t,action,extra,btn){if(btn)btn.disabled=true;Y().call('taskAct',[Object.assign({id:t.id,action},extra||{})]).then(d=>{TD=d;renderTD()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
+function renderTD(){tdSec.hidden=!TXOK;if(!TD)return;const T=TD.tasks||[],me=TD.me,open=T.filter(t=>t.status!=='done'),late=open.filter(tdLate),mine=open.filter(t=>t.owner===me||(!t.owner&&TD.mine.includes(t.line))),done=T.filter(t=>t.status==='done');
+  const mins=done.map(t=>(new Date(t.done_at)-new Date(t.first_at))/60000).filter(x=>x>=0).sort((a,b)=>a-b),med=mins.length?mins[Math.floor(mins.length/2)]:null;
+  const K=$('tdK');K.textContent='';[['Open',open.length],['Late',late.length],['Mine',mine.length],['Unclaimed',open.filter(t=>!t.owner).length],['Done (24 h)',done.length],['Median time to handle',med==null?'–':med<60?Math.round(med)+' min':(med/60).toFixed(1)+' h']].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),el('span','',l));K.append(d)});
+  slChips($('tdF'),[['mine','Mine',mine.length],['open','All open',open.length],['late','Late',late.length],['free','Unclaimed',open.filter(t=>!t.owner).length],['done','Done',done.length]],TDF,k=>{TDF=k;renderTD()});
+  const rows=(TDF==='mine'?mine:TDF==='open'?open:TDF==='late'?late:TDF==='free'?open.filter(t=>!t.owner):done),L=$('tdL');L.textContent='';
+  if(!rows.length)L.append(el('p','t txPh',TDF==='done'?'Nothing closed in the last 24 hours.':'Nothing waiting. 👍'));
+  rows.forEach(t=>{const c=el('div','tdC'+(tdLate(t)?' late':'')+(t.urgent?' urg':'')+(t.status==='done'?' done':'')),h=el('div','h');
+    h.append(el('span','k',t.kind==='voicemail'?'🎙 Voicemail':t.kind==='text'?'💬 Text':'📞 Missed call'),el('b','',(t.urgent?'⚑ ':'')+(t.other_name||txFmtN(t.other_number))));
+    h.append(el('span','du '+(t.status==='done'?'ok':tdLate(t)?'late':''),t.status==='done'?'✓ '+(t.outcome||'done')+' · '+(t.done_by||''):t.status==='snoozed'?'snoozed until '+new Date(t.snooze_until).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):tdIn(t.due_at)));c.append(h);
+    c.append(el('span','m',[t.other_name?txFmtN(t.other_number):'',t.line==='main'?'Main line':t.line?'Line: '+((txLine(t.line).person||'').split(' ')[0]||txFmtN(t.line)):'',qAgo(t.last_at),t.hits>1?t.hits+' tries':'',t.owner?'Owner: '+t.owner:'No owner yet'].filter(Boolean).join(' · ')));
+    if(t.preview&&t.kind==='text')c.append(el('div','p','“'+t.preview+'”'));
+    if(t.status!=='done'){const a=el('div','a'),B=(lab,fn,cls)=>{const b=el('button',cls||'btn2',lab);b.type='button';b.addEventListener('click',()=>fn(b));a.append(b);return b};
+      if(t.owner!==me)B(t.owner?'Take it':'Claim',b=>tdAct(t,'claim',null,b),'btn');
+      B('📞 Call back',b=>txCallNum(t.other_number,b));
+      B('💬 Text',b=>{const v=prompt('Text '+(t.other_name||txFmtN(t.other_number))+' from your line:',t.kind==='text'?'':'Hi, this is 2FF Logistics returning your call. How can we help?');if(v&&v.trim()){b.disabled=true;Y().call('textSend',[{to:t.other_number,text:v.trim(),source:'todo'}]).then(()=>tdAct(t,'done',{outcome:'Texted back'})).catch(x=>{alert(((x&&x.message)||'Not sent.').replace('NOT_CONNECTED: ',''));b.disabled=false})}});
+      B('Done',b=>{const v=prompt('What happened? (e.g. "quoted $650", "driver at gate, sorted", "spam")','');if(v===null)return;tdAct(t,'done',{outcome:v||'Handled'},b)});
+      const s=el('select');[['','Snooze…'],['30','30 min'],['120','2 hours'],['960','Tomorrow']].forEach(([v,l])=>{const o=el('option','',l);o.value=v;s.append(o)});s.addEventListener('change',()=>{if(s.value)tdAct(t,'snooze',{mins:+s.value})});a.append(s);
+      B(t.urgent?'⚑ Not urgent':'⚑ Urgent',b=>tdAct(t,'urgent',null,b));
+      if(t.kind==='text'&&t.line&&t.source_ref)B('Open thread',()=>{sub('texts','inbox');txOpen({number:t.line,conv:t.source_ref,other:t.other_number,name:t.other_name,at:t.last_at})});
+      if(TD.admin){const s2=el('select');[['','Assign to…']].concat((TD.team||[]).map(n=>[n,n])).forEach(([v,l])=>{const o=el('option','',l);o.value=v;s2.append(o)});s2.addEventListener('change',()=>{if(s2.value)tdAct(t,'assign',{owner:s2.value})});a.append(s2)}
+      if(t.owner===me)B('Release',b=>tdAct(t,'release',null,b));
+      c.append(a)}
+    L.append(c)});
+  $('tdAsof').textContent='updated '+new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+' · '+open.length+' open';
+  try{subBadge('texts','todo',open.length,late.length>0);const bd=tabBtn('texts').querySelector('.bdg');const n=late.length+mine.filter(t=>!tdLate(t)).length;bd.textContent=n?String(n):''}catch(e){}}
+setTimeout(loadTD,5000);{let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='texts'||n%8===0))loadTD()},15000)}
 // ---- Connect my RingCentral (one time per person) ----
 let TXME=null;
 function txConnectBox(box,why){const d=el('div','txCx');d.append(el('b','','Connect your RingCentral (one time)'),el('p','t',why||'So you can text and call from your own 2FF line inside DockRelay. You sign in on RingCentral\'s own page; DockRelay never sees your password.'));
@@ -3130,7 +3168,7 @@ function renderCL(){clSec.hidden=!TXOK;if(!CL)return;const C=CL.calls||[];
       if(clOpen(c)){const hb=el('button','btn2','Mark handled');hb.type='button';hb.addEventListener('click',()=>{const n=prompt('What happened? (optional)','');if(n===null)return;hb.disabled=true;Y().call('callHandled',[{id:c.id,note:n,line:TXLN}]).then(d=>{CL=d;renderCL()}).catch(x=>{alert((x&&x.message)||'Could not save.');hb.disabled=false})});a.append(hb)}r.append(a)}
     L.append(r)});
   try{subBadge('texts','calls',open.length,open.length>0)}catch(e){}}
-setInterval(()=>{if(document.visibilityState==='visible'&&TXOK)loadCL()},2*60000);
+{let m=0;setInterval(()=>{m++;if(document.visibilityState==='visible'&&TXOK&&(TAB==='texts'||m%6===0))loadCL()},20000)}
 const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
 // ---------- 3. bottom tab bar ----------
 const IC={texts:'<svg viewBox="0 0 24 24"><path d="M6.6 3.5h2.7l1.4 4-2 1.4a12 12 0 006.4 6.4l1.4-2 4 1.4v2.7a2 2 0 01-2.2 2A16.6 16.6 0 014.6 5.7a2 2 0 012-2.2z"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -3148,7 +3186,7 @@ const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port fee
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
-texts:[['inbox','Texts'],['calls','Calls']],
+texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls']],
 sales:[['work','Find work'],['quotes','Quote desk'],['viewers','Profile viewers'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
