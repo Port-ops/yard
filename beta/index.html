@@ -3040,8 +3040,8 @@ txSec.hidden=true;wrap.append(txSec);
 '.txM.in{align-self:flex-start;background:var(--line2,#eef1f6);border-bottom-left-radius:4px}.txM.out{align-self:flex-end;background:var(--brand,#1F2A5C);color:#fff;border-bottom-right-radius:4px}'+
 '.txM small{display:block;font-size:11px;opacity:.7;margin-top:2px}.txDay{align-self:center;font-size:11.5px;color:var(--muted);margin:6px 0 2px}'+
 '.txC{border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:6px}.txC textarea{font:inherit;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:44px}'+
-'.txN{font-size:13px;color:var(--muted);padding:0 12px 10px}.txN p{margin:3px 0}.txBack{display:none}.txPh{padding:16px}'+
-'@media (max-width:760px){.txW{grid-template-columns:1fr}.txL{max-height:none}.txW.open .txL{display:none}.txW:not(.open) .txT{display:none}.txBack{display:inline-flex}.txB{max-height:none}}';
+'.txN{font-size:13px;color:var(--muted);padding:0 12px 10px}.txN p{margin:3px 0}.txT .txBack{display:none!important}.txPh{padding:16px}'+
+'@media (max-width:760px){.txW{grid-template-columns:1fr}.txL{max-height:none}.txW.open .txL{display:none}.txW:not(.open) .txT{display:none}.txT .txBack{display:inline-flex!important}.txB{max-height:none}.txH .t{flex-basis:100%;order:3}}';
 document.head.append(st)}
 let TX=null,TXLN='',TXF='all',TXC=null,TXQ='',TXOK=false,TXBusy=false;
 const txFmtN=n=>{const d=String(n||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6):String(n||'')};
@@ -3059,7 +3059,7 @@ function renderTX(){txSec.hidden=!TXOK;if(!TX)return;const T=TX.threads||[];
   const L=$('txL');L.textContent='';if(!rows.length)L.append(el('p','t txPh',T.length?'Nothing here.':'No texts in the last 45 days.'));
   rows.forEach(t=>{const b=el('button','txI'+(t.unread>0?' un':'')+(TXC&&TXC.conv===t.conv&&TXC.number===t.number?' on':''));b.type='button';
     b.append(el('b','',(t.group?'👥 ':'')+(t.name||txFmtN(t.other))+(t.group?' +'+Math.max(0,(t.n||1)-1):'')),el('span','tm',qAgo(t.at)));
-    const ln=el('span','ln');ln.textContent=(TX.lines.length>1?(txLine(t.number).person||'').split(' ')[0]+' · ':'')+(t.kind?t.kind+' · ':'')+(t.name?txFmtN(t.other):'');b.append(ln);
+    const ln=el('span','ln');ln.textContent=[TX.lines.length>1?(txLine(t.number).person||'').split(' ')[0]:'',t.kind||'',t.name?txFmtN(t.other):''].filter(Boolean).join(' · ');b.append(ln);
     if(t.unread>0)b.append(el('span','u',String(t.unread)));else if(txWait(t))b.append(el('span','tm wt','reply?'));else b.append(el('span',''));
     b.append(el('span','sn',(t.dir==='Outbound'?'You: ':'')+(t.media?'📷 ':'')+(t.body||(t.media?'Photo':''))));
     b.addEventListener('click',()=>txOpen(t));L.append(b)});
