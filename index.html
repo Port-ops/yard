@@ -3122,10 +3122,10 @@ function renderTD(){tdSec.hidden=!TXOK;if(!TD)return;const T=TD.tasks||[],me=TD.
   const rows=(TDF==='mine'?mine:TDF==='open'?open:TDF==='late'?late:TDF==='free'?open.filter(t=>!t.owner):done),L=$('tdL');L.textContent='';
   if(!rows.length)L.append(el('p','t txPh',TDF==='done'?'Nothing closed in the last 24 hours.':'Nothing waiting. 👍'));
   rows.forEach(t=>{const c=el('div','tdC'+(tdLate(t)?' late':'')+(t.urgent?' urg':'')+(t.status==='done'?' done':'')),h=el('div','h');
-    h.append(el('span','k',t.kind==='voicemail'?'🎙 Voicemail':t.kind==='text'?'💬 Text':'📞 Missed call'),el('b','',(t.urgent?'⚑ ':'')+(t.other_name||txFmtN(t.other_number))));
+    h.append(el('span','k',t.kind==='voicemail'?'🎙 Voicemail':t.kind==='text'?'💬 Text':t.kind==='ai_message'?'🤖 After-hours message':'📞 Missed call'),el('b','',(t.urgent?'⚑ ':'')+(t.other_name||txFmtN(t.other_number))));
     h.append(el('span','du '+(t.status==='done'?'ok':tdLate(t)?'late':''),t.status==='done'?'✓ '+(t.outcome||'done')+' · '+(t.done_by||''):t.status==='snoozed'?'snoozed until '+new Date(t.snooze_until).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):tdIn(t.due_at)));c.append(h);
     c.append(el('span','m',[t.other_name?txFmtN(t.other_number):'',t.line==='main'?'Main line':t.line?'Line: '+((txLine(t.line).person||'').split(' ')[0]||txFmtN(t.line)):'',qAgo(t.last_at),t.hits>1?t.hits+' tries':'',t.owner?'Owner: '+t.owner:'No owner yet'].filter(Boolean).join(' · ')));
-    if(t.preview&&t.kind==='text')c.append(el('div','p','“'+t.preview+'”'));
+    if(t.preview&&(t.kind==='text'||t.kind==='ai_message'||(t.kind==='voicemail'&&/^🎙/.test(t.preview))))c.append(el('div','p','“'+t.preview+'”'));
     if(t.status!=='done'){const a=el('div','a'),B=(lab,fn,cls)=>{const b=el('button',cls||'btn2',lab);b.type='button';b.addEventListener('click',()=>fn(b));a.append(b);return b};
       if(t.owner!==me)B(t.owner?'Take it':'Claim',b=>tdAct(t,'claim',null,b),'btn');
       B('📞 Call back',b=>txCallNum(t.other_number,b));
