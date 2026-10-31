@@ -3046,10 +3046,11 @@ document.head.append(st)}
 let TX=null,TXLN='',TXF='all',TXC=null,TXQ='',TXOK=false,TXBusy=false;
 const txFmtN=n=>{const d=String(n||'').replace(/\D/g,'').replace(/^1(?=\d{10}$)/,'');return d.length===10?'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6):String(n||'')};
 const txLine=num=>((TX&&TX.lines)||[]).find(l=>l.number===num)||{};
-const txWait=t=>t.dir==='Inbound'&&(Date.now()-new Date(t.at).getTime())>10*60000&&(Date.now()-new Date(t.at).getTime())<3*86400000;
+const TX_ACK=/^\s*(ok(ay)?|k|kk|thanks?( you)?|thx|ty|got it|copy( that)?|received|will do|sounds good|yes|yep|no problem|np|cool|perfect|great|alright|all right|10-4)?[\s.!👍🏾👍🏽👍🏼👍🏿👍🙏✅😊😆😂]*$/i;
+const txWait=t=>!t.group&&t.dir==='Inbound'&&!TX_ACK.test(t.body||'')&&(Date.now()-new Date(t.at).getTime())>10*60000&&(Date.now()-new Date(t.at).getTime())<86400000;
 function loadTX(force){if(!Y().call||!navigator.onLine||TXBusy)return;if(!force&&TAB!=='texts'&&TX)return;TXBusy=true;
-  Y().call('getTexts',[{line:TXLN,q:TXQ}]).then(d=>{TX=d;TXOK=!!(d&&d.lines&&d.lines.length);renderTX();try{tabVis()}catch(e){}}).catch(e=>{TXOK=false;try{tabVis()}catch(x){}$('txAsof').textContent=(e&&e.message)||'Could not load texts.'}).finally(()=>{TXBusy=false})}
-function renderTX(){txSec.hidden=!TXOK;if(!TX)return;const T=TX.threads||[];
+  Y().call('getTexts',[{line:TXLN,q:TXQ}]).then(d=>{TX=d;TXOK=!!(d&&d.lines&&d.lines.length);renderTX();if(!TXME)try{txMe();loadCL()}catch(e){}try{tabVis()}catch(e){}}).catch(e=>{TXOK=false;try{tabVis()}catch(x){}$('txAsof').textContent=(e&&e.message)||'Could not load texts.'}).finally(()=>{TXBusy=false})}
+function renderTX(){txSec.hidden=!TXOK;if(!TX)return;const T=[],gs={};(TX.threads||[]).forEach(t=>{if(!t.group){T.push(t);return}const g=gs[t.conv];if(!g){gs[t.conv]=t;T.push(t);return}if(TX.mine.includes(t.number)&&!TX.mine.includes(g.number)){T[T.indexOf(g)]=t;gs[t.conv]=t}});
   $('txAsof').textContent=(TX.lines.length===1?'Line '+txFmtN(TX.lines[0].number)+' · ':TX.lines.length+' lines · ')+'updated every 5 min · as of '+new Date(TX.at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
   const un=T.filter(t=>t.unread>0),wait=T.filter(txWait),today=T.filter(t=>new Date(t.at)>=new Date(new Date().setHours(0,0,0,0)));
   const K=$('txK');K.textContent='';[['Unread',un.length],['Waiting on us 10+ min',wait.length],['Active today',today.length],['Conversations',T.length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),el('span','',l));K.append(d)});
@@ -3078,15 +3079,55 @@ function txDraw(t,d){const P=$('txT');P.textContent='';const ln=txLine(t.number)
     b.append(el('small','',(t.group&&m.dir==='Inbound'?(m.fname||txFmtN(m.from))+' · ':'')+(m.dir==='Outbound'&&m.fname?m.fname.split(' ')[0]+' · ':'')+dt.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+(m.st&&m.dir==='Outbound'&&m.st!=='Delivered'&&m.st!=='Sent'?' · '+m.st:'')));B.append(b)});
   P.append(B);setTimeout(()=>{B.scrollTop=B.scrollHeight},20);
   const N=el('div','txN');(d.notes||[]).slice(0,5).forEach(n=>{N.append(el('p','','📝 '+n.note+' — '+(n.who||'')+', '+qAgo(n.at)))});P.append(N);
-  const C=el('div','txC'),mine=TX.mine.includes(t.number);
-  if(TX.send&&mine){/* send turns on after the person connects their own RingCentral */}
-  else{const p=el('p','t');p.innerHTML=mine?'Reply from the RingCentral app for now. Replying right here turns on once you connect your own RingCentral (one-time, coming next).':'This is '+((ln.person||'their').split(' ')[0])+"'s line. Only they can text from it.";C.append(p);
-    const a=el('div','drow');const o=el('a','btn','Reply in RingCentral ↗');o.href='https://app.ringcentral.com/messages';o.target='_blank';o.rel='noopener';if(mine)a.append(o);
-    const nb=el('button','btn2','Add note');nb.type='button';nb.addEventListener('click',()=>{const v=prompt('Note for the team (only in DockRelay, the driver/customer never sees it):','');if(!v)return;nb.disabled=true;Y().call('textNote',[{number:t.number,conv:t.conv,note:v}]).then(d2=>txDraw(t,d2)).catch(e=>{alert((e&&e.message)||'Could not save.');nb.disabled=false})});a.append(nb);C.append(a)}
+  const C=el('div','txC'),mine=TX.mine.includes(t.number),a=el('div','drow');
+  const nb=el('button','btn2','Add note');nb.type='button';nb.addEventListener('click',()=>{const v=prompt('Note for the team (only in DockRelay, the driver/customer never sees it):','');if(!v)return;nb.disabled=true;Y().call('textNote',[{number:t.number,conv:t.conv,note:v}]).then(d2=>txDraw(t,d2)).catch(e=>{alert((e&&e.message)||'Could not save.');nb.disabled=false})});
+  if(mine&&!t.group){const ta=el('textarea');ta.rows=2;ta.placeholder='Text from your line '+txFmtN(t.number)+'…';ta.maxLength=1000;const sb=el('button','btn','Send');sb.type='button';const msg=el('span','msg');
+    const go=()=>{const v=ta.value.trim();if(!v)return;sb.disabled=true;msg.textContent='Sending…';Y().call('textSend',[{to:t.other,text:v}]).then(()=>{const b=el('div','txM out');b.append(document.createTextNode(v),el('small','','you · just now · sending'));B.append(b);B.scrollTop=B.scrollHeight;ta.value='';msg.textContent='Sent. It shows in the thread within 5 min.'}).catch(e=>{const m=(e&&e.message)||'Not sent.';if(/NOT_CONNECTED/.test(m)){msg.textContent='';txConnectBox(C,m.replace('NOT_CONNECTED: ',''))}else msg.textContent=m}).finally(()=>{sb.disabled=false})};
+    sb.addEventListener('click',go);ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))go()});C.append(ta);
+    const cb=el('button','btn2','📞 Call');cb.type='button';cb.addEventListener('click',()=>txCallNum(t.other,cb));a.append(sb,cb,nb,msg);C.append(a);
+    C.append(el('p','t','Texts go out from your RingCentral line. Your RingCentral rings first when you tap Call, then it dials them.'))}
+  else{const p=el('p','t');p.textContent=t.group&&mine?'Group texts: reply in the RingCentral app.':'This is '+((ln.person||'their').split(' ')[0])+"'s line. Only they can text from it.";C.append(p);
+    if(mine){const o=el('a','btn2','Open RingCentral ↗');o.href='https://app.ringcentral.com/messages';o.target='_blank';o.rel='noopener';a.append(o)}a.append(nb);C.append(a)}
   P.append(C)}
 $('txQ').addEventListener('input',(()=>{let tm;return e=>{clearTimeout(tm);tm=setTimeout(()=>{TXQ=e.target.value.trim();loadTX(true)},450)}})());
 $('txAll').addEventListener('click',e=>{const b=e.target;b.disabled=true;Y().call('textsSeenAll',[{line:TXLN}]).then(d=>{TX=d;renderTX()}).catch(x=>alert((x&&x.message)||'Could not save.')).finally(()=>{b.disabled=false})});
 setTimeout(()=>loadTX(true),4000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='texts')loadTX(true)},60000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB!=='texts')loadTX(true)},5*60000);
+// ---- Connect my RingCentral (one time per person) ----
+let TXME=null;
+function txConnectBox(box,why){const d=el('div','txCx');d.append(el('b','','Connect your RingCentral (one time)'),el('p','t',why||'So you can text and call from your own 2FF line inside DockRelay. You sign in on RingCentral\'s own page; DockRelay never sees your password.'));
+  const b=el('button','btn','Connect RingCentral');b.type='button';b.addEventListener('click',()=>{b.disabled=true;b.textContent='Opening RingCentral…';Y().call('rcConnect',[{app:location.origin+location.pathname}]).then(r=>{location.href=r.url}).catch(e=>{alert((e&&e.message)||'Could not start.');b.disabled=false;b.textContent='Connect RingCentral'})});d.append(b);box.prepend(d)}
+function txMe(){if(!TX||!TX.mine||!TX.mine.length)return;Y().call('rcMe',[{}]).then(m=>{TXME=m;const old=txSec.querySelector('.txCx');if(old)old.remove();if(!m||!m.connected){const h=el('div');$('txK').before(h);txConnectBox(h)}}).catch(()=>{})}
+{const st=el('style');st.textContent='.txCx{border:1px solid var(--warn,#a15c00);background:var(--warn-bg,#fff4e0);border-radius:12px;padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:6px;align-items:flex-start}.txCx p{margin:0}'+
+ '.clR{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 12px;border-bottom:1px solid var(--line2,#eef1f6)}.clR .m{font-size:12.5px;color:var(--muted)}.clR.miss b{color:var(--stop,#b42318)}.clR .a{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.clR.ok{opacity:.65}';document.head.append(st)}
+{const q=new URLSearchParams(location.search),r=q.get('rc');if(r){const msg=r==='connected'?'✅ RingCentral connected. You can text and call from DockRelay now.':r==='not_setup'?'RingCentral connect is not switched on yet (Richard is finishing the setup).':r==='expired'?'That sign-in link expired. Tap Connect again.':r==='cancelled'?'RingCentral sign-in was cancelled.':/^wrong_user/.test(r)?'You signed in to RingCentral as '+r.split(':')[1]+'. Sign in as yourself.':'RingCentral sign-in failed: '+r.replace(/^failed:/,'');
+  setTimeout(()=>alert(msg),1500);history.replaceState(null,'',location.pathname+'#texts')}}
+function txCallNum(num,btn){if(btn){btn.disabled=true}Y().call('rcCall',[{to:num}]).then(()=>{if(btn)btn.textContent='📞 Ringing your line…';setTimeout(()=>{if(btn){btn.disabled=false;btn.textContent='📞 Call'}},15000)}).catch(e=>{const m=(e&&e.message)||'Could not call.';if(btn){btn.disabled=false;btn.textContent='📞 Call'}if(/NOT_CONNECTED/.test(m)){go('texts');txMe()}alert(m.replace('NOT_CONNECTED: ',''))})}
+// Every tel: / sms: link in DockRelay (applicants, contacts) uses your RingCentral line once you are connected
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href^="tel:"],a[href^="sms:"]');if(!a||!TXME||!TXME.connected)return;
+  const h=a.getAttribute('href'),num=decodeURIComponent(h.replace(/^(tel|sms):/,'').split(/[?&]/)[0]);if(String(num).replace(/\D/g,'').length<10)return;e.preventDefault();
+  if(h.startsWith('tel:')){if(confirm('Call '+txFmtN(num)+' from your 2FF RingCentral line? (Your RingCentral rings first.)'))txCallNum(num)}
+  else{const body=decodeURIComponent((h.split('body=')[1]||'').split('&')[0]);const v=prompt('Text '+txFmtN(num)+' from your 2FF line:',body);if(v&&v.trim())Y().call('textSend',[{to:num,text:v.trim(),source:'link'}]).then(()=>alert('Sent from your RingCentral line.')).catch(x=>alert(((x&&x.message)||'Not sent.').replace('NOT_CONNECTED: ','')))}},true);
+// ---- Calls (RingCentral call log, every 5 min) ----
+const clSec=mk('clSec','texts','calls','<h2>Calls <span class="t" id="clAsof">last 7 days</span></h2><div class="kpis" id="clK"></div><div class="fchips" id="clF"></div><div class="txL" id="clL" style="max-height:none"></div>');
+clSec.hidden=true;wrap.append(clSec);let CL=null,CLF='missed';
+const clOpen=c=>c.missed&&!c.handled_at&&!c.called_back&&!c.texted_back;
+function loadCL(){if(!TXOK||!Y().call)return;Y().call('getCalls',[{line:TXLN}]).then(d=>{CL=d;renderCL()}).catch(e=>{$('clAsof').textContent=(e&&e.message)||'Could not load calls.'})}
+function renderCL(){clSec.hidden=!TXOK;if(!CL)return;const C=CL.calls||[];
+  $('clAsof').textContent=!CL.owner_connected?'Call history starts once Richard connects his RingCentral (it reads the company call log).':'last 7 days · updated every 5 min'+(CL.last?' · as of '+new Date(CL.last).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):'');
+  const open=C.filter(clOpen),td=new Date(new Date().setHours(0,0,0,0)),today=C.filter(c=>new Date(c.at)>=td);
+  const K=$('clK');K.textContent='';[['Missed, not called back',open.length],['Missed today',today.filter(c=>c.missed).length],['Calls today',today.length],['Talk time today',Math.round(today.reduce((s,c)=>s+(c.dur||0),0)/60)+' min']].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),el('span','',l));K.append(d)});
+  slChips($('clF'),[['missed','Missed, open',open.length],['all','All',C.length],['in','Incoming',C.filter(c=>c.dir==='Inbound').length],['out','Outgoing',C.filter(c=>c.dir==='Outbound').length]],CLF,k=>{CLF=k;renderCL()});
+  const rows=C.filter(c=>CLF==='all'||(CLF==='missed'?clOpen(c):CLF==='in'?c.dir==='Inbound':c.dir==='Outbound')),L=$('clL');L.textContent='';
+  if(!rows.length)L.append(el('p','t txPh',CLF==='missed'?'No missed calls waiting. 👍':'No calls.'));
+  rows.forEach(c=>{const r=el('div','clR'+(clOpen(c)?' miss':'')+(c.missed&&!clOpen(c)?' ok':''));const nm=c.name||txFmtN(c.other);
+    r.append(el('b','',(c.dir==='Inbound'?(c.missed?'⚠️ Missed: ':'↙ '):'↗ ')+nm),el('span','m',qAgo(c.at)));
+    r.append(el('span','m',[c.line==='main'?'Main line':(txLine(c.line).person||'').split(' ')[0],c.name?txFmtN(c.other):'',c.result,c.dur?Math.round(c.dur/60)+' min':'',c.vm?'🎙 voicemail':'',c.called_back?'called back ✓':'',c.texted_back?'texted back ✓':'',c.handled_by?'handled by '+c.handled_by:''].filter(Boolean).join(' · ')),el('span',''));
+    if(c.other&&String(c.other).replace(/\D/g,'').length>=10){const a=el('div','a'),cb=el('button','btn2','📞 Call back');cb.type='button';cb.addEventListener('click',()=>txCallNum(c.other,cb));a.append(cb);
+      const tb=el('button','btn2','💬 Text');tb.type='button';tb.addEventListener('click',()=>{const v=prompt('Text '+nm+' from your line:','Hi, this is 2FF Logistics returning your call. How can we help?');if(v&&v.trim())Y().call('textSend',[{to:c.other,text:v.trim(),source:'calls'}]).then(()=>{tb.textContent='Sent ✓'}).catch(x=>alert(((x&&x.message)||'Not sent.').replace('NOT_CONNECTED: ','')))});a.append(tb);
+      if(clOpen(c)){const hb=el('button','btn2','Mark handled');hb.type='button';hb.addEventListener('click',()=>{const n=prompt('What happened? (optional)','');if(n===null)return;hb.disabled=true;Y().call('callHandled',[{id:c.id,note:n,line:TXLN}]).then(d=>{CL=d;renderCL()}).catch(x=>{alert((x&&x.message)||'Could not save.');hb.disabled=false})});a.append(hb)}r.append(a)}
+    L.append(r)});
+  try{subBadge('texts','calls',open.length,open.length>0)}catch(e){}}
+setInterval(()=>{if(document.visibilityState==='visible'&&TXOK)loadCL()},2*60000);
 const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
 // ---------- 3. bottom tab bar ----------
 const IC={texts:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H10l-4 3.5V16H4z"/><path d="M8 9h8M8 12h6"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -3104,7 +3145,7 @@ const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port fee
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
-texts:[['inbox','Texts']],
+texts:[['inbox','Texts'],['calls','Calls']],
 sales:[['work','Find work'],['quotes','Quote desk'],['viewers','Profile viewers'],['finder','Freight finder']],
 owner:[['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
