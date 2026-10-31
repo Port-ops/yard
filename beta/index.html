@@ -3019,7 +3019,7 @@ if(pl){const fc=el('div','fchips');fc.id='pChips';[['all','All'],['today','Today
 
 // ---------- Texts (RingCentral SMS from the company lines) · owner 10/31/2026 ----------
 // Each person sees their own line; admins see every line except Richard's own (Richard-only). Pulled every 5 min.
-const txSec=mk('txSec','texts','inbox','<h2>Texts <span class="t" id="txAsof">RingCentral texts from your company line</span></h2>'+
+const txSec=mk('txSec','texts','inbox','<h2>RingCentral texts <span class="t" id="txAsof">RingCentral texts from your company line</span></h2>'+
  '<div class="kpis" id="txK"></div><div class="fchips" id="txLn"></div><div class="fchips" id="txF"></div>'+
  '<div class="drow"><input id="txQ" placeholder="Search name, number or words" autocomplete="off" style="text-transform:none;flex:1"><button class="btn2" type="button" id="txAll">Mark all read</button></div>'+
  '<div class="txW"><div class="txL" id="txL"></div><div class="txT" id="txT"><p class="t txPh">Pick a conversation.</p></div></div>');
@@ -3111,7 +3111,7 @@ document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest
   if(h.startsWith('tel:')){if(confirm('Call '+txFmtN(num)+' from your 2FF RingCentral line? (Your RingCentral rings first.)'))txCallNum(num)}
   else{const body=decodeURIComponent((h.split('body=')[1]||'').split('&')[0]);const v=prompt('Text '+txFmtN(num)+' from your 2FF line:',body);if(v&&v.trim())Y().call('textSend',[{to:num,text:v.trim(),source:'link'}]).then(()=>alert('Sent from your RingCentral line.')).catch(x=>alert(((x&&x.message)||'Not sent.').replace('NOT_CONNECTED: ','')))}},true);
 // ---- Calls (RingCentral call log, every 5 min) ----
-const clSec=mk('clSec','texts','calls','<h2>Calls <span class="t" id="clAsof">last 7 days</span></h2><div class="kpis" id="clK"></div><div class="fchips" id="clF"></div><div class="txL" id="clL" style="max-height:none"></div>');
+const clSec=mk('clSec','texts','calls','<h2>RingCentral calls <span class="t" id="clAsof">last 7 days</span></h2><div class="kpis" id="clK"></div><div class="fchips" id="clF"></div><div class="txL" id="clL" style="max-height:none"></div>');
 clSec.hidden=true;wrap.append(clSec);let CL=null,CLF='missed';
 const clOpen=c=>c.missed&&!c.handled_at&&!c.called_back&&!c.texted_back;
 function loadCL(){if(!TXOK||!Y().call)return;Y().call('getCalls',[{line:TXLN}]).then(d=>{CL=d;renderCL()}).catch(e=>{$('clAsof').textContent=(e&&e.message)||'Could not load calls.'})}
@@ -3133,12 +3133,12 @@ function renderCL(){clSec.hidden=!TXOK;if(!CL)return;const C=CL.calls||[];
 setInterval(()=>{if(document.visibilityState==='visible'&&TXOK)loadCL()},2*60000);
 const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
 // ---------- 3. bottom tab bar ----------
-const IC={texts:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H10l-4 3.5V16H4z"/><path d="M8 9h8M8 12h6"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+const IC={texts:'<svg viewBox="0 0 24 24"><path d="M6.6 3.5h2.7l1.4 4-2 1.4a12 12 0 006.4 6.4l1.4-2 4 1.4v2.7a2 2 0 01-2.2 2A16.6 16.6 0 014.6 5.7a2 2 0 012-2.2z"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg>',
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
 reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',sales:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',owner:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M12 15v2"/></svg>',social:'<svg viewBox="0 0 24 24"><path d="M4 11v2a1 1 0 001 1h2l5 4V6L7 10H5a1 1 0 00-1 1z"/><path d="M16 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','Texts'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['owner','Owner'],['ask','Ask AI']];
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['owner','Owner'],['ask','Ask AI']];
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
@@ -3184,7 +3184,7 @@ function startTab(){let k=(location.hash||'').slice(1);if(!TABS.some(t=>t[0]===k
 startTab();
 const tabBtn=k=>inn.querySelector('button[data-k="'+k+'"]');
 // ---------- My tabs: each person keeps 4 tabs on the bar; the rest live under "More" ----------
-const FAV_BY_NAME={'Richard Prescott':['today','port','social','owner'],'Lethaniel Stanley':['today','port','gps','safety'],'Yanix Serafico':['today','port','sales','reports'],
+const FAV_BY_NAME={'Richard Prescott':['today','texts','social','owner'],'Lethaniel Stanley':['today','port','gps','safety'],'Yanix Serafico':['today','port','sales','reports'],
   'Julia Perez':['today','safety','social','gps'],'Brandon Sharman':['today','yard','tasks','port'],'Mari Diaz':['today','port','social','gps'],
   'Prince Santos':['today','port','social','gps'],'JC Palmos':['today','port','social','gps'],'Karl Ignacio':['today','sales','port','reports'],'Arvin Cifra':['today','port','gps','safety']};
 const MORE_IC='<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
