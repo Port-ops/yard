@@ -3145,50 +3145,132 @@ function renderTD(){tdSec.hidden=!TXOK;if(!TD)return;const T=TD.tasks||[],me=TD.
   $('tdAsof').textContent='updated '+new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+' · '+open.length+' open';
   try{subBadge('texts','todo',open.length,late.length>0);const bd=tabBtn('texts').querySelector('.bdg');const n=late.length+mine.filter(t=>!tdLate(t)).length;bd.textContent=n?String(n):''}catch(e){}}
 setTimeout(loadTD,5000);{let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='texts'||n%8===0))loadTD()},15000)}
-// ---- AI brain: CEO brief + proposals (Richard only). The AI proposes; Richard decides. ----
-const brSec=mk('brSec','owner','brain','<h2>Carter · CEO brief <span class="t" id="brAsof">proposes only, you decide</span></h2><div id="brB"></div><h3>Team right now <span class="t">only you see this · quiet does not always mean not working</span></h3><div id="brT"></div><h3>Yard cameras <span class="t" id="brCamS">loading…</span></h3><div id="brCam" class="camG"></div><h3>Proposals waiting for you</h3><div id="brL"></div><h3 id="brKh">Lessons Carter learned</h3><p class="t">Approve what is right. Only approved lessons can ever be used; callers hear only lessons marked “caller”.</p><div id="brK"></div><p class="t" id="brCost"></p>');
-brSec.hidden=true;wrap.append(brSec);brSec.querySelector('h2').prepend(carterFace(34));let BR=null;
-function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();loadCams()}).catch(()=>{brSec.hidden=true;BR=null})}
-let CAM=null;function loadCams(){if(!Y().call)return;Y().call('getCams',[{limit:12}]).then(d=>{CAM=d;renderCams()}).catch(e=>{const S=$('brCamS');if(S)S.textContent='cameras unavailable: '+((e&&e.message)||e)})}
-function renderCams(){const G=$('brCam'),S=$('brCamS');if(!G||!CAM)return;G.textContent='';const m=CAM.summary||{};
-  S.textContent='last 24h: '+(m.photos||0)+' photos · '+(m.gate_trucks||0)+' gate trucks · '+(m.containers_read||0)+' containers read'+(m.no_log?' · '+m.no_log+' not logged':'')+(m.mismatch?' · '+m.mismatch+' number mismatch':'')+(m.after_hours_alerts?' · '+m.after_hours_alerts+' after-hours':'');
-  const ps=CAM.photos||[];if(!ps.length){G.append(el('p','t','No camera photos yet. They arrive when the recorder sees a person or vehicle at the gate or in the yard.'));return}
-  const KIND={truck_with_container:'Truck + container',truck_with_chassis:'Truck + chassis',bobtail:'Bobtail',car_or_pickup:'Car/pickup',person:'Person',nothing:'Nothing',unclear:'Unclear'};
-  ps.forEach(p=>{const c=el('a','camC');if(p.url){c.href=p.url;c.target='_blank';c.rel='noopener'}
-    if(p.url){const i=el('img');i.loading='lazy';i.src=p.url;i.alt=(p.camera||'camera')+' photo';c.append(i)}else c.append(el('div','camNo','photo pending'));
-    const t=new Date(p.received_at).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',minute:'2-digit'});
-    const cap=el('div','camT');cap.append(el('b','',(p.camera||'?')+' · '+t));
-    cap.append(el('span','',p.status==='read'?(KIND[p.kind]||p.kind||'')+(p.container?' · '+p.container+(p.container_valid?' ✓':' ?'):'')+(p.carrier?' · '+p.carrier:''):p.status==='error'?'Carter could not read it':'Carter is reading…'));
-    const flags=[];if(p.alerted)flags.push('after hours');if(p.match_status==='no_log')flags.push('no move logged');if(p.match_status==='mismatch')flags.push('number mismatch');if(p.match_status==='matched')flags.push('matched to log');
-    if(flags.length)cap.append(el('i',p.alerted||p.match_status==='no_log'||p.match_status==='mismatch'?'camF bad':'camF',flags.join(' · ')));
-    if(p.note)cap.append(el('small','',p.note));c.append(cap);G.append(c)})}
-function brAct(a,status,btn){const note=status==='rejected'?prompt('Why not? (teaches Carter)',''):'';if(note===null)return;if(btn)btn.disabled=true;Y().call('brainAct',[{id:a.id,status,note:note||''}]).then(d=>{BR=d;renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
+// ---- Carter hub (Richard only), rebuilt 11/01/2026: tabs Brief · Decisions · Outbox · Cameras · Team · Lessons · Spend. Carter proposes; Richard decides. ----
+const brSec=mk('brSec','owner','brain','<div class="cxHd"><div class="cxId"></div><div class="cxMeta"><h2>Carter <span class="cxRole">CEO partner · proposes, you decide</span></h2><div class="t" id="brAsof">loading…</div></div><div class="cxSpend" id="cxSpend"></div></div><div class="cxNeed" id="cxNeed"></div><nav class="cxTabs" id="cxTabs" role="tablist" aria-label="Carter sections"></nav><div id="cxBody"></div>');
+brSec.hidden=true;wrap.append(brSec);brSec.querySelector('.cxId').append(carterFace(44));
+let BR=null,CAM=null,CXT='brief',CXF='all',CXC='all';
+const CXTABS=[['brief','Brief'],['decide','Decisions'],['outbox','Outbox'],['cams','Cameras'],['team','Team'],['lessons','Lessons'],['spend','Spend']];
+function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR()}).catch(()=>{brSec.hidden=true;BR=null})}
+function loadCams(){if(!Y().call)return;Y().call('getCams',[{limit:40}]).then(d=>{CAM=d;if(CXT==='cams'||CXT==='brief')renderBR()}).catch(e=>{CAM={error:(e&&e.message)||String(e)};if(CXT==='cams')renderBR()})}
+const cxAgo=t=>{if(!t)return'—';const m=Math.round((Date.now()-new Date(t))/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
+const cxWhen=t=>t?new Date(t).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const cxCam=a=>a.source==='camera',cxMail=a=>a.source==='mail';
+const cxOpen=()=>(BR&&BR.actions||[]).filter(a=>a.status==='proposed');
+function brAct(a,status,btn,quiet){const note=status==='rejected'&&!quiet?prompt('Why not? (teaches Carter)',''):'';if(note===null)return Promise.resolve();if(btn)btn.disabled=true;
+  return Y().call('brainAct',[{id:a.id,status,note:note||''}]).then(d=>{BR=d;if(!quiet)renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
 function kbAct(k,status,btn){let aud=k.audience,note='';if(status==='approved'){const a=prompt('Who can hear this? caller = anyone on the phone, team = staff only, owner = only you',k.audience||'team');if(a===null)return;aud=(a||'').trim().toLowerCase();if(!['caller','team','owner'].includes(aud)){alert('Type caller, team or owner.');return}}else{note=prompt('Why not? (teaches Carter)','');if(note===null)return}
   if(btn)btn.disabled=true;Y().call('brainKb',[{id:k.id,status,audience:aud,note}]).then(d=>{BR=d;renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
-function brAgo(t){if(!t)return'—';const m=Math.round((Date.now()-new Date(t))/60000);return m<1?'now':m<60?m+' min ago':(m/60).toFixed(1)+' h ago'}
-function renderBR(){if(!BR)return;brSec.hidden=false;const B=$('brB');B.textContent='';const br=BR.brief,b=br&&br.body;
-  if(!b){B.append(el('p','t','No brief yet. The first one runs at 6:07 AM.'))}else{
-    $('brAsof').textContent='written '+new Date(br.at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})+' · Carter proposes, you decide';
-    B.append(el('div','brH',b.headline||''));
-    if((b.scorecard||[]).length){const g=el('div','brSc');b.scorecard.forEach(m=>{const d=el('div',m.read||'');d.append(el('b','',m.value||''),el('div','t',m.metric||''),el('div','t',m.note||''));g.append(d)});B.append(g)}
-    const list=(title,arr,fn)=>{if(!(arr||[]).length)return;const c=el('div','brC');c.append(el('h3','',title));const u=el('ul');arr.forEach(x=>u.append(el('li','',fn(x))));c.append(u);B.append(c)};
-    list('🔥 Fires',b.fires,f=>f.what+(f.owner?' — '+f.owner:'')+(f.by_when?' · by '+f.by_when:'')+(f.why_it_matters?' ('+f.why_it_matters+')':''));
-    list('👥 People',b.people,p=>p.name+': '+p.note);
-    list('🌎 Outside',b.outside,o=>o.item+' → '+o.so_what);
-    if(b.question_for_richard)B.append(el('div','brQ','“'+b.question_for_richard+'”'));
-    if(br.review&&br.review.text){const c=el('div','brC');c.append(el('h3','','Second opinion (ChatGPT)'),el('div','t',br.review.text));B.append(c)}}
-  const L=$('brL');L.textContent='';const A=BR.actions||[];if(!A.length)L.append(el('p','t','Nothing waiting.'));
-  const TN=['0 · analysis','1 · internal','2 · routine message','3 · manager approves','4 · Richard only'];
-  A.forEach(a=>{const c=el('div','brA'+(a.status!=='proposed'?' dec':''));c.append(el('span','tier t'+a.tier,'Tier '+TN[a.tier]),el('b','',a.title));if(a.why)c.append(el('span','t',a.why));if(a.recommendation)c.append(el('span','','→ '+a.recommendation));if(a.owner)c.append(el('span','t','Owner: '+a.owner));
-    if(a.status==='proposed'){const x=el('div','a'),btn=(l,st,cl)=>{const k=el('button',cl,l);k.type='button';k.addEventListener('click',()=>brAct(a,st,k));x.append(k)};btn('✓ Approve','approved','btn');btn('✗ Reject','rejected','btn2');btn('Done already','done','btn2');c.append(x)}
-    else c.append(el('span','t',(a.status==='approved'?'✓ Approved':a.status==='rejected'?'✗ Rejected':'✓ Done')+(a.note?' · '+a.note:'')));L.append(c)});
-  {const T=$('brT');T.textContent='';const tl=BR.team_live||[];if(!tl.length)T.append(el('p','t','No staff set up.'));const g=el('div','brTm');
-    tl.forEach(x=>{const c=el('div','brTp '+String(x.status).replace(/[^a-z]+/g,'-'));c.append(el('b','',x.person),el('span','st',x.status),el('span','t','Last: '+brAgo(x.last_any)+' · call '+brAgo(x.last_call)+' · text '+brAgo(x.last_text)+' · email '+brAgo(x.last_email)));if(+x.open_late)c.append(el('span','ol',x.open_late+' late item'+(x.open_late>1?'s':'')+' still open'));g.append(c)});T.append(g)}
-  {const K=$('brK');K.textContent='';const ls=BR.lessons||[];$('brKh').textContent='Lessons Carter learned ('+(BR.lessons_waiting||0)+' waiting)';if(!ls.length)K.append(el('p','t','Nothing waiting.'));
-    ls.forEach(k=>{const c=el('div','brA');c.append(el('span','tier'+(k.risk==='high'?' t4':''),(k.topic||'')+' · '+(k.audience||'')+(k.risk==='high'?' · high risk':'')),el('b','',k.question||''),el('span','',k.answer||''));if(k.quote)c.append(el('span','t','From: “'+k.quote+'”'));if(k.from&&k.from.length)c.append(el('span','t','Learned from '+k.from.join(', ')));
-      const x=el('div','a'),bt=(l,st,cl)=>{const b=el('button',cl,l);b.type='button';b.addEventListener('click',()=>kbAct(k,st,b));x.append(b)};bt('✓ Approve','approved','btn');bt('✗ Wrong / retire','retired','btn2');c.append(x);K.append(c)})}
-  $('brCost').textContent='AI spend today: $'+Number(BR.spent_today||0).toFixed(2)+' of $'+BR.cap+' cap'}
-setTimeout(loadBR,6000);{let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='owner'||n%20===0))loadBR()},30000)}
+function cxBtns(a){const x=el('div','cxAct'),b=(l,st,cl)=>{const k=el('button',cl,l);k.type='button';k.addEventListener('click',()=>brAct(a,st,k));x.append(k)};
+  b(cxMail(a)?'✓ Approve & send':'✓ Approve','approved','btn');b('✗ Reject','rejected','btn2');b(cxMail(a)?'Sent it myself':'Done already','done','btn2');return x}
+const TIERN=['Analysis','Internal','Routine message','Manager approves','Richard only'],SRCN={brief:'CEO brief',recap:'Day recap',study:'Study',coach:'Coaching',hire:'AI hiring',camera:'Camera',mail:'Email'};
+function cxCard(a){const c=el('article','cxCard'+(a.status!=='proposed'?' dec':''));const top=el('div','cxTop');
+  top.append(el('span','cxPill t'+a.tier,TIERN[a.tier]||('Tier '+a.tier)),el('span','cxSrc',SRCN[a.source]||a.source||''),el('span','cxAge',cxAgo(a.at)));c.append(top,el('h4','',a.title||''));
+  if(a.why)c.append(el('p','cxWhy',a.why));if(a.recommendation){const r=el('div','cxRec');r.textContent=a.recommendation;c.append(r)}
+  if(a.owner&&!cxMail(a))c.append(el('div','cxOwn','Owner: '+a.owner));
+  if(a.status==='proposed')c.append(cxBtns(a));else c.append(el('div','cxDone',(a.status==='approved'?'✓ Approved':a.status==='rejected'?'✗ Rejected':a.status==='expired'?'Expired':'✓ Done')+(a.note?' · '+a.note:'')));return c}
+function cxEmpty(t){return el('p','cxEmpty',t)}
+function cxTile(v,l,n,read){const d=el('div','cxTile '+(read||''));d.append(el('b','',v),el('span','l',l));if(n)d.append(el('span','n',n));return d}
+
+// ---- tabs ----
+function cxTab(k){CXT=k;try{localStorage.setItem('cxTab',k)}catch(e){}if(k==='cams'&&!CAM)loadCams();renderBR()}
+try{const s=localStorage.getItem('cxTab');if(s&&CXTABS.some(x=>x[0]===s))CXT=s}catch(e){}
+function renderBR(){if(!BR)return;brSec.hidden=false;const br=BR.brief,open=cxOpen(),dec=open.filter(a=>!cxCam(a)&&!cxMail(a)),cams=open.filter(cxCam),ob=BR.outbox||[],obw=ob.filter(o=>o.status==='proposed');
+  $('brAsof').textContent=br?'Brief written '+cxWhen(br.at)+' · refreshes 6:07 AM, recap 6:35 PM':'No brief yet. The first one runs at 6:07 AM.';
+  {const S=$('cxSpend');S.textContent='';const cap=+BR.cap||0,sp=+BR.spent_today||0;S.append(el('b','','$'+sp.toFixed(2)),el('span','',' AI today of $'+cap));const bar=el('i');bar.style.width=Math.min(100,cap?sp/cap*100:0)+'%';const w=el('span','bar');w.append(bar);S.append(w)}
+  {const N=$('cxNeed');N.textContent='';const items=[[obw.length,'email'+(obw.length===1?'':'s')+' to approve','outbox',true],[dec.length,'decision'+(dec.length===1?'':'s')+' waiting','decide',dec.some(a=>a.tier>=4)],[cams.length,'camera alert'+(cams.length===1?'':'s'),'cams',false],[BR.lessons_waiting||0,'lesson'+((BR.lessons_waiting||0)===1?'':'s')+' to check','lessons',false]].filter(x=>x[0]);
+    if(!items.length)N.append(el('span','ok','✓ Nothing waiting for you'));items.forEach(([n,l,k,hot])=>{const b=el('button','cxChip'+(hot?' hot':''));b.type='button';b.append(el('b','',String(n)),document.createTextNode(' '+l));b.addEventListener('click',()=>cxTab(k));N.append(b)})}
+  {const T=$('cxTabs');T.textContent='';const cnt={decide:dec.length,outbox:obw.length,cams:cams.length,lessons:BR.lessons_waiting||0};
+    CXTABS.forEach(([k,l])=>{const b=el('button','cxT'+(CXT===k?' on':''));b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',CXT===k?'true':'false');b.append(document.createTextNode(l));if(cnt[k])b.append(el('span','cxN',String(cnt[k])));b.addEventListener('click',()=>cxTab(k));T.append(b)})}
+  try{subBadge('owner','brain',dec.length+obw.length,obw.length>0||dec.some(a=>a.tier>=4))}catch(e){}
+  const B=$('cxBody');B.textContent='';({brief:cxBrief,decide:cxDecide,outbox:cxOutbox,cams:cxCams,team:cxTeam,lessons:cxLessons,spend:cxSpendTab}[CXT]||cxBrief)(B,{dec,cams,ob,obw})}
+
+function cxBrief(B){const br=BR.brief,b=br&&br.body;if(!b){B.append(cxEmpty('No brief yet. The first one runs at 6:07 AM.'));return}
+  B.append(el('p','cxHeadline',b.headline||''));
+  if((b.scorecard||[]).length){const g=el('div','cxKpis');b.scorecard.forEach(m=>{const d=el('div','cxKpi '+(m.read||''));d.append(el('span','l',m.metric||''),el('b','',m.value||''));if(m.note)d.append(el('span','n',m.note));g.append(d)});B.append(g)}
+  const block=(title,arr,fn,cls)=>{if(!(arr||[]).length)return;const s=el('section','cxBlk '+(cls||''));s.append(el('h3','',title));const u=el('ul');arr.forEach(x=>{const li=el('li');fn(li,x);u.append(li)});s.append(u);B.append(s)};
+  block('Fires — act today',b.fires,(li,f)=>{li.append(el('b','',f.what||''));const m=[f.owner&&('Owner: '+f.owner),f.by_when&&('By '+f.by_when)].filter(Boolean).join(' · ');if(m)li.append(el('span','m',m));if(f.why_it_matters)li.append(el('span','w',f.why_it_matters))},'fire');
+  block('People',b.people,(li,p)=>{li.append(el('b','',p.name+': '),document.createTextNode(p.note||''))});
+  block('Outside 2FF',b.outside,(li,o)=>{li.append(el('b','',o.item||''),el('span','w','→ '+(o.so_what||'')))});
+  if(b.question_for_richard){const q=el('div','cxQ');q.append(el('span','l','Carter asks you'),el('p','',b.question_for_richard));B.append(q)}
+  if(br.review&&br.review.text){const d=el('details','cxBlk');d.append(el('summary','','Second opinion (ChatGPT)'),el('p','t',br.review.text));B.append(d)}
+  if((br.sources||[]).length){const d=el('details','cxBlk');d.append(el('summary','','Sources ('+br.sources.length+')'));const u=el('ul');br.sources.slice(0,12).forEach(s=>{const li=el('li'),a=el('a','',String(s).replace(/^https?:\/\//,'').slice(0,80));a.href=s;a.target='_blank';a.rel='noopener';li.append(a);u.append(li)});d.append(u);B.append(d)}}
+
+function cxDecide(B,{dec}){const srcs=['all',...new Set(dec.map(a=>a.source))];if(!srcs.includes(CXF))CXF='all';
+  const f=el('div','cxFilt');srcs.forEach(s=>{const b=el('button','cxF'+(CXF===s?' on':''),s==='all'?'All ('+dec.length+')':(SRCN[s]||s)+' ('+dec.filter(a=>a.source===s).length+')');b.type='button';b.addEventListener('click',()=>{CXF=s;renderBR()});f.append(b)});B.append(f);
+  const L=dec.filter(a=>CXF==='all'||a.source===CXF).sort((x,y)=>y.tier-x.tier||new Date(y.at)-new Date(x.at));if(!L.length)B.append(cxEmpty('Nothing waiting. Carter adds proposals with each brief, recap and study.'));L.forEach(a=>B.append(cxCard(a)));
+  const done=(BR.actions||[]).filter(a=>a.status!=='proposed'&&!cxCam(a));if(done.length){const d=el('details','cxBlk');d.append(el('summary','','Decided in the last 3 days ('+done.length+')'));done.forEach(a=>d.append(cxCard(a)));B.append(d)}}
+
+function cxOutbox(B,{ob}){B.append(el('p','cxHelp','Carter writes the email (and any PDF) into your Gmail Drafts. Approve sends that draft exactly as it is in Gmail, including your edits. Reject deletes it. Nothing goes out without your tap.'));
+  if(!ob.length){B.append(cxEmpty('No emails yet. Ask Carter to write one.'));return}
+  const ST={proposed:['Waiting for you','w'],approved:['Sending…','s'],sending:['Sending…','s'],sent:['Sent','ok'],rejected:['Rejected','x'],cancelled:['Cancelled','x'],failed:['Failed','bad'],drafting:['Drafting','s']};
+  ob.forEach(o=>{const c=el('article','cxCard cxMail');const st=ST[o.status]||[o.status,''];const top=el('div','cxTop');top.append(el('span','cxSt '+st[1],st[0]),el('span','cxAge',o.status==='sent'?'sent '+cxAgo(o.sent_at):cxAgo(o.created_at)));c.append(top,el('h4','',o.subject||'(no subject)'));
+    c.append(el('div','cxTo','To: '+(o.to||[]).join(', ')+((o.cc||[]).length?'  ·  Cc: '+o.cc.join(', '):'')));
+    if((o.attachments||[]).length)c.append(el('div','cxAtt','📎 '+o.attachments.map(a=>a.name).join(', ')));
+    if(o.body){const d=el('details','cxBodyD');d.append(el('summary','','Read the email'));const p=el('div','cxMailBody');p.textContent=o.body;d.append(p);if(o.status==='proposed')d.open=true;c.append(d)}
+    if(o.error)c.append(el('div','cxErr',o.error));
+    if(o.status==='proposed'&&o.action_id){const a=(BR.actions||[]).find(x=>x.id===o.action_id)||{id:o.action_id,source:'mail'};c.append(cxBtns(a));const g=el('a','cxLink','Open Gmail Drafts ↗');g.href='https://mail.google.com/mail/u/0/#drafts';g.target='_blank';g.rel='noopener';c.append(g)}
+    B.append(c)})}
+
+function cxCams(B,{cams}){const m=(CAM&&CAM.summary)||{};
+  const g=el('div','cxTiles');g.append(cxTile(String(m.gate_moving??m.gate_trucks??'—'),'Gate arrivals / departures','moving vehicles at the gate, 24h'),cxTile(String(m.containers_read??'—'),'Container numbers read','gate camera'),cxTile(String(m.no_log??'—'),'Not in the yard log',m.no_log?'check these':'',m.no_log?'bad':''),cxTile(String(m.after_hours_alerts??'—'),'After-hours alerts','',m.after_hours_alerts?'watch':''));B.append(g);
+  if(m.note)B.append(el('p','cxHelp',m.note));
+  if(cams.length){const s=el('section','cxBlk');const h=el('h3','','Alerts to review ('+cams.length+')');const clr=el('button','btn2 sm','Mark all reviewed');clr.type='button';
+      clr.addEventListener('click',async()=>{if(!confirm('Mark all '+cams.length+' camera alerts as reviewed?'))return;clr.disabled=true;for(const a of cams)await brAct(a,'done',null,true);renderBR()});h.append(clr);s.append(h);
+    cams.slice(0,30).forEach(a=>s.append(cxCard(a)));if(cams.length>30)s.append(el('p','t','+ '+(cams.length-30)+' older alerts'));B.append(s)}
+  if(!CAM){B.append(cxEmpty('Loading photos…'));return}if(CAM.error){B.append(cxEmpty('Cameras unavailable: '+CAM.error));return}
+  const KIND={truck_with_container:'Truck + container',truck_with_chassis:'Truck + chassis',bobtail:'Bobtail',car_or_pickup:'Car/pickup',person:'Person',nothing:'Nothing',unclear:'Unclear'};
+  const P=CAM.photos||[],names=[...new Set(P.map(p=>p.camera||'?'))].sort();
+  // camera wall: the newest photo from every camera, side by side
+  {const s=el('section','cxBlk');s.append(el('h3','','All cameras · latest view'));const W=el('div','cxWall');names.forEach(n=>{const p=P.find(x=>(x.camera||'?')===n);const c=el('button','cxCamTile'+(CXC===n?' on':''));c.type='button';
+      if(p&&p.url){const i=el('img');i.loading='lazy';i.src=p.url;i.alt=n;c.append(i)}else c.append(el('div','camNo','no photo yet'));const cap=el('div','cap');cap.append(el('b','',n),el('span','',p?cxAgo(p.received_at):''));c.append(cap);
+      c.addEventListener('click',()=>{CXC=CXC===n?'all':n;renderBR()});W.append(c)});s.append(W);s.append(el('p','cxHelp','Tap a camera to see only its photos. Photos arrive when the recorder sees a person or vehicle.'));B.append(s)}
+  const s2=el('section','cxBlk');const h2=el('h3','',(CXC==='all'?'All cameras':CXC)+' · recent photos');if(CXC!=='all'){const x=el('button','btn2 sm','Show all cameras');x.type='button';x.addEventListener('click',()=>{CXC='all';renderBR()});h2.append(x)}s2.append(h2);const G=el('div','camG');s2.append(G);B.append(s2);
+  P.filter(p=>CXC==='all'||(p.camera||'?')===CXC).forEach(p=>{const c=el('a','camC');if(p.url){c.href=p.url;c.target='_blank';c.rel='noopener';const i=el('img');i.loading='lazy';i.src=p.url;i.alt=(p.camera||'camera')+' photo';c.append(i)}else c.append(el('div','camNo','photo pending'));
+    const cap=el('div','camT');cap.append(el('b','',(p.camera||'?')+' · '+cxWhen(p.received_at)));cap.append(el('span','',p.status==='read'?(KIND[p.kind]||p.kind||'')+(p.container?' · '+p.container+(p.container_valid?' ✓':' ?'):''):p.status==='error'?'Carter could not read it':'Carter is reading…'));
+    const fl=[];if(p.alerted)fl.push('after hours');if(p.match_status==='no_log')fl.push('no move logged');if(p.match_status==='mismatch')fl.push('number mismatch');if(p.match_status==='matched')fl.push('matched to log');if(fl.length)cap.append(el('i',p.alerted||p.match_status==='no_log'||p.match_status==='mismatch'?'camF bad':'camF',fl.join(' · ')));if(p.note)cap.append(el('small','',p.note));c.append(cap);G.append(c)})}
+
+function cxTeam(B){const s=el('section','cxBlk');s.append(el('h3','','People right now'),el('p','cxHelp','Only you see this. Quiet does not always mean not working.'));const g=el('div','cxPeople');
+  (BR.team_live||[]).forEach(x=>{const c=el('div','cxP '+String(x.status).replace(/[^a-z]+/g,'-'));c.append(el('b','',x.person),el('span','st',x.status),el('span','t','Last activity '+cxAgo(x.last_any)),el('span','t','Call '+cxAgo(x.last_call)+' · Text '+cxAgo(x.last_text)+' · Email '+cxAgo(x.last_email)));if(+x.open_late)c.append(el('span','ol',x.open_late+' late item'+(x.open_late>1?'s':'')+' open'));g.append(c)});
+  if(!(BR.team_live||[]).length)g.append(cxEmpty('No staff set up.'));s.append(g);B.append(s);
+  const s2=el('section','cxBlk');s2.append(el('h3','','Carter’s AI team ('+(BR.agents||[]).length+')'));const t=el('table','cxTbl');t.innerHTML='<thead><tr><th>Agent</th><th>Job</th><th>Acts outside?</th><th>Last run</th></tr></thead>';const tb=el('tbody');
+  (BR.agents||[]).forEach(a=>{const r=el('tr');const n=el('td');n.append(el('b','',a.name||a.key),el('div','t',(a.department||'')+(a.status&&a.status!=='active'?' · '+a.status:'')));const m=el('td','',a.mission||'');const o=el('td','',a.acts_outside||'none');const l=el('td');l.append(document.createTextNode(cxAgo(a.last_run)));if(a.last_summary)l.append(el('div','t',a.last_summary));r.append(n,m,o,l);tb.append(r)});t.append(tb);s2.append(t);B.append(s2)}
+
+function cxLessons(B){B.append(el('p','cxHelp','Approve what is right. Only approved lessons are ever used; callers hear only lessons marked “caller”.'));const ls=BR.lessons||[];if(!ls.length){B.append(cxEmpty('Nothing waiting.'));return}
+  ls.forEach(k=>{const c=el('article','cxCard');const top=el('div','cxTop');top.append(el('span','cxPill'+(k.risk==='high'?' t4':' t1'),(k.risk==='high'?'High risk · ':'')+(k.audience||'')),el('span','cxSrc',k.topic||''));c.append(top,el('h4','',k.question||''),el('div','cxRec',k.answer||''));
+    if(k.quote)c.append(el('p','cxWhy','From: “'+k.quote+'”'));if(k.from&&k.from.length)c.append(el('div','cxOwn','Learned from '+k.from.join(', ')));
+    const x=el('div','cxAct'),bt=(l,st,cl)=>{const b=el('button',cl,l);b.type='button';b.addEventListener('click',()=>kbAct(k,st,b));x.append(b)};bt('✓ Approve','approved','btn');bt('✗ Wrong / retire','retired','btn2');c.append(x);B.append(c)})}
+
+function cxSpendTab(B){const cap=+BR.cap||0,sp=+BR.spent_today||0;const g=el('div','cxTiles');g.append(cxTile('$'+sp.toFixed(2),'Spent today','of $'+cap+' daily cap',sp>cap*.8?'watch':''),cxTile('$'+Number(BR.spend_7d||0).toFixed(2),'Last 7 days',''),cxTile('$'+(Number(BR.spend_7d||0)/7*30).toFixed(0),'Monthly pace','estimate'));B.append(g);
+  const rows=BR.spend_by||[];if(!rows.length){B.append(cxEmpty('No AI spending logged this week.'));return}const t=el('table','cxTbl');t.innerHTML='<thead><tr><th>What Carter did</th><th>Calls</th><th>7 days</th></tr></thead>';const tb=el('tbody');
+  rows.forEach(r=>{const tr=el('tr');tr.append(el('td','',r.purpose),el('td','num',String(r.calls)),el('td','num','$'+Number(r.usd).toFixed(2)));tb.append(tr)});t.append(tb);B.append(t);B.append(el('p','cxHelp','Change the daily cap any time; Carter stops for the day when it is reached.'))}
+
+{const st=el('style');st.textContent=
+'#brSec{--cx-ink:var(--ink,#1d2326);--cx-mut:var(--muted,#5d686d);--cx-line:var(--line,#d6dad8);--cx-bg:var(--panel,#fff);--cx-soft:color-mix(in srgb,var(--brand,#2e2d6f) 6%,var(--cx-bg));--cx-brand:var(--brand,#2e2d6f);--cx-red:#b42318;--cx-amber:#a15c00;--cx-green:#2e7d4f}'+
+'.cxHd{display:flex;align-items:center;gap:12px;margin-bottom:10px}.cxHd .cxId svg{display:block}.cxMeta{flex:1;min-width:0}.cxMeta h2{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}.cxRole{font:600 12px/1.2 var(--body);letter-spacing:.02em;color:var(--cx-mut);text-transform:none}'+
+'.cxSpend{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:var(--cx-mut);min-width:96px}.cxSpend b{font-size:15px;color:var(--cx-ink)}.cxSpend .bar{width:96px;height:4px;border-radius:2px;background:var(--cx-line);margin-top:4px;overflow:hidden}.cxSpend .bar i{display:block;height:100%;background:var(--cx-brand)}'+
+'.cxNeed{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}.cxNeed .ok{color:var(--cx-green);font-weight:600;font-size:14px}.cxChip{border:1px solid var(--cx-line);background:var(--cx-bg);border-radius:999px;padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--cx-ink)}.cxChip b{font-size:15px}.cxChip.hot{border-color:var(--cx-red);color:var(--cx-red);background:color-mix(in srgb,var(--cx-red) 7%,var(--cx-bg))}'+
+'.cxTabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--cx-line);margin:0 -2px 14px;position:sticky;top:0;background:var(--bg,#f3f4f2);z-index:2}.cxTabs::-webkit-scrollbar{display:none}'+
+'.cxT{flex:0 0 auto;border:0;background:none;font:600 14px/1 var(--body);color:var(--cx-mut);padding:12px 12px 10px;border-bottom:3px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px;min-height:44px}.cxT.on{color:var(--cx-brand);border-bottom-color:var(--cx-brand)}.cxN{font-size:11px;min-width:18px;height:18px;line-height:18px;padding:0 5px;border-radius:9px;background:var(--cx-red);color:#fff;text-align:center}'+
+'.cxHeadline{font:700 19px/1.35 var(--body);color:var(--cx-ink);margin:2px 0 14px}'+
+'.cxKpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:0 0 16px}.cxTiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:0 0 16px}.cxKpi,.cxTile{background:var(--cx-bg);border:1px solid var(--cx-line);border-left:4px solid var(--cx-line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}'+
+'.cxKpi .l,.cxTile .l{font-size:12px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--cx-mut)}.cxKpi b,.cxTile b{font-size:17px;line-height:1.25;color:var(--cx-ink)}.cxTile b{font-size:24px}.cxKpi .n,.cxTile .n{font-size:13px;color:var(--cx-mut)}'+
+'.cxKpi.bad,.cxTile.bad{border-left-color:var(--cx-red)}.cxKpi.bad b{color:var(--cx-red)}.cxKpi.watch,.cxTile.watch{border-left-color:#e0a100}.cxKpi.good,.cxTile.good{border-left-color:var(--cx-green)}'+
+'.cxBlk{background:var(--cx-bg);border:1px solid var(--cx-line);border-radius:12px;padding:12px 14px;margin:0 0 12px}.cxBlk h3{margin:0 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px}.cxBlk ul{margin:0;padding-left:18px}.cxBlk li{margin:0 0 8px;line-height:1.4}.cxBlk li .m{display:block;font-size:12.5px;color:var(--cx-brand);font-weight:600;margin-top:2px}.cxBlk li .w{display:block;font-size:13px;color:var(--cx-mut)}.cxBlk.fire{border-left:4px solid var(--cx-red)}.cxBlk summary{font-weight:600;cursor:pointer;min-height:28px}'+
+'.cxQ{border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--cx-soft);border:1px solid color-mix(in srgb,var(--cx-brand) 25%,var(--cx-line))}.cxQ .l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--cx-brand)}.cxQ p{margin:4px 0 0;font-size:15.5px}'+
+'.cxFilt{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.cxF{border:1px solid var(--cx-line);background:var(--cx-bg);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--cx-ink);min-height:34px}.cxF.on{background:var(--cx-brand);border-color:var(--cx-brand);color:#fff}'+
+'.cxCard{background:var(--cx-bg);border:1px solid var(--cx-line);border-radius:12px;padding:12px 14px;margin:0 0 10px;display:flex;flex-direction:column;gap:6px}.cxCard.dec{opacity:.7}.cxCard h4{margin:0;font-size:15.5px;line-height:1.35}'+
+'.cxTop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cxPill{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--cx-line);color:var(--cx-ink)}.cxPill.t3{background:#fff1d6;color:#7a4a00}.cxPill.t4{background:#fde5e3;color:var(--cx-red)}.cxPill.t0,.cxPill.t1{background:#e7f1ea;color:var(--cx-green)}.cxPill.t2{background:#e8eaf6;color:var(--cx-brand)}'+
+'.cxSrc{font-size:12px;color:var(--cx-mut);font-weight:600}.cxAge{font-size:12px;color:var(--cx-mut);margin-left:auto}.cxWhy{margin:0;font-size:13.5px;color:var(--cx-mut)}.cxRec{font-size:14px;white-space:pre-wrap;line-height:1.45;background:var(--bg,#f3f4f2);border-radius:8px;padding:8px 10px}.cxOwn{font-size:12.5px;color:var(--cx-mut)}.cxDone{font-size:13px;color:var(--cx-mut)}'+
+'.cxAct{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}.cxAct button{min-height:40px}.cxHelp{font-size:13.5px;color:var(--cx-mut);margin:0 0 12px}.cxEmpty{color:var(--cx-mut);font-size:14px;padding:18px;text-align:center;border:1px dashed var(--cx-line);border-radius:12px}'+
+'.cxSt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:999px;background:var(--cx-line)}.cxSt.w{background:#fde5e3;color:var(--cx-red)}.cxSt.ok{background:#e7f1ea;color:var(--cx-green)}.cxSt.bad{background:var(--cx-red);color:#fff}.cxSt.s{background:#e8eaf6;color:var(--cx-brand)}'+
+'.cxTo,.cxAtt{font-size:13px;color:var(--cx-ink);word-break:break-word}.cxMailBody{white-space:pre-wrap;font-size:14px;line-height:1.5;border-left:3px solid var(--cx-line);padding:4px 0 4px 10px;margin-top:6px}.cxErr{font-size:13px;color:var(--cx-red)}.cxLink{font-size:13px}'+
+'.cxPeople{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}.cxP{border:1px solid var(--cx-line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}.cxP .st{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--cx-mut)}.cxP .t{font-size:12.5px;color:var(--cx-mut)}.cxP .ol{font-size:12.5px;color:var(--cx-red);font-weight:600}'+
+'.cxTbl{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--cx-bg)}.cxTbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--cx-mut);border-bottom:1px solid var(--cx-line);padding:6px 8px}.cxTbl td{border-bottom:1px solid var(--cx-line);padding:8px;vertical-align:top}.cxTbl td.num{text-align:right;font-variant-numeric:tabular-nums}.cxTbl .t{font-size:12px;color:var(--cx-mut)}'+
+'@media (max-width:600px){.cxTbl thead{display:none}.cxTbl tr{display:block;border-bottom:1px solid var(--cx-line);padding:6px 0}.cxTbl td{display:block;border:0;padding:2px 4px}.cxTbl td.num{text-align:left}.cxSpend{display:none}.cxHeadline{font-size:17px}}'+
+'.cxWall{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}.cxCamTile{border:2px solid var(--cx-line);border-radius:10px;overflow:hidden;padding:0;background:#000;cursor:pointer;text-align:left;font:inherit}.cxCamTile.on{border-color:var(--cx-brand)}.cxCamTile img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}.cxCamTile .camNo{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:12px}.cxCamTile .cap{display:flex;justify-content:space-between;gap:6px;padding:6px 8px;background:var(--cx-bg);font-size:12.5px}.cxCamTile .cap span{color:var(--cx-mut)}'+
+'.btn2.sm{font-size:12.5px;padding:4px 10px;min-height:32px}';document.head.append(st)}
+setTimeout(loadBR,6000);{let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='owner'||n%20===0)){loadBR();if(CXT==='cams'&&n%4===0)loadCams()}},30000)}
+setTimeout(loadCams,9000);
 // ---- Connect my RingCentral (one time per person) ----
 let TXME=null;
 function txConnectBox(box,why){const d=el('div','txCx');d.append(el('b','','Connect your RingCentral (one time)'),el('p','t',why||'So you can text and call from your own 2FF line inside DockRelay. You sign in on RingCentral\'s own page; DockRelay never sees your password.'));
@@ -3286,7 +3368,7 @@ yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / 
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
 sales:[['work','Find work'],['quotes','Quote desk'],['viewers','Profile viewers'],['finder','Freight finder']],
-owner:[['brain','CEO brief'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
+owner:[['brain','Carter'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
