@@ -3148,9 +3148,9 @@ setTimeout(loadTD,5000);{let n=0;setInterval(()=>{n++;if(document.visibilityStat
 // ---- Carter (Richard only), 11/01/2026: Carter is his own bottom tab with sub-tabs Brief · Decisions · Outbox · Team · Lessons · Spend.
 //      Cameras live in Owner > Cameras with their own tabs: Overview · Alerts · Photos. Carter proposes; Richard decides. ----
 const brSec=mk('brSec','carter','*','<div class="cxHd"><div class="cxId"></div><div class="cxMeta"><h2>Carter <span class="cxRole">CEO partner · proposes, you decide</span></h2><div class="t" id="brAsof">loading…</div></div><div class="cxSpend" id="cxSpend"></div></div><div class="cxNeed" id="cxNeed"></div><div id="cxBody"></div>');
-brSec.hidden=true;wrap.append(brSec);brSec.querySelector('.cxId').append(carterFace(44));
 const CXKEYS=[['brief','Brief'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']];
-CXKEYS.forEach(([k])=>{const p=mk('cxP_'+k,'carter',k,'');p.className='cxPh';wrap.append(p)}); // placeholders so the app's sub-tab bar shows every Carter tab
+CXKEYS.forEach(([k])=>{const p=mk('cxP_'+k,'carter',k,'');p.className='cxPh';wrap.append(p)}); // placeholders first: the app's sub-tab bar is placed above them, so it sits at the top of the Carter tab
+brSec.hidden=true;wrap.append(brSec);brSec.querySelector('.cxId').append(carterFace(44));
 const camSec=mk('camSec','owner','cams','<div class="cxHd"><div class="cxMeta"><h2>Yard cameras <span class="cxRole">Reolink · read by Carter</span></h2><div class="t" id="camAsof">loading…</div></div></div><nav class="cxTabs" id="camTabs" role="tablist" aria-label="Camera sections"></nav><div id="camBody"></div>');
 camSec.hidden=true;wrap.append(camSec);
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null;
