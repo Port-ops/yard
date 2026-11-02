@@ -3413,7 +3413,7 @@ brwSec.hidden=false;
 // Email text is shown as plain text only (never as HTML) and is never treated as instructions.
 const cmSec=mk('cmSec','owner','mail','<h2>Carter\'s email <span class="t">carter@2f-logistics.com · read-only here</span></h2>'+
  '<div class="row cmBar"><select id="cmFolder"><option value="inbox">Inbox</option><option value="sent">Sent</option><option value="all">All mail</option></select>'+
- '<input type="search" id="cmQ" placeholder="Search (name, company, container, subject)"><button class="btn2" type="button" id="cmGo">Search</button><button class="btn2" type="button" id="cmRef">Refresh</button><label class="t"><input type="checkbox" id="cmNoise"> Show RingCentral text alerts</label></div><p class="t">Carter reads new email here every 15 minutes and puts a 📨 card in Decisions for anything that needs you.</p>'+
+ '<input type="search" id="cmQ" placeholder="Search (name, company, container, subject)"><button class="btn2" type="button" id="cmGo">Search</button><button class="btn2" type="button" id="cmRef">Refresh</button><label class="t"><input type="checkbox" id="cmNoise" checked> Show RingCentral text alerts</label></div><p class="t">Carter reads new email here every 15 minutes and puts a 📨 card in Decisions for anything that needs you.</p>'+
  '<div class="t" id="cmMsg"></div><div id="cmList" class="cmList"></div><div class="row"><button class="btn2" type="button" id="cmMore" hidden>Older</button></div>'+
  '<div id="cmView" class="cmView" hidden></div>');
 cmSec.hidden=true;wrap.append(cmSec);
@@ -3440,9 +3440,34 @@ function cmOpen(id,row){const V=$('cmView');V.hidden=false;V.textContent='Openin
     const row2=el('div','row');row2.style.cssText='display:flex;gap:8px;margin-top:6px';row2.append(go,close);V.append(ta,row2,om);
     V.append(el('p','t','Nothing is sent from here. The reply comes back as a ✉️ card in Owner > Decisions; tap Approve to send it (from carter@, you copied).'))}).catch(e=>{V.textContent=(e&&e.message)||String(e)})}
 $('cmGo').addEventListener('click',()=>cmLoad());$('cmRef').addEventListener('click',()=>cmLoad());$('cmMore').addEventListener('click',()=>cmLoad(true));
-$('cmQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cmLoad()}});$('cmFolder').addEventListener('change',()=>cmLoad());$('cmNoise').addEventListener('change',()=>cmLoad());
+$('cmQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cmLoad()}});$('cmFolder').addEventListener('change',()=>cmLoad());$('cmNoise').addEventListener('change',()=>{try{localStorage.setItem('cmNoise',$('cmNoise').checked?'1':'0')}catch(e){}cmLoad()});try{if(localStorage.getItem('cmNoise')==='0')$('cmNoise').checked=false}catch(e){}
 try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!CM_LOADED)cmLoad()}).observe(cmSec)}catch(e){}
 cmSec.hidden=false;
+// ---- OFFICE DOORS (owner 11/2/2026): Kwikset Halo locks through Seam. Richard chose see + alerts + lock: there is no unlock here.
+const drSec=mk('drSec','owner','doors','<h2>Office doors <span class="t">Kwikset locks · see, get alerts, lock</span></h2>'+
+ '<div class="row drBar"><button class="btn2" type="button" id="drRef">Refresh</button><span class="t" id="drMsg"></span></div>'+
+ '<div id="drLocks" class="drLocks"></div><h3>Last 3 days</h3><div id="drEv" class="t"></div>'+
+ '<p class="t">Alerts come to Decisions: 3 wrong codes, a lock going offline, low battery, and any unlock between 8 PM and 6 AM. Unlocking and door codes stay in the Kwikset app.</p>');
+drSec.hidden=true;wrap.append(drSec);
+{const st=el('style');st.textContent='.drBar{display:flex;gap:8px;align-items:center;margin:8px 0}.drLocks{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}.drL{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:12px;background:var(--card,#fff)}.drL .drS{font:700 20px/1.2 Oswald,Arial Narrow,sans-serif;margin:6px 0}.drL.open{border-left:6px solid #C8102E}.drL.shut{border-left:6px solid #1f7a3a}#drEv div{padding:3px 0;border-bottom:1px solid var(--line,#eee)}';document.head.append(st)}
+let DR_LOADED=false;
+const drCall=q=>Y().call('aiAsk',[{mode:'ask',q,tab:'owner'}]).then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');return r});
+function drLoad(){if(!Y().call)return;const m=$('drMsg'),L=$('drLocks'),E=$('drEv');m.textContent='Loading…';
+  drCall('§doors status').then(r=>{DR_LOADED=true;L.textContent='';E.textContent='';
+    if(!r.connected){m.textContent='';const b=el('div','drL');b.append(el('b','','Kwikset is not connected yet'),el('div','t','1) Make a Seam account with your 2f-logistics.com email and add its API key as SEAM_API_KEY in Supabase (Claude cannot do either). 2) Turn off 2-step sign-in in the Kwikset app. 3) Tap Connect and sign in to Kwikset yourself.'));
+      const c=el('button','btn','Connect Kwikset');c.type='button';const cm=el('div','t');c.addEventListener('click',()=>{cm.textContent='Getting the link…';drCall('§doors connect').then(x=>{if(x.url){window.open(x.url,'_blank','noopener');cm.textContent='Sign in to Kwikset in the new tab, then come back and tap Refresh.'}else cm.textContent=x.error||'Add SEAM_API_KEY first.'}).catch(e=>{cm.textContent=(e&&e.message)||String(e)})});b.append(c,cm);L.append(b);return}
+    m.textContent=(r.locks||[]).length+' lock'+((r.locks||[]).length===1?'':'s');
+    (r.locks||[]).forEach(k=>{const c=el('div','drL '+(k.locked===false?'open':k.locked?'shut':''));c.append(el('b','',k.name));
+      c.append(el('div','drS',k.locked===false?'🔓 UNLOCKED':k.locked?'🔒 Locked':'? Unknown'));
+      c.append(el('div','t',(k.online===false?'⚠️ Offline · ':'Online · ')+(k.battery!=null?'Battery '+Math.round(k.battery*100)+'%':'Battery ?')+(k.model?' · '+k.model:'')));
+      const res=el('div','t');if(k.locked===false&&k.online!==false){const b=el('button','btn','Lock it');b.type='button';b.addEventListener('click',()=>{if(!confirm('Lock '+k.name+' now?'))return;b.disabled=true;res.textContent='Locking…';
+        drCall('§doors lock '+JSON.stringify({device_id:k.id})).then(x=>{res.textContent=x.text||'Sent.';setTimeout(drLoad,6000)}).catch(e=>{res.textContent=(e&&e.message)||String(e);b.disabled=false})});c.append(b)}
+      c.append(res);L.append(c)});
+    (r.events||[]).forEach(e=>{E.append(el('div','',new Date(e.at).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'})+' · '+e.door+' · '+e.what+(e.how?' ('+e.how+')':'')))});
+    if(!E.children.length)E.textContent='No door events yet.'}).catch(e=>{m.textContent=(e&&e.message)||String(e)})}
+$('drRef').addEventListener('click',drLoad);
+try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!DR_LOADED)drLoad()}).observe(drSec)}catch(e){}
+drSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
@@ -3747,7 +3772,7 @@ port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
 sales:[['work','Find work'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
-owner:[['cams','Cameras'],['browser',"Carter's browser"],['mail',"Carter's email"],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
+owner:[['cams','Cameras'],['browser',"Carter's browser"],['mail',"Carter's email"],['doors','Office doors'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
