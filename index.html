@@ -3291,8 +3291,8 @@ brwSec.hidden=true;wrap.append(brwSec);
 // glove-size buttons, big photos, sort, camera and type filters, which reasons show, auto-refresh, shift handoff, ideas to Richard.
 const gqSec=mk('gqSec','yard','containers','<h2>Gate camera queue <span class="t">trucks the cameras saw · no yard move logged</span></h2>'+
  '<p class="help">Each card is one truck at the gate with no check-in or check-out in DockRelay. Log it, or tap why it was not a yard move. Every box logged here gets billed.</p>'+
- '<div class="row gqBar"><button class="btn2" type="button" id="gqLoad">Refresh</button><button class="btn2" type="button" id="gqPrefB">⚙️ Make it yours</button><button class="btn2" type="button" id="gqShift">📋 Shift report</button><span class="t" id="gqMsg">Loading…</span></div>'+
- '<div id="gqPref" class="gqPref" hidden></div><div id="gqRep" class="gqPref" hidden></div><div id="gqList" class="gqList"></div>');
+ '<div class="row gqBar"><button class="btn2" type="button" id="gqLoad">Refresh</button><button class="btn2" type="button" id="gqPrefB">⚙️ Make it yours</button><button class="btn2" type="button" id="gqShift">📋 Shift report</button><button class="btn" type="button" id="gqScanB">📷 Scan a box</button><span class="t" id="gqMsg">Loading…</span></div>'+
+ '<div id="gqPref" class="gqPref" hidden></div><div id="gqRep" class="gqPref" hidden></div><div id="gqCk" class="gqList"></div><div id="gqList" class="gqList"></div>');
 {const cs=$('cinForm')&&$('cinForm').closest('section');if(cs)cs.before(gqSec);else wrap.append(gqSec)}
 {const st=el('style');st.textContent='.gqList{display:grid;gap:10px;margin:8px 0 18px}.gqC{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:10px;background:var(--card,#fff);display:grid;grid-template-columns:120px 1fr;gap:10px}.gqC img{width:120px;height:90px;object-fit:cover;border-radius:8px;background:#ddd;cursor:zoom-in}.gqC .gqNo{width:120px;height:90px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#777}.gqC b{font-size:15px}.gqC .gqNum{font-family:var(--mono,monospace);font-weight:700;letter-spacing:.03em}.gqC .gqBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.gqC .gqBtns button{padding:6px 10px;font-size:13px}.gqC.done{opacity:.45}'+
  '.gqBig .gqC .gqBtns button{padding:14px 16px;font-size:17px;min-width:46%}.gqBig .gqC b{font-size:18px}.gqPhoto .gqC{grid-template-columns:1fr}.gqPhoto .gqC img,.gqPhoto .gqC .gqNo{width:100%;height:240px}'+
@@ -3305,9 +3305,21 @@ let GQP=(()=>{try{return Object.assign({},GQ_DEF,JSON.parse(localStorage.getItem
 const gqSave=()=>{try{localStorage.setItem('gqPrefs',JSON.stringify(GQP))}catch(e){}};
 const gqCall=q=>Y().call('aiAsk',[{mode:'ask',q,tab:'yard'}]);
 const gqWhen=t=>new Date(t).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'});
-function gqDone(it,outcome,card){return gqCall('§gate done '+JSON.stringify({ids:it.ids,outcome,container:it.container||''})).then(r=>{if(r&&r.ok===false)throw new Error(r.error||'Not saved');it.done=outcome;GQ_TODAY.push({outcome,who:'me',n:it.ids.length});if(card){card.classList.add('done');const m=card.querySelector('.gqRes');if(m)m.textContent='✓ '+(outcome==='logged'?'Logged':GQ_RS[outcome]||outcome)}gqCount()}).catch(e=>alert((e&&e.message)||String(e)))}
+const GQ_OBK='gqOutbox',GQ_SCAN='https://lzwidcwiejowjhgzkcxo.supabase.co/functions/v1/gate-scan';
+const gqOut=()=>{try{return JSON.parse(localStorage.getItem(GQ_OBK)||'[]')}catch(e){return[]}};
+const gqOutSet=a=>{try{localStorage.setItem(GQ_OBK,JSON.stringify(a.slice(-300)))}catch(e){}};
+const gqNetErr=e=>!navigator.onLine||/network|fetch|failed to|timeout|timed out|offline|load failed|connection/i.test(String((e&&e.message)||e));
+function gqSend(cmd){return gqCall(cmd).then(r=>{if(r&&r.ok===false)throw Object.assign(new Error(r.error||'Not saved'),{hard:1});return r})}
+function gqMark(it,outcome,card,pend){it.done=outcome;GQ_TODAY.push({outcome,who:'me',n:(it.ids||[1]).length});if(card){card.classList.add('done');const m=card.querySelector('.gqRes');if(m)m.textContent='✓ '+(outcome==='logged'?'Logged':outcome==='no_show'?'Turned away / no-show':GQ_RS[outcome]||outcome)+(pend?' · saved on this phone, sends when there is signal':'')}gqCount()}
+// works with no signal (owner 11/2): taps are kept on the phone and sent when signal comes back
+function gqTap(cmd,it,outcome,card){if(!navigator.onLine){gqOutSet(gqOut().concat([{cmd,at:Date.now()}]));gqMark(it,outcome,card,1);return Promise.resolve()}
+  return gqSend(cmd).then(()=>gqMark(it,outcome,card)).catch(e=>{if(!e.hard&&gqNetErr(e)){gqOutSet(gqOut().concat([{cmd,at:Date.now()}]));gqMark(it,outcome,card,1)}else alert((e&&e.message)||String(e))})}
+function gqDone(it,outcome,card){return gqTap('§gate done '+JSON.stringify({ids:it.ids,outcome,container:it.container||''}),it,outcome,card)}
+let GQ_FL=false;
+function gqFlush(){if(GQ_FL||!navigator.onLine||!Y().call||!gqOut().length)return;GQ_FL=true;
+  (async()=>{const left=gqOut();while(left.length){try{await gqSend(left[0].cmd)}catch(e){if(!e.hard)break}left.shift();gqOutSet(left)}GQ_FL=false;gqCount()})()}
 function gqShown(){let L=GQ.filter(x=>(GQP.cam==='all'||x.camera===GQP.cam)&&(GQP.kinds==='both'||x.kind===GQP.kinds));if(GQP.sort==='old')L=L.slice().reverse();return L}
-function gqCount(){const left=GQ.filter(x=>!x.done).length,shown=gqShown().filter(x=>!x.done).length;$('gqMsg').textContent=left?(shown<left?shown+' shown · ':'')+left+' to log':'All clear. Nothing waiting.';try{subBadge('yard','containers',left,left>5)}catch(e){}}
+function gqCount(){const left=GQ.filter(x=>!x.done).length,shown=gqShown().filter(x=>!x.done).length;$('gqMsg').textContent=(left?(shown<left?shown+' shown · ':'')+left+' to log':'All clear. Nothing waiting.')+(gqOut().length?' · '+gqOut().length+' tap'+(gqOut().length===1?'':'s')+' waiting for signal':'')+(navigator.onLine?'':' · NO SIGNAL');try{subBadge('yard','containers',left,left>5)}catch(e){}}
 function gqRender(){const L=$('gqList');L.textContent='';L.classList.toggle('gqBig',!!GQP.big);L.classList.toggle('gqPhoto',!!GQP.photo);
   gqShown().forEach(it=>{const c=el('div','gqC');const pic=it.url?el('img'):el('div','gqNo','no photo');if(it.url){pic.src=it.url;pic.alt='Gate photo';pic.loading='lazy';pic.addEventListener('click',()=>window.open(it.url,'_blank','noopener'))}
     const body=el('div');body.append(el('b','',(it.camera||'Gate')+' · '+gqWhen(it.at)));
@@ -3318,10 +3330,11 @@ function gqRender(){const L=$('gqList');L.textContent='';L.classList.toggle('gqB
     const B=el('div','gqBtns'),btn=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));B.append(b)};
     btn('Check in','btn',()=>{GQ_PEND=it;if(it.container)$('ciNum').value=it.container;$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{(it.container?$('ciChas'):$('ciNum')).focus()},400);res.textContent='Fill in the form below and save. This card clears itself.'});
     btn('Check out','btn2',()=>{const li=it.container&&document.querySelector('#contList li[data-c="'+it.container+'"]');if(li){li.scrollIntoView({behavior:'smooth',block:'center'});li.style.outline='3px solid #C8102E';setTimeout(()=>{li.style.outline=''},4000);res.textContent='Check it out in the list, then tap "Already logged".'}else{res.textContent=it.container?it.container+' is not in the yard list. Use Fix an entry, or tap why below.':'No number read: find the box in the list below, check it out, then tap "Already logged".';$('contList').scrollIntoView({behavior:'smooth',block:'start'})}});
+    if(!it.container)btn('📷 Scan the number','btn2',()=>gqScan(r=>{if(r.container&&r.valid){it.container=r.container;n.textContent='';n.append(el('span','gqNum',r.container));res.textContent='Read '+r.container+' ✓ check digit OK. Tap Check in.'}else res.textContent=r.container?'Read '+r.container+' but the check digit fails. Look at the box and type it.':'Could not read a number. Get closer, hold steady, try again.'},res));
     btn('✓ Already logged','btn2',()=>gqDone(it,'logged',c));
     (GQP.reasons||[]).forEach(k=>GQ_RS[k]&&btn(GQ_RS[k],'btn2',()=>gqDone(it,k,c)));
     body.append(B);c.append(pic,body);if(it.done)c.classList.add('done');L.append(c)});gqCount()}
-function gqLoad(){if(!Y().call)return;$('gqMsg').textContent='Loading…';gqCall('§gate queue').then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');GQ=r.items||[];GQ_TODAY=r.today||[];gqRender();if((r.total||0)>GQ.length)$('gqMsg').textContent+=' · newest '+GQ.length+' of '+r.total}).catch(e=>{const m=String((e&&e.message)||e);$('gqMsg').textContent=/NEED_EMAIL/.test(m)?'Verify your company email in Ask first, then tap Refresh.':m})}
+function gqLoad(){if(!Y().call)return;$('gqMsg').textContent='Loading…';gqCall('§gate queue').then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');try{localStorage.setItem('gqLast',JSON.stringify({items:r.items||[],checkins:r.checkins||[],at:Date.now()}))}catch(e){}GQ=r.items||[];GQ_TODAY=r.today||[];gqCkRender(r.checkins||[]);gqRender();gqFlush();if((r.total||0)>GQ.length)$('gqMsg').textContent+=' · newest '+GQ.length+' of '+r.total}).catch(e=>{const m=String((e&&e.message)||e);if(gqNetErr(e)&&gqOffline())return;$('gqMsg').textContent=/NEED_EMAIL/.test(m)?'Verify your company email in Ask first, then tap Refresh.':m})}
 function gqTimer(){if(GQ_TIMER)clearInterval(GQ_TIMER);GQ_TIMER=null;const m=Number(GQP.refresh)||0;if(m>0)GQ_TIMER=setInterval(()=>{if(TAB==='yard'&&!document.hidden)gqLoad()},m*60000)}
 function gqPrefDraw(){const P=$('gqPref');P.textContent='';
   const row=(lab,ctl)=>{const l=el('label');l.append(el('span','',lab),ctl);P.append(l)};
@@ -3353,6 +3366,42 @@ $('gqShift').addEventListener('click',()=>{const R=$('gqRep');R.hidden=!R.hidden
 // a successful Check in of the pending box clears its card
 new MutationObserver(()=>{const t=($('ciMsg')||{}).textContent||'';if(GQ_PEND&&/^Checked in /.test(t)&&(!GQ_PEND.container||t.indexOf(GQ_PEND.container)>=0)){const it=GQ_PEND;GQ_PEND=null;const card=[...$('gqList').children][gqShown().indexOf(it)];gqDone(it,'logged',card)}}).observe($('ciMsg'),{childList:true,characterData:true,subtree:true});
 function gqInit(){try{if(!roles().length)return setTimeout(gqInit,3000);if(can('yard')){gqLoad();gqTimer()}else gqSec.hidden=true}catch(e){setTimeout(gqInit,5000)}}setTimeout(gqInit,2500);
+// ---- Driver check-ins (owner 11/2): drivers scan the QR sign at the gate (yard.2f-logistics.com/gate) and fill in who they are
+// and what they are doing; each one shows here until the gate person logs it or marks it a no-show.
+const GQ_MV={drop_loaded:'Drop a loaded box',drop_empty:'Drop an empty',pickup_loaded:'Pick up a loaded box',pickup_empty:'Pick up an empty',parking_in:'Parking: coming in',parking_out:'Parking: leaving',chassis_only:'Chassis only',other:'Other'};
+function gqCkDone(k,as,card){return gqTap('§gate checkin-done '+JSON.stringify({id:k.id,as}),k,as,card)}
+function gqCkRender(L){const H=$('gqCk');H.textContent='';L=(L||[]).filter(k=>!gqOut().some(o=>o.cmd.indexOf('"id":'+k.id+',')>0));if(!L.length)return;
+  H.append(el('b','','🚚 Driver check-ins ('+L.length+') · drivers who checked in on their phone at the gate'));
+  L.forEach(k=>{const c=el('div','gqC gqK'),b=el('div');b.append(el('b','',(k.name||'Driver')+(k.company?' · '+k.company:'')));
+    b.append(el('div','',(GQ_MV[k.move]||k.move)+' · '+gqWhen(k.at)));
+    const n=el('div');if(k.container)n.append(el('span','gqNum',k.container));if(k.chassis)n.append(document.createTextNode((k.container?'  ':'')+'Chassis '+k.chassis));if(n.childNodes.length)b.append(n);
+    const p=el('div'),ph=el('a','',k.phone);ph.href='tel:'+String(k.phone||'').replace(/[^\d+]/g,'');p.append(ph);if(k.usdot)p.append(document.createTextNode(' · USDOT '+k.usdot));b.append(p);if(k.note)b.append(el('div','t',k.note));
+    const res=el('div','t gqRes');b.append(res);const B=el('div','gqBtns'),btn=(t,cls,f)=>{const x=el('button',cls,t);x.type='button';x.addEventListener('click',()=>f(x));B.append(x)};
+    if(!/^pickup|^parking_out/.test(k.move))btn('Check in','btn',()=>{if(k.container)$('ciNum').value=k.container;if(k.chassis){$('ciChas').value=k.chassis;try{$('ciMount').value='On chassis'}catch(e){}}const nt=$('ciNotes');if(nt&&!nt.value)nt.value=('Driver '+(k.name||'')+(k.company?' ('+k.company+')':'')+' '+(k.phone||'')).slice(0,300);try{cdWarn($('ciNum'))}catch(e){}$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});res.textContent='Save the form, then tap Done.'});
+    else btn('Find the box','btn2',()=>{const li=k.container&&document.querySelector('#contList li[data-c="'+k.container+'"]');if(li){li.scrollIntoView({behavior:'smooth',block:'center'});li.style.outline='3px solid #C8102E';setTimeout(()=>{li.style.outline=''},4000);res.textContent='Check it out in the list, then tap Done.'}else{res.textContent=k.container?k.container+' is not in the yard list. Check with the driver.':'No box number given. Ask the driver.';$('contList').scrollIntoView({behavior:'smooth',block:'start'})}});
+    btn('✓ Done','btn2',()=>gqCkDone(k,'logged',c));btn('Turned away / no-show','btn2',()=>gqCkDone(k,'no_show',c));
+    b.append(B);c.append(b);H.append(c)})}
+// no signal: show the last list this phone loaded (minus what is already tapped)
+function gqOffline(){let s;try{s=JSON.parse(localStorage.getItem('gqLast')||'null')}catch(e){}if(!s)return false;const sent=gqOut().map(o=>o.cmd).join(' ');
+  GQ=(s.items||[]).filter(x=>sent.indexOf('"ids":'+JSON.stringify(x.ids))<0);gqCkRender(s.checkins||[]);gqRender();
+  $('gqMsg').textContent+=' · no signal: showing the list from '+new Date(s.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});return true}
+window.addEventListener('online',()=>{gqFlush();setTimeout(()=>{if(can('yard'))gqLoad()},1500)});window.addEventListener('offline',()=>{try{gqCount()}catch(e){}});
+// ---- Scan with the phone camera (owner 11/2): photo -> gate-scan (Carter reads it, checks the ISO 6346 digit, keeps the photo)
+function gqShrink(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,1280/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=Math.round(im.width*s);cv.height=Math.round(im.height*s);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(u);ok(cv.toDataURL('image/jpeg',0.85).split(',')[1])};im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('Could not open that photo'))};im.src=u})}
+function gqScan(onRead,msg){const f=el('input');f.type='file';f.accept='image/*';f.setAttribute('capture','environment');f.style.display='none';document.body.append(f);
+  f.addEventListener('change',async()=>{const file=f.files&&f.files[0];f.remove();if(!file)return;const say=t=>{if(msg)msg.textContent=t};
+    try{if(!navigator.onLine)throw new Error('No signal right now. Type the number.');say('📷 Carter is reading the photo…');
+      const img=await gqShrink(file),t=await gqCall('§gate token');if(!t||!t.ticket)throw new Error((t&&t.error)||'Could not start the scan. Tap Scan again.');
+      const r=await fetch(GQ_SCAN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:t.ticket,image:img})}).then(x=>x.json());
+      if(!r.ok)throw new Error(r.error||'Scan failed. Type the number.');say('');onRead(r)}catch(e){say((e&&e.message)||String(e))}});f.click()}
+function gqFillForm(r,msg){const set=(id,v)=>{const x=$(id);if(x&&v)x.value=String(v).toUpperCase()};
+  if(r.container)set('ciNum',r.container);if(r.chassis){set('ciChas',r.chassis);try{$('ciMount').value='On chassis'}catch(e){}}if(r.seal)set('ciSeal',r.seal);try{cdWarn($('ciNum'))}catch(e){}
+  const it=r.container&&GQ.find(x=>!x.done&&x.container===r.container);if(it)GQ_PEND=it;
+  msg.textContent=!r.container?'Could not read a box number. Get closer, hold steady, try again.':(r.valid?'Read '+r.container+' ✓ check digit OK':'Read '+r.container+' ✗ check digit fails: look at the box and fix it')+(r.chassis?' · chassis '+r.chassis:'')+(r.seal?' · seal '+r.seal:'')+(it?' · this clears its gate card when you save':'')+(r.note?' · '+r.note:'')}
+{const ci=$('ciNum'),lab=ci&&ci.closest('label');if(lab){const w=el('div','row gqScanRow'),b=el('button','btn2','📷 Scan');b.type='button';const m=el('span','t');w.append(b,m);lab.after(w);
+  b.addEventListener('click',()=>gqScan(r=>gqFillForm(r,m),m));
+  $('gqScanB').addEventListener('click',()=>{$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});gqScan(r=>gqFillForm(r,m),m)})}}
+{const st=el('style');st.textContent='.gqC.gqK{grid-template-columns:1fr;border-left:5px solid #1F2A5C}#gqCk:empty{display:none}.gqScanRow{display:flex;gap:8px;align-items:center;margin:-4px 0 8px}';document.head.append(st)}
 {const st=el('style');st.textContent='#brwFrame{width:100%;height:72vh;border:1px solid var(--line,#d6dad8);border-radius:10px;background:#2b2b2b}.brwBar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.brwAsk{display:flex;gap:8px;align-items:flex-start}.brwAsk textarea{flex:1;min-height:52px}#brwOut{margin-top:8px;white-space:pre-line}';document.head.append(st)}
 $('brwOpen').href=BRW_URL;
 $('brwShow').addEventListener('click',()=>{const b=$('brwBox'),f=$('brwFrame');b.hidden=!b.hidden;if(!b.hidden&&!f.src)f.src=BRW_URL;$('brwShow').textContent=b.hidden?'Show it here':'Hide'});
