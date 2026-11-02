@@ -2771,7 +2771,7 @@ function aiOpen(seed){const d=aiDef();let sh=$('aiSh');if(!sh){sh=el('div');sh.i
   box.append(top,body,inp);sh.append(box);if(seed)aiAsk2(seed);try{AIUSE.open++;localStorage.setItem('aiUse',JSON.stringify(AIUSE))}catch(e){}}
 function aiAdd(who,t,actions){const L=$('aiLog');if(!L)return null;const m=el('div','aiMsg '+who);m.append(document.createTextNode(t));if(actions){const r=el('div','row');actions.forEach(([l,f])=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',()=>f(b));r.append(b)});m.append(r)}L.append(m);m.scrollIntoView({behavior:'smooth',block:'end'});return m}
 // Commands go to Carter as typed (owner 11/2/2026: "create an SOP", "email JC ..."): the brain routes them to carter-mail (draft + approval card).
-const AICMD=/^\s*(?:carter[,:]?\s*)?(?:please\s+|can you\s+|go ahead and\s+)?(email|e-mail|send|write|draft|create|make|reply|build)\b/i;
+const AICMD=/^\s*(?:carter[,:]?\s*)?(?:(?:please\s+|can you\s+|go ahead and\s+)?(?:email|e-mail|send|write|draft|create|make|reply|build)\b|(?:parts?|deep|research)\s*[:\-]|find (?:a |the )?part\b)/i;
 // Deep link for Siri / Shortcuts / Apple Watch (owner 11/2/2026: "Carter listens and performs tasks when I'm away"):
 // https://yard.2f-logistics.com/?ask=<what you said> opens the app, opens the assistant and sends it to Carter.
 setTimeout(()=>{try{const a=new URLSearchParams(location.search).get('ask');if(!a)return;try{history.replaceState(null,'',location.pathname)}catch(e){}
