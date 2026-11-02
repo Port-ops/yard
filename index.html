@@ -3284,6 +3284,39 @@ const brwSec=mk('brwSec','owner','browser','<h2>Carter\'s browser <span class="t
  '<h3>Give Carter a task</h3><div class="brwAsk"><textarea id="brwQ" rows="2" placeholder="e.g. find a DD15 turbo for a 2019 Cascadia on FleetPride and compare prices"></textarea><button class="btn" type="button" id="brwGo">Send to Carter</button></div>'+
  '<div class="t" id="brwOut"></div><p class="t">Results land in Carter &gt; Decisions as a 🧠 Answer card, usually in a few minutes.</p>');
 brwSec.hidden=true;wrap.append(brwSec);
+// ---- GATE QUEUE (owner 11/2/2026, for Brandon): every truck the gate cameras saw with no yard move logged, one card per visit
+// with the photo. One tap: Check in / Check out (the normal forms, pre-filled), Already logged, or not a yard move. Carter
+// counts what is left in the 7:35 AM camera summary. Data: brain "§gate" commands through Ask (Apps Script checks who it is).
+const gqSec=mk('gqSec','yard','containers','<h2>Gate camera queue <span class="t">trucks the cameras saw · no yard move logged</span></h2>'+
+ '<p class="help">Each card is one truck at the gate with no check-in or check-out in DockRelay. Log it, or tap why it was not a yard move. Every box logged here gets billed.</p>'+
+ '<div class="row gqBar"><button class="btn2" type="button" id="gqLoad">Refresh</button><span class="t" id="gqMsg">Loading…</span></div><div id="gqList" class="gqList"></div>');
+{const cs=$('cinForm')&&$('cinForm').closest('section');if(cs)cs.before(gqSec);else wrap.append(gqSec)}
+{const st=el('style');st.textContent='.gqList{display:grid;gap:10px;margin:8px 0 18px}.gqC{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:10px;background:var(--card,#fff);display:grid;grid-template-columns:120px 1fr;gap:10px}.gqC img{width:120px;height:90px;object-fit:cover;border-radius:8px;background:#ddd;cursor:zoom-in}.gqC .gqNo{width:120px;height:90px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#777}.gqC b{font-size:15px}.gqC .gqNum{font-family:var(--mono,monospace);font-weight:700;letter-spacing:.03em}.gqC .gqBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.gqC .gqBtns button{padding:6px 10px;font-size:13px}.gqC.done{opacity:.45}@media(max-width:520px){.gqC{grid-template-columns:1fr}.gqC img,.gqC .gqNo{width:100%;height:170px}}';document.head.append(st)}
+let GQ=[],GQ_PEND=null;
+const gqCall=q=>Y().call('aiAsk',[{mode:'ask',q,tab:'yard'}]);
+const gqWhen=t=>new Date(t).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'});
+function gqDone(it,outcome,card){return gqCall('§gate done '+JSON.stringify({ids:it.ids,outcome,container:it.container||''})).then(r=>{if(r&&r.ok===false)throw new Error(r.error||'Not saved');it.done=outcome;if(card){card.classList.add('done');const m=card.querySelector('.gqRes');if(m)m.textContent='✓ '+({logged:'Logged',parking:'Parking customer',bobtail:'Bobtail / chassis only',visitor:'Visitor / vendor',not_ours:'Not ours',other:'Other'}[outcome]||outcome)}gqCount()}).catch(e=>alert((e&&e.message)||String(e)))}
+function gqCount(){const left=GQ.filter(x=>!x.done).length;$('gqMsg').textContent=left?left+' to log':'All clear. Nothing waiting.';try{subBadge('yard','containers',left,left>5)}catch(e){}}
+function gqRender(){const L=$('gqList');L.textContent='';
+  GQ.forEach(it=>{const c=el('div','gqC');const pic=it.url?el('img'):el('div','gqNo','no photo');if(it.url){pic.src=it.url;pic.alt='Gate photo';pic.loading='lazy';pic.addEventListener('click',()=>window.open(it.url,'_blank','noopener'))}
+    const body=el('div');body.append(el('b','',(it.camera||'Gate')+' · '+gqWhen(it.at)));
+    body.append(el('div','t',(it.kind==='truck_with_container'?'Truck with a container':'Truck with an empty chassis')+(it.ids.length>1?' · '+it.ids.length+' photos':'')));
+    const n=el('div');if(it.container){n.append(el('span','gqNum',it.container))}else{n.append(el('span','t',it.read?'Camera read "'+it.read+'" (not a valid number), check the photo':'Camera could not read the number, check the photo'))}body.append(n);
+    if(it.match==='mismatch')body.append(el('div','t','The log has a different box around this time: check which is right.'));
+    const res=el('div','t gqRes');body.append(res);
+    const B=el('div','gqBtns'),btn=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));B.append(b)};
+    btn('Check in','btn',()=>{GQ_PEND=it;if(it.container)$('ciNum').value=it.container;$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{(it.container?$('ciChas'):$('ciNum')).focus()},400);res.textContent='Fill in the form below and save. This card clears itself.'});
+    btn('Check out','btn2',()=>{const li=it.container&&document.querySelector('#contList li[data-c="'+it.container+'"]');if(li){li.scrollIntoView({behavior:'smooth',block:'center'});li.style.outline='3px solid #C8102E';setTimeout(()=>{li.style.outline=''},4000);res.textContent='Check it out in the list, then tap "Already logged".'}else{res.textContent=it.container?it.container+' is not in the yard list. Use Fix an entry, or tap why below.':'No number read: find the box in the list below, check it out, then tap "Already logged".';$('contList').scrollIntoView({behavior:'smooth',block:'start'})}});
+    btn('✓ Already logged','btn2',b=>gqDone(it,'logged',c));
+    btn('Parking customer','btn2',()=>gqDone(it,'parking',c));
+    btn('Bobtail / chassis only','btn2',()=>gqDone(it,'bobtail',c));
+    btn('Visitor / vendor','btn2',()=>gqDone(it,'visitor',c));
+    body.append(B);c.append(pic,body);if(it.done)c.classList.add('done');L.append(c)});gqCount()}
+function gqLoad(){if(!Y().call)return;$('gqMsg').textContent='Loading…';gqCall('§gate queue').then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');GQ=r.items||[];gqRender();if((r.total||0)>GQ.length)$('gqMsg').textContent+=' · showing the newest '+GQ.length+' of '+r.total}).catch(e=>{const m=String((e&&e.message)||e);$('gqMsg').textContent=/NEED_EMAIL/.test(m)?'Verify your company email in Ask first, then tap Refresh.':m})}
+$('gqLoad').addEventListener('click',gqLoad);
+// a successful Check in of the pending box clears its card
+new MutationObserver(()=>{const t=($('ciMsg')||{}).textContent||'';if(GQ_PEND&&/^Checked in /.test(t)&&(!GQ_PEND.container||t.indexOf(GQ_PEND.container)>=0)){const it=GQ_PEND;GQ_PEND=null;const card=[...$('gqList').children][GQ.indexOf(it)];gqDone(it,'logged',card)}}).observe($('ciMsg'),{childList:true,characterData:true,subtree:true});
+function gqInit(){try{if(!roles().length)return setTimeout(gqInit,3000);if(can('yard')){gqLoad();setInterval(()=>{if(TAB==='yard'&&!document.hidden)gqLoad()},5*60000)}else gqSec.hidden=true}catch(e){setTimeout(gqInit,5000)}}setTimeout(gqInit,2500);
 {const st=el('style');st.textContent='#brwFrame{width:100%;height:72vh;border:1px solid var(--line,#d6dad8);border-radius:10px;background:#2b2b2b}.brwBar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.brwAsk{display:flex;gap:8px;align-items:flex-start}.brwAsk textarea{flex:1;min-height:52px}#brwOut{margin-top:8px;white-space:pre-line}';document.head.append(st)}
 $('brwOpen').href=BRW_URL;
 $('brwShow').addEventListener('click',()=>{const b=$('brwBox'),f=$('brwFrame');b.hidden=!b.hidden;if(!b.hidden&&!f.src)f.src=BRW_URL;$('brwShow').textContent=b.hidden?'Show it here':'Hide'});
