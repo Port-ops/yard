@@ -1562,14 +1562,35 @@ function renderFW(){const T=fwSec.querySelector('#fwT'),R=(SL&&SL.fw)||[],q=Stri
   let rows=R.filter(r=>SLF==='all'||(SLF==='lm'&&r.status==='open'&&isLM(r))||(SLF==='open'&&r.status==='open')||(SLF==='hot'&&r.status==='open'&&r.score>=70)||(SLF==='done'&&r.status!=='open'));
   if(q)rows=rows.filter(r=>[r.company,r.contact,r.email,r.subject,r.move,r.origin,r.destination,r.owner_label,r.reason].join(' ').toLowerCase().includes(q));
   fwSec.querySelector('#fwSum').textContent=SL?(R.length?R.filter(r=>r.status==='open').length+' open request(s) in the last 7 days':'Nothing saved yet. The Find Work agent starts saving here on its next hourly run.'):'Loading…';
-  T.textContent='';const h=el('tr');['Score','Received','Company / contact','Move / lane','Boxes','Owner','Why it scored','Status',''].forEach(x=>h.append(el('th','',x)));T.append(h);
-  if(!rows.length){const tr=el('tr'),td=el('td','muted',SL?'Nothing here.':'Loading…');td.colSpan=9;tr.append(td);T.append(tr)}
-  rows.forEach(r=>{const tr=el('tr');const sc=el('td');sc.append(slScore(r.score));const co=el('td');co.append(el('b','',r.company||'(unknown)'),el('div','muted',[r.contact,r.email].filter(Boolean).join(' · ')));if(r.subject)co.append(el('div','muted',r.subject));
-    const act=el('td');if(r.thread_link){const a=el('a','','Open email');a.href=r.thread_link;a.target='_blank';a.rel='noopener';act.append(a,el('br'))}
-    if(r.status==='open'){const qb=el('button','btn2','💲 Quote it');qb.type='button';qb.style.cssText='font-weight:700;background:#C8102E;border-color:#C8102E;color:#fff';qb.addEventListener('click',()=>qdQuoteFw(r,qb));act.append(qb);if(r.claimed_by&&new Date(r.claimed_at).getTime()>Date.now()-2*36e5)act.append(el('div','muted','🔒 '+r.claimed_by+' is on it'));[['quoted','Quoted'],['worked','Worked'],['pass','Pass']].forEach(([s,l])=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',()=>{const n=s==='pass'?prompt('Why pass? (no truck, rate too low, not our lane…)',''):'';if(s==='pass'&&n===null)return;slRun('salesFw',{id:r.id,status:s,note:n||''},b)});act.append(b)})}
-    else{const b=el('button','btn2','Reopen');b.type='button';b.addEventListener('click',()=>slRun('salesFw',{id:r.id,status:'open'},b));act.append(b)}
-    tr.append(sc,el('td','',slDate(r.received_at||r.found_at)),co,el('td','',[r.move,[r.origin,r.destination].filter(Boolean).join(' → ')].filter(Boolean).join(' · ')),el('td','n',r.boxes==null?'':String(r.boxes)),el('td','',r.owner_label||''),el('td','muted',r.reason||''),
-      el('td',r.status==='open'?'warn':'go',r.status+(r.worked_by?' · '+r.worked_by:'')+(r.quote_id?' · '+r.quote_id:'')+(r.notes?' · '+r.notes:'')),act);T.append(tr)});
+  T.textContent='';T.hidden=true;let L=fwSec.querySelector('#fwL');if(!L){L=el('div');L.id='fwL';T.parentNode.after(L)}L.textContent='';
+  const sb=el('div','row wfbar');const so=el('button','btn2','Sort: '+(FWSORT==='new'?'newest':'best score'));so.type='button';so.addEventListener('click',()=>{FWSORT=FWSORT==='new'?'score':'new';renderFW()});
+  const xa=el('button','btn2',FWALL?'Collapse all':'Expand all');xa.type='button';xa.addEventListener('click',()=>{FWALL=!FWALL;FWOPEN.clear();renderFW()});sb.append(so,xa,el('span','meta','tap a load to open it'));L.append(sb);
+  if(FWSORT==='new')rows=rows.slice().sort((a,b)=>new Date(b.received_at||b.found_at)-new Date(a.received_at||a.found_at));
+  if(!rows.length)L.append(el('p','muted',SL?'Nothing here.':'Loading…'));
+  rows.forEach(r=>{const open=FWALL?!FWOPEN.has(r.id):FWOPEN.has(r.id),c=el('div','imfc fwc'+(open?' open':'')),h=el('h4');h.style.cursor='pointer';
+    const hot=r.score>=70||/URGENT|HOT/.test(r.reason||'');h.append(el('span','imchev',open?'▾':'▸'),slScore(r.score),el('span','',r.company||'(unknown)'));
+    [hot&&'🔥 HOT',isLM(r)?'LoadMatch':(r.mailbox||''),wfAgo(r.received_at||r.found_at),r.status!=='open'&&r.status].filter(Boolean).forEach(t=>h.append(el('span','tag',t)));
+    if(r.claimed_by&&new Date(r.claimed_at).getTime()>Date.now()-2*36e5)h.append(el('span','tag','🔒 '+r.claimed_by));
+    h.addEventListener('click',()=>{if(FWOPEN.has(r.id))FWOPEN.delete(r.id);else FWOPEN.add(r.id);renderFW()});c.append(h);
+    c.append(el('div','fwlane',[r.move,[r.origin,r.destination].filter(Boolean).join(' → '),r.boxes!=null&&r.boxes!==''?r.boxes+' box(es)':''].filter(Boolean).join(' · ')));
+    const ln=wfLaneFor(r);if(ln){const b=el('div','wfrate');b.append(el('b','','Our rate '+ln.l+': '),document.createTextNode('median '+slMoney(ln.med)+' · '+ln.n+' quote'+(ln.n===1?'':'s')+' ('+slMoney(ln.lo)+'–'+slMoney(ln.hi)+')'+(ln.med120?' · last 120 days '+slMoney(ln.med120):'')+(ln.won?' · won '+ln.won:'')+' ›'));b.title='Open this lane in Lanes';b.addEventListener('click',e=>{e.stopPropagation();wfGoLane(ln.l)});c.append(b)}
+    else c.append(el('div','meta','No quote history on this lane yet.'));
+    const q=el('div','row imql'),txt=[r.contact,r.reason,r.notes].join(' '),ph=txt.match(/\(?\b\d{3}\)?[-. ]\d{3}[-. ]\d{4}\b/),em=r.email||((txt.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)||[])[0]);
+    if(ph)q.append(imLink('📞 Call','tel:'+ph[0].replace(/[^\d]/g,'')));
+    if(em)q.append(imLink('✉️ Email','mailto:'+encodeURIComponent(em)+'?subject='+encodeURIComponent('Re: '+(r.subject||[r.origin,r.destination].filter(Boolean).join(' to ')))+'&body='+encodeURIComponent('Hi'+(r.contact?' '+String(r.contact).split(/[ ,·]/)[0]:'')+',\n\n')));
+    if(r.thread_link)q.append(imLink('📨 Open email',r.thread_link));
+    if(isLM(r))q.append(imLink('🚚 LoadMatch','https://www.loadmatch.com/intermodal/search_loads.cfm?metro=SAV'));
+    q.append(imLink('🔍 Google','https://www.google.com/search?q='+encodeURIComponent((r.company||'').replace(/\s*\(LoadMatch\)/,'')+' logistics')));
+    const rb=el('button','imq','🧠 Research');rb.type='button';rb.addEventListener('click',e=>{e.stopPropagation();wfResearch('Who is '+(r.company||'').replace(/\s*\(LoadMatch\)/,'')+' (freight/logistics company)? What do they ship through the Port of Savannah, who decides drayage, and how do I reach them? Cite sources.')});q.append(rb);c.append(q);
+    if(r.contact&&!ph&&!em)c.append(el('div','meta','Contact: '+r.contact));
+    if(open){if(r.subject)c.append(el('div','meta','Subject: '+r.subject));const d=el('div','meta');d.append('Why it scored: ',imLinkify(r.reason||'–'));c.append(d);
+      if(r.contact)c.append(el('div','meta','Contact: '+[r.contact,r.email].filter(Boolean).join(' · ')));if(r.owner_label)c.append(el('div','meta',r.owner_label));
+      if(r.notes)c.append(el('div','meta','Notes: '+r.notes));if(r.worked_by)c.append(el('div','meta',r.status+' by '+r.worked_by+(r.quote_id?' · '+r.quote_id:'')))}
+    const act=el('div','row imst');
+    if(r.status==='open'){const qb=el('button','btn2','💲 Quote it');qb.type='button';qb.style.cssText='font-weight:700;background:#C8102E;border-color:#C8102E;color:#fff';qb.addEventListener('click',e=>{e.stopPropagation();qdQuoteFw(r,qb)});act.append(qb);
+      [['quoted','✅ Quoted'],['worked','📞 Worked'],['pass','✖ Pass']].forEach(([s,l])=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',e=>{e.stopPropagation();const n=s==='pass'?prompt('Why pass? (no truck, rate too low, not our lane…)',''):'';if(s==='pass'&&n===null)return;slRun('salesFw',{id:r.id,status:s,note:n||''},b)});act.append(b)})}
+    else{const b=el('button','btn2','↩ Reopen');b.type='button';b.addEventListener('click',e=>{e.stopPropagation();slRun('salesFw',{id:r.id,status:'open'},b)});act.append(b)}
+    c.append(act);L.append(c)});
   try{subBadge('sales','work',R.filter(r=>r.status==='open'&&r.score>=70).length,true)}catch(e){}}
 const IMST=[['drafted','Draft ready'],['sent_by_human','Sent by me'],['replied','Replied'],['qualified','Qualified'],['won','Won'],['lost','Lost'],['researched','Researched'],['compliance_review','Compliance review'],['do_not_contact','Do not contact']];
 const IMCAT={imc:'IMC',steamship_line:'Steamship line',importer_dc:'Importer / DC',forwarder:'Freight forwarder',nvocc:'NVOCC',other:'Other'};
@@ -1617,7 +1638,62 @@ function renderIM(){const L=imSec.querySelector('#imL'),R=(SL&&SL.imf)||[];
     if(!r.do_not_contact){const st=el('div','row imst');[['sent_by_human','✅ Sent'],['replied','💬 Replied'],['qualified','⭐ Qualified'],['won','🏆 Won'],['lost','✖ Not a fit']].filter(([k])=>k!==r.status).forEach(([k,l])=>{const bt=el('button','btn2',l);bt.type='button';bt.addEventListener('click',e=>{e.stopPropagation();imSetStatus(r,k,bt)});st.append(bt)});c.append(st)}
     L.append(c)});
   try{subBadge('sales','finder',R.filter(r=>r.status==='drafted').length,false)}catch(e){}}
-function renderSL(){[fwSec,qtSec,imSec].forEach(s=>s.hidden=!slCan());if(!slCan())return;if(SL)fwSec.querySelector('#fwAsof').textContent='load requests nobody at 2FF has answered yet · updated '+slDate(new Date(SL.at).getTime());renderFW();renderQT();renderIM()}
+// ===== Work Finder upgrade (owner 11/2/2026: "make it easier and more interactive the whole tab", research + DAT tabs) =====
+const FWOPEN=new Set();let FWALL=false,FWSORT='score',LNQ='',LNF='all',LNOPEN=new Set(),RSHIST=[];
+const wfAgo=v=>{if(!v)return '';const m=Math.round((Date.now()-new Date(v).getTime())/6e4);return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'};
+function wfLaneKey(s){s=String(s||'').toUpperCase().replace(/\(.*?\)/g,' ');const m=s.match(/([A-Z][A-Z .'-]+?),?\s+([A-Z]{2})\b/);if(!m)return '';return m[1].replace(/\s+/g,' ').trim().toLowerCase().replace(/\b\w/g,c=>c.toUpperCase())+', '+m[2]}
+function wfLaneFor(r){const L=(SL&&SL.lanes)||[];if(!L.length)return null;const sav=/SAV|GARDEN CITY|GCT|PORT WENTWORTH|OCEAN TERM/i;
+  const far=sav.test(r.origin||'')||!r.origin?r.destination:(sav.test(r.destination||'')?r.origin:r.destination);const k=wfLaneKey(far);if(!k)return null;return L.find(x=>x.l===k)||null}
+function wfGoLane(l){LNQ=l;try{sub('sales','lanes')}catch(e){}const i=document.getElementById('lnQ');if(i)i.value=l;LNOPEN.add(l);renderLN();try{lnSec.scrollIntoView({behavior:'smooth'})}catch(e){}}
+function wfResearch(q){try{sub('sales','research')}catch(e){}const t=document.getElementById('rsQ');if(t){t.value=q;t.focus()}try{rsSec.scrollIntoView({behavior:'smooth'})}catch(e){}}
+const lnSec=mk('lnSec','sales','lanes','<h2>Lanes <span class="t">our rate book · every rate we quoted on LoadMatch plus Quote desk and Quote Agent quotes (last 12 months) · typos under $100 or over $20,000 left out</span></h2>'+
+ '<div class="drow"><input id="lnQ" placeholder="Search a city, state or company (e.g. Dalton, GA)" autocomplete="off" style="text-transform:none;flex:1"></div><div class="fchips" id="lnF"></div><div id="lnSum" class="t"></div><div id="lnL"></div>');
+const rsSec=mk('rsSec','sales','research','<h2>Research <span class="t">live web research with sources (Perplexity) · ask about a company, a lane, rates or port news · about 1–2 minutes</span></h2>'+
+ '<div class="vwAdd"><textarea id="rsQ" placeholder="e.g. Who imports through Savannah and delivers to Dalton, GA? Who decides their drayage?"></textarea><div class="row" id="rsP"></div><div class="row"><button class="btn2 pri" type="button" id="rsGo">🧠 Research it</button><span class="t" id="rsN"></span></div></div><div id="rsL"></div>');
+const datSec=mk('datSec','sales','dat','<h2>DAT <span class="t">DAT One load board · log in on DAT, our own rate book stays here beside it</span></h2>'+
+ '<div class="vwAdd"><p class="help">DAT does not allow its site inside other apps, so DAT opens in its own window or the DAT One app. Your login stays with DAT; DockRelay never sees it.</p><div class="row"><a class="btn2 pri" id="datGo" href="https://one.dat.com/dashboard" target="_blank" rel="noopener">🔑 Open DAT One (log in)</a></div></div>'+
+ '<h3 style="margin:10px 0 4px">Check a lane: DAT vs. us</h3><div class="drow"><input id="datQ" placeholder="Destination city, ST (e.g. Atlanta, GA)" autocomplete="off" style="text-transform:none;flex:1"><button class="btn2" type="button" id="datC">Copy for DAT</button></div><div id="datL"></div>');
+{const anchor=document.getElementById('erSec')||document.getElementById('gmSec');[lnSec,rsSec,datSec].forEach(s=>{if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(s,null);else wrap.append(s)})}
+{const st=el('style');st.textContent='.fwc .fwlane{font-weight:700;font-size:14px;margin:2px 0}.wfrate{margin:6px 0;padding:6px 10px;border-radius:8px;background:#eef6f0;color:#1f4d33;font-size:13px;cursor:pointer}.wfrate b{font-weight:700}.wfbar{margin:6px 0}.lnc .lnmed{font-family:var(--mono);font-weight:700;font-size:18px}.lnc table{width:100%;font-size:12.5px;border-collapse:collapse;margin-top:6px}.lnc td{padding:3px 4px;border-top:1px solid var(--line,#e2e5e7)}.rsA{white-space:pre-wrap;font-size:14px;line-height:1.45}.rsS a{display:block;font-size:12.5px;margin:2px 0;word-break:break-all}#rsQ{width:100%;min-height:80px;box-sizing:border-box;text-transform:none;font:inherit;font-size:14px;padding:8px}';document.head.append(st)}
+function renderLN(){const L=document.getElementById('lnL');if(!L)return;const A=(SL&&SL.lanes)||[];
+  const sts=['GA','SC','NC','FL','AL','TN'];slChips(document.getElementById('lnF'),[['all','All',A.length]].concat(sts.map(s=>[s,s,A.filter(x=>x.st===s).length])).concat([['won','Won before',A.filter(x=>x.won).length],['hot','Most quoted',null]]),LNF,k=>{LNF=k;renderLN()});
+  const q=String(document.getElementById('lnQ').value||LNQ||'').trim().toLowerCase();
+  let rows=A.filter(x=>(LNF==='all'||LNF==='hot'||x.st===LNF||(LNF==='won'&&x.won))&&(!q||x.l.toLowerCase().includes(q)||(x.recent||[]).some(y=>String(y.who||'').toLowerCase().includes(q))));
+  if(LNF==='hot')rows=rows.slice().sort((a,b)=>b.n-a.n);
+  document.getElementById('lnSum').textContent=SL?(A.length?rows.length+' lane(s) · '+A.reduce((s,x)=>s+x.n,0).toLocaleString()+' quotes in the book':'No rate history loaded yet.'):'Loading…';
+  L.textContent='';rows.slice(0,80).forEach(x=>{const open=LNOPEN.has(x.l),c=el('div','imfc lnc'+(open?' open':'')),h=el('h4');h.style.cursor='pointer';
+    h.append(el('span','imchev',open?'▾':'▸'),el('span','',x.l),el('span','lnmed',slMoney(x.med)),el('span','tag',x.n+' quote'+(x.n===1?'':'s')));if(x.won)h.append(el('span','tag','🏆 won '+x.won));
+    h.addEventListener('click',()=>{if(LNOPEN.has(x.l))LNOPEN.delete(x.l);else LNOPEN.add(x.l);renderLN()});c.append(h);
+    c.append(el('div','meta','Range '+slMoney(x.lo)+'–'+slMoney(x.hi)+(x.med120?' · last 120 days '+slMoney(x.med120):'')+' · last quoted '+(x.last||'–')));
+    if(open){const t=el('table');(x.recent||[]).forEach(y=>{const tr=el('tr');tr.append(el('td','',y.d||''),el('td','',slMoney(y.p)),el('td','',(y.won?'🏆 ':'')+(y.who||'')),el('td','muted',y.src||''));t.append(tr)});c.append(el('div','meta','Most recent quotes'),t)}
+    const a=el('div','row imql');const rb=el('button','imq','🧠 Research rates');rb.type='button';rb.addEventListener('click',e=>{e.stopPropagation();wfResearch('What are current drayage rates for a 40ft container from the Port of Savannah (Garden City Terminal) to '+x.l+'? Include fuel surcharge, chassis and typical accessorials, and which shippers/consignees move containers on this lane. Cite sources.')});
+    a.append(rb,imLink('📈 DAT','https://one.dat.com/dashboard'),imLink('🗺️ Map','https://www.google.com/maps/dir/Garden+City+Terminal,+Savannah,+GA/'+encodeURIComponent(x.l)));c.append(a);L.append(c)});
+  if(rows.length>80)L.append(el('p','muted','Showing 80 of '+rows.length+'. Search to narrow it down.'))}
+function renderLMV(){const v=document.getElementById('vwSec');if(!v)return;let b=document.getElementById('vwLm');if(!b){b=el('div');b.id='vwLm';const h2=v.querySelector('h2');if(h2)h2.after(b);else v.prepend(b)}
+  const A=(SL&&SL.lmv)||[];b.textContent='';if(!A.length)return;const d=el('details','vwAdd');d.open=true;d.append(el('summary','','📡 From LoadMatch automatically · '+A.length+' companies in the last 21 days (daily read)'));
+  A.slice(0,40).forEach(x=>{const c=el('div','imfc'),h=el('h4');h.append(el('span','',x.company),el('span','tag',(x.st||'?')+' · '+(x.kind||'')),el('span','tag','👀 '+x.views+' view'+(x.views===1?'':'s')),el('span','tag',x.quoted?'quoted '+x.quoted+'x':'never quoted'));c.append(h);
+    c.append(el('div','meta','Last look '+wfAgo(x.last)+(x.rank?' · we ranked #'+x.rank+' in their Savannah search':'')));
+    const a=el('div','row imql');a.append(imLink('💼 LinkedIn','https://www.linkedin.com/search/results/companies/?keywords='+encodeURIComponent(x.company)),imLink('🔍 Google','https://www.google.com/search?q='+encodeURIComponent(x.company+' logistics')));
+    const rb=el('button','imq','🧠 Research');rb.type='button';rb.addEventListener('click',()=>wfResearch('Who is '+x.company+' ('+(x.st||'')+', '+(x.kind||'')+')? Do they move containers through Savannah, who books their drayage, and how do I reach them? Cite sources.'));a.append(rb);c.append(a);d.append(c)});b.append(d)}
+function renderRS(){const L=document.getElementById('rsL');if(!L)return;L.textContent='';RSHIST.forEach(x=>{const c=el('div','imfc');c.append(el('h4','',x.q.length>140?x.q.slice(0,140)+'…':x.q));
+  if(x.busy){c.append(el('div','meta','Researching… (1–2 minutes)'))}else if(x.err){c.append(el('div','ev bad',x.err))}else{const a=el('div','rsA');a.append(imLinkify(x.text||'(no answer)'));c.append(a);
+    if((x.sources||[]).length){const s=el('div','rsS');s.append(el('div','meta','Sources'));x.sources.forEach(y=>s.append(imLink(y.title||y.url,y.url)));c.append(s)}
+    const r=el('div','row');const cp=el('button','btn2','📋 Copy');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(x.text+'\n\n'+(x.sources||[]).map(y=>y.url).join('\n'));cp.textContent='Copied ✓'}catch(e){}});r.append(cp);c.append(r)}L.append(c)})}
+{const P=[['Who ships to a lane','Which importers and distribution centers receive ocean containers through the Port of Savannah and deliver to Dalton, GA? Name companies, what they ship, and who handles their drayage. Cite sources.'],
+  ['Savannah port this week','What is happening at the Port of Savannah this week that affects container drayage (vessel bunching, gate hours, chassis, congestion, new tenants)? Cite sources with dates.'],
+  ['New warehouses near Savannah','Which companies announced or opened new warehouses or distribution centers within 60 miles of the Port of Savannah in the last 90 days? Cite sources.'],
+  ['Drayage rates','What are current spot drayage rates for a 40ft container from the Port of Savannah to Atlanta, Charlotte, Jacksonville and Nashville? Cite sources and dates.']];
+ const box=document.getElementById('rsP');P.forEach(([l,q])=>{const b=el('button','imq',l);b.type='button';b.addEventListener('click',()=>{document.getElementById('rsQ').value=q});box.append(b)});
+ document.getElementById('rsGo').addEventListener('click',e=>{const b=e.target,q=String(document.getElementById('rsQ').value||'').trim();const N=document.getElementById('rsN');if(q.length<8){N.textContent='Type a question first.';return}
+   const x={q,busy:true};RSHIST.unshift(x);RSHIST=RSHIST.slice(0,6);renderRS();b.disabled=true;N.textContent='';
+   Y().call('aiAsk',[{mode:'research',q:q.slice(0,1900),tab:'sales'}]).then(d=>{x.busy=false;x.text=d.text||d.answer||'';x.sources=d.sources||[];renderRS()})
+   .catch(er=>{x.busy=false;const m=(er&&er.message)||'Research failed.';x.err=/NEED_EMAIL/.test(m)?'Verify your company email first: tap ✨ Ask once and follow the steps.':m;renderRS()}).finally(()=>{b.disabled=false})})}
+document.getElementById('lnQ').addEventListener('input',()=>{LNQ='';renderLN()});
+function renderDAT(){const q=String(document.getElementById('datQ').value||'').trim(),L=document.getElementById('datL');L.textContent='';if(!q)return;const k=wfLaneKey(q)||q;const x=((SL&&SL.lanes)||[]).find(y=>y.l.toLowerCase()===k.toLowerCase());
+  L.append(x?el('div','wfrate','Us on '+x.l+': median '+slMoney(x.med)+' over '+x.n+' quotes ('+slMoney(x.lo)+'–'+slMoney(x.hi)+')'+(x.med120?' · last 120 days '+slMoney(x.med120):'')+'. Compare with DAT\'s lane rate.'):el('div','meta','No quote history for '+k+' yet.'))}
+document.getElementById('datQ').addEventListener('input',renderDAT);
+document.getElementById('datC').addEventListener('click',e=>{const q=String(document.getElementById('datQ').value||'').trim();try{navigator.clipboard.writeText('Savannah, GA → '+q);e.target.textContent='Copied ✓'}catch(x){}});
+function renderSL(){[fwSec,qtSec,imSec,lnSec,rsSec,datSec].forEach(s=>s.hidden=!slCan());if(!slCan())return;if(SL)fwSec.querySelector('#fwAsof').textContent='load requests nobody at 2FF has answered yet · updated '+slDate(new Date(SL.at).getTime());renderFW();renderQT();renderIM();try{renderLN();renderLMV()}catch(e){}}
 fwSec.querySelector('#fwQ').addEventListener('input',renderFW);
 {const B=fwSec.querySelector('#fwLmBox'),T=fwSec.querySelector('#fwLmTxt'),N=fwSec.querySelector('#fwLmN');
  fwSec.querySelector('#fwLmB').addEventListener('click',()=>{B.hidden=!B.hidden;if(!B.hidden)T.focus()});fwSec.querySelector('#fwLmX').addEventListener('click',()=>{B.hidden=true});
@@ -3482,7 +3558,7 @@ tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['wee
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
-sales:[['work','Find work'],['quotes','Quote desk'],['viewers','Profile viewers'],['finder','Freight finder']],
+sales:[['work','Find work'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
 owner:[['cams','Cameras'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
