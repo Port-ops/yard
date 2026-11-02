@@ -3148,7 +3148,7 @@ setTimeout(loadTD,5000);{let n=0;setInterval(()=>{n++;if(document.visibilityStat
 // ---- Carter (Richard only), 11/01/2026: Carter is his own bottom tab with sub-tabs Brief · Decisions · Outbox · Team · Lessons · Spend.
 //      Cameras live in Owner > Cameras with their own tabs: Overview · Alerts · Photos. Carter proposes; Richard decides. ----
 const brSec=mk('brSec','carter','*','<div class="cxHd"><div class="cxId"></div><div class="cxMeta"><h2>Carter <span class="cxRole">CEO partner · proposes, you decide</span></h2><div class="t" id="brAsof">loading…</div></div><div class="cxSpend" id="cxSpend"></div></div><div class="cxNeed" id="cxNeed"></div><div id="cxBody"></div>');
-const CXKEYS=[['brief','Brief'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']];
+const CXKEYS=[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']];
 CXKEYS.forEach(([k])=>{const p=mk('cxP_'+k,'carter',k,'');p.className='cxPh';wrap.append(p)}); // placeholders first: the app's sub-tab bar is placed above them, so it sits at the top of the Carter tab
 brSec.hidden=true;wrap.append(brSec);brSec.querySelector('.cxId').append(carterFace(44));
 const camSec=mk('camSec','owner','cams','<div class="cxHd"><div class="cxMeta"><h2>Yard cameras <span class="cxRole">Reolink · read by Carter</span></h2><div class="t" id="camAsof">loading…</div></div></div><nav class="cxTabs" id="camTabs" role="tablist" aria-label="Camera sections"></nav><div id="camBody"></div>');
@@ -3217,9 +3217,10 @@ function renderBR(){if(!BR)return;brSec.hidden=false;const br=BR.brief,open=cxOp
   {const S=$('cxSpend');S.textContent='';const cap=+BR.cap||0,sp=+BR.spent_today||0;S.append(el('b','','$'+sp.toFixed(2)),el('span','',' AI today of $'+cap));const bar=el('i');bar.style.width=Math.min(100,cap?sp/cap*100:0)+'%';const w=el('span','bar');w.append(bar);S.append(w)}
   {const N=$('cxNeed');N.textContent='';const items=[[obw.length,'email'+(obw.length===1?'':'s')+' to approve',()=>cxGo('outbox'),true],[dec.length,'decision'+(dec.length===1?'':'s')+' waiting',()=>cxGo('decide'),dec.some(a=>a.tier>=4)],[cams.length,'camera alert'+(cams.length===1?'':'s'),()=>camGo('alerts'),false],[BR.lessons_waiting||0,'lesson'+((BR.lessons_waiting||0)===1?'':'s')+' to check',()=>cxGo('lessons'),false]].filter(x=>x[0]);
     if(!items.length)N.append(el('span','ok','✓ Nothing waiting for you'));items.forEach(([n,l,fn,hot])=>{const b=el('button','cxChip'+(hot?' hot':''));b.type='button';b.append(el('b','',String(n)),document.createTextNode(' '+l));b.addEventListener('click',fn);N.append(b)})}
+  {const bad=cxChecks().filter(c=>c.state==='bad').length;try{subBadge('carter','status',bad,bad>0)}catch(e){}}
   try{subBadge('carter','decide',dec.length,dec.some(a=>a.tier>=4));subBadge('carter','outbox',obw.length,obw.length>0);subBadge('carter','lessons',BR.lessons_waiting||0,false);
     const bd=tabBtn('carter').querySelector('.bdg');bd.textContent=(dec.length+obw.length)?String(dec.length+obw.length):''}catch(e){}
-  const B=$('cxBody');B.textContent='';({brief:cxBrief,decide:cxDecide,outbox:cxOutbox,team:cxTeam,lessons:cxLessons,spend:cxSpendTab}[T]||cxBrief)(B,{dec,cams,ob,obw})}
+  const B=$('cxBody');B.textContent='';({brief:cxBrief,status:cxStatus,decide:cxDecide,outbox:cxOutbox,team:cxTeam,lessons:cxLessons,spend:cxSpendTab}[T]||cxBrief)(B,{dec,cams,ob,obw})}
 
 function cxBrief(B){const br=BR.brief,b=br&&br.body;if(!b){B.append(cxEmpty('No brief yet. The first one runs at 6:07 AM.'));return}
   B.append(el('p','cxHeadline',b.headline||''));
@@ -3275,6 +3276,20 @@ function cxLessons(B){B.append(el('p','cxHelp','Every lesson needs an answer: ap
 
 
 
+// ---------- Carter > Status: is everything OK? (owner 11/1/2026) ----------
+let HLX=null,HLXt=0;function cxChecks(){const L=((BR&&BR.status&&BR.status.checks)||[]).slice();
+  if(HLX)L.push({area:'Platform',name:'Yard App background jobs',state:HLX.problems&&HLX.problems.length?'bad':'ok',last:HLX.at,detail:HLX.problems&&HLX.problems.length?HLX.problems.join(' | '):'All automatic jobs healthy (port feed, Geotab, texts, PINs)',fix:'Ask Claude to look at the failing job.'});return L}
+function cxStatus(B){if(Y().call&&Date.now()-HLXt>300000){HLXt=Date.now();Y().call('getHealth',[]).then(h=>{HLX=h;if(cxT()==='status')renderBR()}).catch(()=>{})}
+  const L=cxChecks();if(!L.length){B.append(cxEmpty('Status loading…'));return}
+  const nb=L.filter(c=>c.state==='bad').length,nw=L.filter(c=>c.state==='warn').length;
+  const hd=el('div','stHead '+(nb?'bad':nw?'warn':'ok'));hd.append(el('b','',nb?'✗ '+nb+' problem'+(nb>1?'s':'')+' need attention':nw?'⚠ '+nw+' thing'+(nw>1?'s':'')+' to watch':'✓ Everything is OK'),el('span','',L.length+' checks · checked '+cxAgo((BR.status&&BR.status.at)||new Date().toISOString())));
+  const rf=el('button','btn2 sm','Check again');rf.type='button';rf.addEventListener('click',()=>{rf.disabled=true;rf.textContent='Checking…';HLXt=0;loadBR()});hd.append(rf);B.append(hd);
+  const ord={bad:0,warn:1,ok:2},areas=[...new Set(L.map(c=>c.area))];
+  areas.forEach(a=>{const s=el('section','cxBlk');s.append(el('h3','',a));L.filter(c=>c.area===a).sort((x,y)=>ord[x.state]-ord[y.state]).forEach(c=>{
+    const r=el(c.go?'button':'div','stRow '+c.state);if(c.go){r.type='button';r.addEventListener('click',()=>c.go==='cams'?camGo('alerts'):cxGo(c.go))}
+    r.append(el('span','stDot',c.state==='ok'?'✓':c.state==='warn'?'!':'✗'));const t=el('div','stTxt');t.append(el('b','',c.name),el('span','',c.detail||''));
+    if(c.state!=='ok'&&c.fix)t.append(el('small','',c.fix));r.append(t);if(c.last)r.append(el('span','stAge',cxAgo(c.last)));if(c.go)r.append(el('span','cxChev','›'));s.append(r)});B.append(s)});
+  B.append(el('p','cxHelp','Scheduled Claude tasks show up here through what they write (Quote Agent, Freight Finder, Deal Scout). Green = ran on time with no errors.'))}
 function cxSpendTab(B){const cap=+BR.cap||0,sp=+BR.spent_today||0;const g=el('div','cxTiles');g.append(cxTile('$'+sp.toFixed(2),'Spent today','of $'+cap+' daily cap',sp>cap*.8?'watch':''),cxTile('$'+Number(BR.spend_7d||0).toFixed(2),'Last 7 days',''),cxTile('$'+(Number(BR.spend_7d||0)/7*30).toFixed(0),'Monthly pace','estimate'));B.append(g);
   const rows=BR.spend_by||[];if(!rows.length){B.append(cxEmpty('No AI spending logged this week.'));return}const t=el('table','cxTbl');t.innerHTML='<thead><tr><th>What Carter did</th><th>Calls</th><th>7 days</th></tr></thead>';const tb=el('tbody');
   rows.forEach(r=>{const tr=el('tr');tr.append(el('td','',r.purpose),el('td','num',String(r.calls)),el('td','num','$'+Number(r.usd).toFixed(2)));tb.append(tr)});t.append(tb);B.append(t);B.append(el('p','cxHelp','Carter stops for the day when the cap is reached.'))}
@@ -3312,6 +3327,8 @@ function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;let cams=cxOpen(
 
 {const st=el('style');st.textContent=
 '.cxShot{display:block;margin:8px 0 6px;border-radius:10px;overflow:hidden;background:#0d1114;aspect-ratio:16/9}.cxShot img{display:block;width:100%;height:100%;object-fit:cover}.cxShot span{display:flex;height:100%;align-items:center;justify-content:center;color:#cfd6da;font-size:13px}'+
+'.stHead{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:14px 16px;border-radius:12px;margin:4px 0 12px;border:1px solid var(--cx-line)}.stHead b{font-size:17px}.stHead span{color:var(--cx-mut);font-size:13px;flex:1}.stHead.ok{background:#e8f5ec;border-color:#b7dcc3}.stHead.ok b{color:#1e6b3c}.stHead.warn{background:#fff6e5;border-color:#f0d49a}.stHead.warn b{color:#8a5a00}.stHead.bad{background:#fdecea;border-color:#f3b8b1}.stHead.bad b{color:#b42318}'+
+'.stRow{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--cx-line);padding:10px 2px;font:inherit;color:inherit}.stRow:first-of-type{border-top:0}button.stRow{cursor:pointer}.stDot{flex:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;background:#2e7d4f}.stRow.warn .stDot{background:#c98a00}.stRow.bad .stDot{background:#b42318}.stTxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.stTxt span{color:var(--cx-mut);font-size:13px;overflow-wrap:anywhere}.stTxt small{font-size:12px;color:var(--cx-ink);background:var(--cx-soft);padding:4px 8px;border-radius:6px;margin-top:3px}.stAge{flex:none;font-size:12px;color:var(--cx-mut)}'+
 '#brSec,#camSec{--cx-ink:var(--ink,#1d2326);--cx-mut:var(--muted,#5d686d);--cx-line:var(--line,#d6dad8);--cx-bg:var(--panel,#fff);--cx-soft:color-mix(in srgb,var(--brand,#2e2d6f) 6%,var(--cx-bg));--cx-brand:var(--brand,#2e2d6f);--cx-red:#b42318;--cx-green:#2e7d4f}.cxPh{display:none!important}'+
 '.cxHd{display:flex;align-items:center;gap:12px;margin-bottom:10px}.cxHd .cxId svg{display:block}.cxMeta{flex:1;min-width:0}.cxMeta h2{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}.cxRole{font:600 12px/1.2 var(--body);letter-spacing:.02em;color:var(--cx-mut);text-transform:none}'+
 '.cxSpend{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:var(--cx-mut);min-width:96px}.cxSpend b{font-size:15px;color:var(--cx-ink)}.cxSpend .bar{width:96px;height:4px;border-radius:2px;background:var(--cx-line);margin-top:4px;overflow:hidden}.cxSpend .bar i{display:block;height:100%;background:var(--cx-brand)}'+
@@ -3439,7 +3456,7 @@ yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / 
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
 sales:[['work','Find work'],['quotes','Quote desk'],['viewers','Profile viewers'],['finder','Freight finder']],
-carter:[['brief','Brief'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
+carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
 owner:[['cams','Cameras'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
