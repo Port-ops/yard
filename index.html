@@ -3272,7 +3272,7 @@ const brSec=mk('brSec','carter','*','<div class="cxHd"><div class="cxId"></div><
 const CXKEYS=[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']];
 CXKEYS.forEach(([k])=>{const p=mk('cxP_'+k,'carter',k,'');p.className='cxPh';wrap.append(p)}); // placeholders first: the app's sub-tab bar is placed above them, so it sits at the top of the Carter tab
 brSec.hidden=true;wrap.append(brSec);brSec.querySelector('.cxId').append(carterFace(44));
-const camSec=mk('camSec','owner','cams','<div class="cxHd"><div class="cxMeta"><h2>Yard cameras <span class="cxRole">Reolink · read by Carter</span></h2><div class="t" id="camAsof">loading…</div></div></div><nav class="cxTabs" id="camTabs" role="tablist" aria-label="Camera sections"></nav><div id="camBody"></div>');
+const camSec=mk('camSec','doors','cams','<div class="cxHd"><div class="cxMeta"><h2>Yard cameras <span class="cxRole">Reolink · read by Carter</span></h2><div class="t" id="camAsof">loading…</div></div></div><nav class="cxTabs" id="camTabs" role="tablist" aria-label="Camera sections"></nav><div id="camBody"></div>');
 camSec.hidden=true;wrap.append(camSec);
 // ---- CARTER'S BROWSER (owner 11/2/2026): Carter's own Chrome on carter-1. Richard signs in to sites there himself;
 // Carter works "do:" tasks in it. The viewer is password-protected (Caddy); the rules are enforced on the server. ----
@@ -3583,7 +3583,7 @@ function cxTap(node,key,text,ctx){node.classList.add('cxTap');node.tabIndex=0;no
   const tog=()=>{CXOPEN=CXOPEN===key?'':key;renderBR()};node.addEventListener('click',e=>{if(e.target.closest('button,a'))return;tog()});node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();tog()}});
   node.append(el('span','cxChev',CXOPEN===key?'Close ▴':'Tap for actions ▾'));if(CXOPEN===key)node.append(cxActs(text,ctx))}
 function cxGo(k){try{if(TAB!=='carter')go('carter');sub('carter',k)}catch(e){}renderBR()}
-function camGo(k){CMT=k;try{localStorage.setItem('camTab',k)}catch(e){}try{if(TAB!=='owner')go('owner');sub('owner','cams')}catch(e){}if(!CAM)loadCams();renderCamTab()}
+function camGo(k){CMT=k;try{localStorage.setItem('camTab',k)}catch(e){}try{if(TAB!=='doors')go('doors');sub('doors','cams')}catch(e){}if(!CAM)loadCams();renderCamTab()}
 
 // ---------- Carter tab ----------
 function renderBR(){if(!BR)return;brSec.hidden=false;const br=BR.brief,open=cxOpen(),dec=open.filter(a=>!cxCam(a)&&!cxMail(a)),cams=open.filter(cxCam),ob=BR.outbox||[],obw=ob.filter(o=>o.status==='proposed'),T=cxT();
@@ -3673,9 +3673,9 @@ const KIND={truck_with_container:'Truck + container',truck_with_chassis:'Truck +
 function camPhoto(p){const c=el('a','camC');if(p.url){c.href=p.url;c.target='_blank';c.rel='noopener';const i=el('img');i.loading='lazy';i.src=p.url;i.alt=(p.camera||'camera')+' photo';c.append(i)}else c.append(el('div','camNo','photo pending'));
   const cap=el('div','camT');cap.append(el('b','',(p.camera||'?')+' · '+cxWhen(p.received_at)));cap.append(el('span','',p.status==='read'?(KIND[p.kind]||p.kind||'')+(p.container?' · '+p.container+(p.container_valid?' ✓':' ?'):''):p.status==='error'?'Carter could not read it':'Carter is reading…'));
   const fl=[];if(p.alerted)fl.push('after hours');if(p.match_status==='no_log')fl.push('no move logged');if(p.match_status==='mismatch')fl.push('number mismatch');if(p.match_status==='matched')fl.push('matched to log');if(fl.length)cap.append(el('i',p.alerted||p.match_status==='no_log'||p.match_status==='mismatch'?'camF bad':'camF',fl.join(' · ')));if(p.note)cap.append(el('small','',p.note));c.append(cap);return c}
-function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;let cams=cxOpen().filter(cxCam),m=(CAM&&CAM.summary)||{};
+function renderCamTab(){if(!BR&&!CAM)return;if(camSec.hidden){camSec.hidden=false;try{tabVis()}catch(e){}}let cams=cxOpen().filter(cxCam),m=(CAM&&CAM.summary)||{};
   $('camAsof').textContent=CAM&&CAM.summary&&CAM.summary.last_photo?'Last photo '+cxAgo(CAM.summary.last_photo)+' · yard open 24/7':'Photos arrive when the recorder sees a person or vehicle';
-  try{subBadge('owner','cams',cams.length,false)}catch(e){}
+  try{subBadge('doors','cams',cams.length,false)}catch(e){}
   const T=$('camTabs');T.textContent='';[['overview','Overview'],['alerts','Alerts'],['photos','Photos']].forEach(([k,l])=>{const b=el('button','cxT'+(CMT===k?' on':''));b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',CMT===k?'true':'false');b.append(document.createTextNode(l));const n=k==='alerts'?cams.length:0;if(n)b.append(el('span','cxN',String(n)));b.addEventListener('click',()=>camGo(k));T.append(b)});
   const B=$('camBody');B.textContent='';
   if(CMT==='overview'){const g=el('div','cxTiles');const tl=(t,fn)=>{t.classList.add('cxTap');t.tabIndex=0;t.setAttribute('role','button');t.append(el('span','cxChev','Open ›'));t.addEventListener('click',fn);t.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fn()}});return t};
@@ -3731,7 +3731,7 @@ function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;let cams=cxOpen(
 '.cxWhyBox{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:10px;border:1px dashed var(--cx-line);border-radius:10px;width:100%;box-sizing:border-box}.cxChoices{display:flex;flex-wrap:wrap;gap:6px}.cxRow{display:flex;gap:6px}.cxIn{flex:1;font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--cx-line);border-radius:8px;text-transform:none;width:100%;box-sizing:border-box}.cxAud{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.btn2.on{border-color:var(--cx-brand);color:var(--cx-brand)}'+
 '.btn.sm,.btn2.sm{font-size:12.5px;padding:4px 10px;min-height:32px}';document.head.append(st)}
 setTimeout(loadBR,6000);setTimeout(loadCams,9000);
-{let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='carter'||TAB==='owner'||n%20===0)){loadBR();if(TAB==='owner'&&n%4===0)loadCams()}},30000)}
+{let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='carter'||TAB==='owner'||TAB==='doors'||n%20===0)){loadBR();if(TAB==='doors'&&n%4===0)loadCams()}},30000)}
 // ---- Connect my RingCentral (one time per person) ----
 let TXME=null;
 function txConnectBox(box,why){const d=el('div','txCx');d.append(el('b','','Connect your RingCentral (one time)'),el('p','t',why||'So you can text and call from your own 2FF line inside DockRelay. You sign in on RingCentral\'s own page; DockRelay never sees your password.'));
@@ -3817,22 +3817,22 @@ tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
 reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',sales:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',owner:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M12 15v2"/></svg>',social:'<svg viewBox="0 0 24 24"><path d="M4 11v2a1 1 0 001 1h2l5 4V6L7 10H5a1 1 0 00-1 1z"/><path d="M16 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
-IC.doors='<svg viewBox="0 0 24 24"><path d="M6 21V4a1 1 0 011-1h10a1 1 0 011 1v17"/><path d="M3 21h18"/><circle cx="14.5" cy="12.5" r="1.1"/></svg>';
+IC.doors='<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>';
 IC.carter='<svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/><path d="M17.5 4.5l1-1.5M19.5 7h1.8"/></svg>';
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['owner','Owner'],['doors','Doors'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['owner','Owner'],['doors','Doors & Cams'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
-const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors']],
+const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['cams','Cameras']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
 sales:[['work','Find work'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['mail','Email'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
-owner:[['cams','Cameras'],['browser',"Carter's browser"],['notify','Notify'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
+owner:[['browser',"Carter's browser"],['notify','Notify'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
@@ -3916,7 +3916,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)close
 '.msItem i{position:absolute;top:6px;right:8px;font:700 10px/16px inherit;font-style:normal;min-width:16px;height:16px;border-radius:8px;padding:0 4px;background:#b42318;color:#fff}.msItem i.y{background:#e0a100}.msNote{font-size:12.5px;color:var(--muted);margin:12px 2px 0}';document.head.append(st)}
 
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()||fcCan()};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   try{pinTabs()}catch(e){console.warn('pinTabs',e);inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)'}
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
@@ -4399,7 +4399,7 @@ function avBox(){const me=((Y().S||{}).me||{}).n||'',w=el('div','avBox'),pv=avCh
   return out}
 // Shortcuts: three one-tap jumps on Today, picked by role; each person can change them in Make it yours.
 const SC=[['pin','Request a PIN','port','#pinSec'],['moves','Gate moves','port','#portSec'],['gates','Gate hours','port','#gctSec'],['cred','Credentials','port','#credSec'],['watch','Watch list','port','#watchSec'],
-  ['inyard','In the yard','yard','#storSec'],['walk','Yard walk','yard','[data-tab="yard"][data-sub="walk"]'],['safety','Safety','safety'],['gps','Truck GPS','gps'],['approvals','Approvals','social'],['ask','Ask AI','ask'],['doors','Office doors','doors'],['owner','Owner','owner'],['sales','Work Finder','sales'],['reports','Reports','reports']];
+  ['inyard','In the yard','yard','#storSec'],['walk','Yard walk','yard','[data-tab="yard"][data-sub="walk"]'],['safety','Safety','safety'],['gps','Truck GPS','gps'],['approvals','Approvals','social'],['ask','Ask AI','ask'],['doors','Doors & cams','doors'],['owner','Owner','owner'],['sales','Work Finder','sales'],['reports','Reports','reports']];
 const scOk=x=>{const b=tabBtn(x[2]);return !!b&&b.style.display!=='none'};
 function scDefault(){const r=roles();const want=r.includes('admin')?['approvals','pin','gates']:r.includes('safety')?['cred','safety','gps']:(r.includes('pin')||r.includes('gate'))?['pin','moves','gates']:r.includes('yard')?['inyard','walk','gates']:['inyard','ask','gates'];
   return want.filter(k=>{const x=SC.find(s=>s[0]===k);return x&&scOk(x)})}
