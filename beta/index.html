@@ -3449,7 +3449,7 @@ try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!CM_LOADED)cm
 // Carter's email lives in the Carter tab (owner 11/2/2026); Richard only (the server checks too)
 function cmInit(){try{if(!roles().length)return setTimeout(cmInit,3000);cmSec.hidden=((Y().S&&Y().S.me)||{}).n!=='Richard Prescott'}catch(e){setTimeout(cmInit,5000)}}cmInit();
 // ---- OFFICE DOORS (owner 11/2/2026): Kwikset Halo locks through Seam. Richard chose see + alerts + lock: there is no unlock here.
-const drSec=mk('drSec','today','doors','<h2>Office doors <span class="t">Kwikset locks · see, get alerts, lock</span></h2>'+
+const drSec=mk('drSec','doors','locks','<h2>Office doors <span class="t">Kwikset locks · see, get alerts, lock</span></h2>'+
  '<div class="row drBar"><button class="btn2" type="button" id="drRef">Refresh</button><span class="t" id="drMsg"></span></div>'+
  '<div id="drLocks" class="drLocks"></div><h3>Last 3 days</h3><div id="drEv" class="t"></div>'+
  '<p class="t">Richard gets alerts for 3 wrong codes, a lock going offline, low battery, and any unlock between 8 PM and 6 AM. Unlocking and door codes stay in the Kwikset app.</p>');
@@ -3477,7 +3477,7 @@ $('drRef').addEventListener('click',drLoad);
 try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!DR_LOADED)drLoad()}).observe(drSec)}catch(e){}
 // who sees Office doors (owner 11/2/2026): Richard, Yanix, Lethaniel, Brandon. The server checks the same list.
 const drOK=()=>{const n=String(((Y().S&&Y().S.me)||{}).n||'');return n==='Richard Prescott'||/^(yanix|lethaniel|brandon)\b/i.test(n)};
-function drInit(){try{if(!roles().length)return setTimeout(drInit,3000);drSec.hidden=!drOK()}catch(e){setTimeout(drInit,5000)}}drInit();
+function drInit(){try{if(!roles().length)return setTimeout(drInit,3000);drSec.hidden=!drOK();try{tabVis()}catch(e){}}catch(e){setTimeout(drInit,5000)}}drInit();
 // ---- PHONE ALERTS (owner 11/2/2026: "make Brandon's phone make a noise when something needs to be done"). Web push through the
 // app's service worker. Each person turns alerts on for their own phone (Brandon: Yard > Check in / out > 🔔 Alerts); Richard sends
 // alerts from Owner > Notify. iPhone needs DockRelay added to the Home Screen first (Apple's rule for web app alerts).
@@ -3817,14 +3817,15 @@ tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5
 yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/><path d="M15.5 11h3l3 3v2h-6"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>',
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
 reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',sales:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',owner:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M12 15v2"/></svg>',social:'<svg viewBox="0 0 24 24"><path d="M4 11v2a1 1 0 001 1h2l5 4V6L7 10H5a1 1 0 00-1 1z"/><path d="M16 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
+IC.doors='<svg viewBox="0 0 24 24"><path d="M6 21V4a1 1 0 011-1h10a1 1 0 011 1v17"/><path d="M3 21h18"/><circle cx="14.5" cy="12.5" r="1.1"/></svg>';
 IC.carter='<svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/><path d="M17.5 4.5l1-1.5M19.5 7h1.8"/></svg>';
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['owner','Owner'],['ask','Ask Carter']];
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['owner','Owner'],['doors','Doors'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
-const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed'],['doors','Office doors']],
+const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
@@ -3915,7 +3916,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)close
 '.msItem i{position:absolute;top:6px;right:8px;font:700 10px/16px inherit;font-style:normal;min-width:16px;height:16px;border-radius:8px;padding:0 4px;background:#b42318;color:#fff}.msItem i.y{background:#e0a100}.msNote{font-size:12.5px;color:var(--muted);margin:12px 2px 0}';document.head.append(st)}
 
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   try{pinTabs()}catch(e){console.warn('pinTabs',e);inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)'}
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
@@ -4398,7 +4399,7 @@ function avBox(){const me=((Y().S||{}).me||{}).n||'',w=el('div','avBox'),pv=avCh
   return out}
 // Shortcuts: three one-tap jumps on Today, picked by role; each person can change them in Make it yours.
 const SC=[['pin','Request a PIN','port','#pinSec'],['moves','Gate moves','port','#portSec'],['gates','Gate hours','port','#gctSec'],['cred','Credentials','port','#credSec'],['watch','Watch list','port','#watchSec'],
-  ['inyard','In the yard','yard','#storSec'],['walk','Yard walk','yard','[data-tab="yard"][data-sub="walk"]'],['safety','Safety','safety'],['gps','Truck GPS','gps'],['approvals','Approvals','social'],['ask','Ask AI','ask'],['owner','Owner','owner'],['sales','Work Finder','sales'],['reports','Reports','reports']];
+  ['inyard','In the yard','yard','#storSec'],['walk','Yard walk','yard','[data-tab="yard"][data-sub="walk"]'],['safety','Safety','safety'],['gps','Truck GPS','gps'],['approvals','Approvals','social'],['ask','Ask AI','ask'],['doors','Office doors','doors'],['owner','Owner','owner'],['sales','Work Finder','sales'],['reports','Reports','reports']];
 const scOk=x=>{const b=tabBtn(x[2]);return !!b&&b.style.display!=='none'};
 function scDefault(){const r=roles();const want=r.includes('admin')?['approvals','pin','gates']:r.includes('safety')?['cred','safety','gps']:(r.includes('pin')||r.includes('gate'))?['pin','moves','gates']:r.includes('yard')?['inyard','walk','gates']:['inyard','ask','gates'];
   return want.filter(k=>{const x=SC.find(s=>s[0]===k);return x&&scOk(x)})}
