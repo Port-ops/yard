@@ -3287,36 +3287,72 @@ brwSec.hidden=true;wrap.append(brwSec);
 // ---- GATE QUEUE (owner 11/2/2026, for Brandon): every truck the gate cameras saw with no yard move logged, one card per visit
 // with the photo. One tap: Check in / Check out (the normal forms, pre-filled), Already logged, or not a yard move. Carter
 // counts what is left in the 7:35 AM camera summary. Data: brain "§gate" commands through Ask (Apps Script checks who it is).
+// "Make it yours" (owner 11/2: give Brandon the options): choices researched by Carter (Vector, Roboflow, Gartner YMS guide):
+// glove-size buttons, big photos, sort, camera and type filters, which reasons show, auto-refresh, shift handoff, ideas to Richard.
 const gqSec=mk('gqSec','yard','containers','<h2>Gate camera queue <span class="t">trucks the cameras saw · no yard move logged</span></h2>'+
  '<p class="help">Each card is one truck at the gate with no check-in or check-out in DockRelay. Log it, or tap why it was not a yard move. Every box logged here gets billed.</p>'+
- '<div class="row gqBar"><button class="btn2" type="button" id="gqLoad">Refresh</button><span class="t" id="gqMsg">Loading…</span></div><div id="gqList" class="gqList"></div>');
+ '<div class="row gqBar"><button class="btn2" type="button" id="gqLoad">Refresh</button><button class="btn2" type="button" id="gqPrefB">⚙️ Make it yours</button><button class="btn2" type="button" id="gqShift">📋 Shift report</button><span class="t" id="gqMsg">Loading…</span></div>'+
+ '<div id="gqPref" class="gqPref" hidden></div><div id="gqRep" class="gqPref" hidden></div><div id="gqList" class="gqList"></div>');
 {const cs=$('cinForm')&&$('cinForm').closest('section');if(cs)cs.before(gqSec);else wrap.append(gqSec)}
-{const st=el('style');st.textContent='.gqList{display:grid;gap:10px;margin:8px 0 18px}.gqC{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:10px;background:var(--card,#fff);display:grid;grid-template-columns:120px 1fr;gap:10px}.gqC img{width:120px;height:90px;object-fit:cover;border-radius:8px;background:#ddd;cursor:zoom-in}.gqC .gqNo{width:120px;height:90px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#777}.gqC b{font-size:15px}.gqC .gqNum{font-family:var(--mono,monospace);font-weight:700;letter-spacing:.03em}.gqC .gqBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.gqC .gqBtns button{padding:6px 10px;font-size:13px}.gqC.done{opacity:.45}@media(max-width:520px){.gqC{grid-template-columns:1fr}.gqC img,.gqC .gqNo{width:100%;height:170px}}';document.head.append(st)}
-let GQ=[],GQ_PEND=null;
+{const st=el('style');st.textContent='.gqList{display:grid;gap:10px;margin:8px 0 18px}.gqC{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:10px;background:var(--card,#fff);display:grid;grid-template-columns:120px 1fr;gap:10px}.gqC img{width:120px;height:90px;object-fit:cover;border-radius:8px;background:#ddd;cursor:zoom-in}.gqC .gqNo{width:120px;height:90px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#777}.gqC b{font-size:15px}.gqC .gqNum{font-family:var(--mono,monospace);font-weight:700;letter-spacing:.03em}.gqC .gqBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.gqC .gqBtns button{padding:6px 10px;font-size:13px}.gqC.done{opacity:.45}'+
+ '.gqBig .gqC .gqBtns button{padding:14px 16px;font-size:17px;min-width:46%}.gqBig .gqC b{font-size:18px}.gqPhoto .gqC{grid-template-columns:1fr}.gqPhoto .gqC img,.gqPhoto .gqC .gqNo{width:100%;height:240px}'+
+ '.gqPref{border:1px dashed var(--line,#c9cfcd);border-radius:12px;padding:10px 12px;margin:6px 0 10px;display:grid;gap:8px}.gqPref label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.gqPref select{max-width:220px}.gqPref textarea{width:100%;min-height:56px}'+
+ '@media(max-width:520px){.gqC{grid-template-columns:1fr}.gqC img,.gqC .gqNo{width:100%;height:170px}}';document.head.append(st)}
+let GQ=[],GQ_PEND=null,GQ_TODAY=[],GQ_TIMER=null;
+const GQ_RS={parking:'Parking customer',bobtail:'Bobtail / chassis only',visitor:'Visitor / vendor',not_ours:'Not ours',other:'Other'};
+const GQ_DEF={big:false,photo:false,sort:'new',cam:'all',kinds:'both',reasons:['parking','bobtail','visitor'],refresh:5};
+let GQP=(()=>{try{return Object.assign({},GQ_DEF,JSON.parse(localStorage.getItem('gqPrefs')||'{}'))}catch(e){return Object.assign({},GQ_DEF)}})();
+const gqSave=()=>{try{localStorage.setItem('gqPrefs',JSON.stringify(GQP))}catch(e){}};
 const gqCall=q=>Y().call('aiAsk',[{mode:'ask',q,tab:'yard'}]);
 const gqWhen=t=>new Date(t).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'});
-function gqDone(it,outcome,card){return gqCall('§gate done '+JSON.stringify({ids:it.ids,outcome,container:it.container||''})).then(r=>{if(r&&r.ok===false)throw new Error(r.error||'Not saved');it.done=outcome;if(card){card.classList.add('done');const m=card.querySelector('.gqRes');if(m)m.textContent='✓ '+({logged:'Logged',parking:'Parking customer',bobtail:'Bobtail / chassis only',visitor:'Visitor / vendor',not_ours:'Not ours',other:'Other'}[outcome]||outcome)}gqCount()}).catch(e=>alert((e&&e.message)||String(e)))}
-function gqCount(){const left=GQ.filter(x=>!x.done).length;$('gqMsg').textContent=left?left+' to log':'All clear. Nothing waiting.';try{subBadge('yard','containers',left,left>5)}catch(e){}}
-function gqRender(){const L=$('gqList');L.textContent='';
-  GQ.forEach(it=>{const c=el('div','gqC');const pic=it.url?el('img'):el('div','gqNo','no photo');if(it.url){pic.src=it.url;pic.alt='Gate photo';pic.loading='lazy';pic.addEventListener('click',()=>window.open(it.url,'_blank','noopener'))}
+function gqDone(it,outcome,card){return gqCall('§gate done '+JSON.stringify({ids:it.ids,outcome,container:it.container||''})).then(r=>{if(r&&r.ok===false)throw new Error(r.error||'Not saved');it.done=outcome;GQ_TODAY.push({outcome,who:'me',n:it.ids.length});if(card){card.classList.add('done');const m=card.querySelector('.gqRes');if(m)m.textContent='✓ '+(outcome==='logged'?'Logged':GQ_RS[outcome]||outcome)}gqCount()}).catch(e=>alert((e&&e.message)||String(e)))}
+function gqShown(){let L=GQ.filter(x=>(GQP.cam==='all'||x.camera===GQP.cam)&&(GQP.kinds==='both'||x.kind===GQP.kinds));if(GQP.sort==='old')L=L.slice().reverse();return L}
+function gqCount(){const left=GQ.filter(x=>!x.done).length,shown=gqShown().filter(x=>!x.done).length;$('gqMsg').textContent=left?(shown<left?shown+' shown · ':'')+left+' to log':'All clear. Nothing waiting.';try{subBadge('yard','containers',left,left>5)}catch(e){}}
+function gqRender(){const L=$('gqList');L.textContent='';L.classList.toggle('gqBig',!!GQP.big);L.classList.toggle('gqPhoto',!!GQP.photo);
+  gqShown().forEach(it=>{const c=el('div','gqC');const pic=it.url?el('img'):el('div','gqNo','no photo');if(it.url){pic.src=it.url;pic.alt='Gate photo';pic.loading='lazy';pic.addEventListener('click',()=>window.open(it.url,'_blank','noopener'))}
     const body=el('div');body.append(el('b','',(it.camera||'Gate')+' · '+gqWhen(it.at)));
     body.append(el('div','t',(it.kind==='truck_with_container'?'Truck with a container':'Truck with an empty chassis')+(it.ids.length>1?' · '+it.ids.length+' photos':'')));
-    const n=el('div');if(it.container){n.append(el('span','gqNum',it.container))}else{n.append(el('span','t',it.read?'Camera read "'+it.read+'" (not a valid number), check the photo':'Camera could not read the number, check the photo'))}body.append(n);
+    const n=el('div');if(it.container){n.append(el('span','gqNum',it.container))}else{n.append(el('span','t',it.read?'Camera read "'+it.read+'" (fails the check digit), check the photo':'Camera could not read the number, check the photo'))}body.append(n);
     if(it.match==='mismatch')body.append(el('div','t','The log has a different box around this time: check which is right.'));
     const res=el('div','t gqRes');body.append(res);
     const B=el('div','gqBtns'),btn=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));B.append(b)};
     btn('Check in','btn',()=>{GQ_PEND=it;if(it.container)$('ciNum').value=it.container;$('cinForm').scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{(it.container?$('ciChas'):$('ciNum')).focus()},400);res.textContent='Fill in the form below and save. This card clears itself.'});
     btn('Check out','btn2',()=>{const li=it.container&&document.querySelector('#contList li[data-c="'+it.container+'"]');if(li){li.scrollIntoView({behavior:'smooth',block:'center'});li.style.outline='3px solid #C8102E';setTimeout(()=>{li.style.outline=''},4000);res.textContent='Check it out in the list, then tap "Already logged".'}else{res.textContent=it.container?it.container+' is not in the yard list. Use Fix an entry, or tap why below.':'No number read: find the box in the list below, check it out, then tap "Already logged".';$('contList').scrollIntoView({behavior:'smooth',block:'start'})}});
-    btn('✓ Already logged','btn2',b=>gqDone(it,'logged',c));
-    btn('Parking customer','btn2',()=>gqDone(it,'parking',c));
-    btn('Bobtail / chassis only','btn2',()=>gqDone(it,'bobtail',c));
-    btn('Visitor / vendor','btn2',()=>gqDone(it,'visitor',c));
+    btn('✓ Already logged','btn2',()=>gqDone(it,'logged',c));
+    (GQP.reasons||[]).forEach(k=>GQ_RS[k]&&btn(GQ_RS[k],'btn2',()=>gqDone(it,k,c)));
     body.append(B);c.append(pic,body);if(it.done)c.classList.add('done');L.append(c)});gqCount()}
-function gqLoad(){if(!Y().call)return;$('gqMsg').textContent='Loading…';gqCall('§gate queue').then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');GQ=r.items||[];gqRender();if((r.total||0)>GQ.length)$('gqMsg').textContent+=' · showing the newest '+GQ.length+' of '+r.total}).catch(e=>{const m=String((e&&e.message)||e);$('gqMsg').textContent=/NEED_EMAIL/.test(m)?'Verify your company email in Ask first, then tap Refresh.':m})}
+function gqLoad(){if(!Y().call)return;$('gqMsg').textContent='Loading…';gqCall('§gate queue').then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');GQ=r.items||[];GQ_TODAY=r.today||[];gqRender();if((r.total||0)>GQ.length)$('gqMsg').textContent+=' · newest '+GQ.length+' of '+r.total}).catch(e=>{const m=String((e&&e.message)||e);$('gqMsg').textContent=/NEED_EMAIL/.test(m)?'Verify your company email in Ask first, then tap Refresh.':m})}
+function gqTimer(){if(GQ_TIMER)clearInterval(GQ_TIMER);GQ_TIMER=null;const m=Number(GQP.refresh)||0;if(m>0)GQ_TIMER=setInterval(()=>{if(TAB==='yard'&&!document.hidden)gqLoad()},m*60000)}
+function gqPrefDraw(){const P=$('gqPref');P.textContent='';
+  const row=(lab,ctl)=>{const l=el('label');l.append(el('span','',lab),ctl);P.append(l)};
+  const chk=(k,lab)=>{const x=el('input');x.type='checkbox';x.checked=!!GQP[k];x.addEventListener('change',()=>{GQP[k]=x.checked;gqSave();gqRender()});row(lab,x)};
+  const sel=(k,lab,opts,after)=>{const x=el('select');opts.forEach(([v,t])=>{const o=el('option','',t);o.value=v;x.append(o)});x.value=String(GQP[k]);x.addEventListener('change',()=>{GQP[k]=/^\d+$/.test(x.value)?Number(x.value):x.value;gqSave();gqRender();if(after)after()});row(lab,x)};
+  P.append(el('b','','Make this screen yours')),P.append(el('div','t','Saved on this phone. Change it any time.'));
+  chk('big','Glove mode: big buttons');chk('photo','Big photos');
+  sel('sort','Order',[['new','Newest first'],['old','Oldest first (clear the backlog)']]);
+  sel('cam','Camera',[['all','Both gates'],['Front gate','Front gate'],['Front gate 2','Front gate 2']]);
+  sel('kinds','Show',[['both','Containers and empty chassis'],['truck_with_container','Containers only'],['truck_with_chassis','Empty chassis only']]);
+  sel('refresh','Refresh by itself',[['0','Off'],['2','Every 2 minutes'],['5','Every 5 minutes'],['10','Every 10 minutes']],gqTimer);
+  const rs=el('div');rs.append(el('span','','Quick reasons on each card: '));Object.keys(GQ_RS).forEach(k=>{const l=el('label'),x=el('input');x.type='checkbox';x.checked=(GQP.reasons||[]).includes(k);x.addEventListener('change',()=>{const s=new Set(GQP.reasons||[]);x.checked?s.add(k):s.delete(k);GQP.reasons=Object.keys(GQ_RS).filter(r=>s.has(r));gqSave();gqRender()});l.append(x,document.createTextNode(GQ_RS[k]));rs.append(l)});P.append(rs);
+  const idea=el('textarea');idea.placeholder='Want something else on this screen? Tell Richard here (e.g. "scan the number with my phone camera", "a button for chassis swaps").';
+  const send=el('button','btn','Send idea to Richard');send.type='button';const im=el('span','t');
+  send.addEventListener('click',()=>{const t=idea.value.trim();if(t.length<3){im.textContent='Type the idea first.';return}send.disabled=true;gqCall('§gate idea '+JSON.stringify({text:t,prefs:GQP})).then(r=>{if(r&&r.ok===false)throw new Error(r.error);im.textContent='Sent. Thanks!';idea.value=''}).catch(e=>{im.textContent=(e&&e.message)||String(e)}).finally(()=>{send.disabled=false})});
+  P.append(el('b','','💡 Ideas'),idea);const sr=el('div','row');sr.append(send,im);P.append(sr);
+  const rst=el('button','btn2','Reset to normal');rst.type='button';rst.addEventListener('click',()=>{GQP=Object.assign({},GQ_DEF);gqSave();gqPrefDraw();gqRender();gqTimer()});P.append(rst)}
+function gqShiftDraw(){const R=$('gqRep');R.textContent='';const by={};GQ_TODAY.forEach(x=>{by[x.outcome]=(by[x.outcome]||0)+x.n});
+  const left=GQ.filter(x=>!x.done),oldest=left.length?left[left.length-1]:null;
+  const lines=['Gate shift report · '+new Date().toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}),
+    'Cleared today (photos): '+(Object.keys(by).map(k=>(k==='logged'?'logged':GQ_RS[k]||k)+' '+by[k]).join(', ')||'none yet'),
+    'Still open: '+left.length+' truck visit'+(left.length===1?'':'s')+(oldest?' (oldest '+gqWhen(oldest.at)+')':''),
+    'Open with a container number read: '+(left.filter(x=>x.container).map(x=>x.container).slice(0,15).join(', ')||'-')];
+  const pre=el('div');pre.style.whiteSpace='pre-line';pre.textContent=lines.join('\n');R.append(el('b','','📋 Shift report (hand off to the next person)'),pre);
+  const cp=el('button','btn2','Copy');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(lines.join('\n'));cp.textContent='Copied'}catch(e){prompt('Copy this',lines.join('\n'))}});R.append(cp)}
 $('gqLoad').addEventListener('click',gqLoad);
+$('gqPrefB').addEventListener('click',()=>{const P=$('gqPref');P.hidden=!P.hidden;if(!P.hidden)gqPrefDraw()});
+$('gqShift').addEventListener('click',()=>{const R=$('gqRep');R.hidden=!R.hidden;if(!R.hidden)gqShiftDraw()});
 // a successful Check in of the pending box clears its card
-new MutationObserver(()=>{const t=($('ciMsg')||{}).textContent||'';if(GQ_PEND&&/^Checked in /.test(t)&&(!GQ_PEND.container||t.indexOf(GQ_PEND.container)>=0)){const it=GQ_PEND;GQ_PEND=null;const card=[...$('gqList').children][GQ.indexOf(it)];gqDone(it,'logged',card)}}).observe($('ciMsg'),{childList:true,characterData:true,subtree:true});
-function gqInit(){try{if(!roles().length)return setTimeout(gqInit,3000);if(can('yard')){gqLoad();setInterval(()=>{if(TAB==='yard'&&!document.hidden)gqLoad()},5*60000)}else gqSec.hidden=true}catch(e){setTimeout(gqInit,5000)}}setTimeout(gqInit,2500);
+new MutationObserver(()=>{const t=($('ciMsg')||{}).textContent||'';if(GQ_PEND&&/^Checked in /.test(t)&&(!GQ_PEND.container||t.indexOf(GQ_PEND.container)>=0)){const it=GQ_PEND;GQ_PEND=null;const card=[...$('gqList').children][gqShown().indexOf(it)];gqDone(it,'logged',card)}}).observe($('ciMsg'),{childList:true,characterData:true,subtree:true});
+function gqInit(){try{if(!roles().length)return setTimeout(gqInit,3000);if(can('yard')){gqLoad();gqTimer()}else gqSec.hidden=true}catch(e){setTimeout(gqInit,5000)}}setTimeout(gqInit,2500);
 {const st=el('style');st.textContent='#brwFrame{width:100%;height:72vh;border:1px solid var(--line,#d6dad8);border-radius:10px;background:#2b2b2b}.brwBar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.brwAsk{display:flex;gap:8px;align-items:flex-start}.brwAsk textarea{flex:1;min-height:52px}#brwOut{margin-top:8px;white-space:pre-line}';document.head.append(st)}
 $('brwOpen').href=BRW_URL;
 $('brwShow').addEventListener('click',()=>{const b=$('brwBox'),f=$('brwFrame');b.hidden=!b.hidden;if(!b.hidden&&!f.src)f.src=BRW_URL;$('brwShow').textContent=b.hidden?'Show it here':'Hide'});
