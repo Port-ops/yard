@@ -3274,6 +3274,22 @@ CXKEYS.forEach(([k])=>{const p=mk('cxP_'+k,'carter',k,'');p.className='cxPh';wra
 brSec.hidden=true;wrap.append(brSec);brSec.querySelector('.cxId').append(carterFace(44));
 const camSec=mk('camSec','owner','cams','<div class="cxHd"><div class="cxMeta"><h2>Yard cameras <span class="cxRole">Reolink · read by Carter</span></h2><div class="t" id="camAsof">loading…</div></div></div><nav class="cxTabs" id="camTabs" role="tablist" aria-label="Camera sections"></nav><div id="camBody"></div>');
 camSec.hidden=true;wrap.append(camSec);
+// ---- CARTER'S BROWSER (owner 11/2/2026): Carter's own Chrome on carter-1. Richard signs in to sites there himself;
+// Carter works "do:" tasks in it. The viewer is password-protected (Caddy); the rules are enforced on the server. ----
+const BRW_URL='https://165-245-163-1.sslip.io/';
+const brwSec=mk('brwSec','owner','browser','<h2>Carter\'s browser <span class="t">his own Chrome on the server · works when your computer is off</span></h2>'+
+ '<p class="t">Sign in to the sites you want Carter to use, right in this window. Carter never types passwords, never submits, sends, buys or signs in, and only opens approved sites. Anything like that comes back to you.</p>'+
+ '<div class="row brwBar"><a class="btn" id="brwOpen" target="_blank" rel="noopener">Open full screen</a><button class="btn2" type="button" id="brwShow">Show it here</button></div>'+
+ '<div id="brwBox" hidden><iframe id="brwFrame" title="Carter\'s browser" allow="clipboard-read; clipboard-write"></iframe><p class="t">Blank or asking to sign in? Tap <b>Open full screen</b> once, sign in with user <b>richard</b> and your browser password, then come back.</p></div>'+
+ '<h3>Give Carter a task</h3><div class="brwAsk"><textarea id="brwQ" rows="2" placeholder="e.g. find a DD15 turbo for a 2019 Cascadia on FleetPride and compare prices"></textarea><button class="btn" type="button" id="brwGo">Send to Carter</button></div>'+
+ '<div class="t" id="brwOut"></div><p class="t">Results land in Carter &gt; Decisions as a 🧠 Answer card, usually in a few minutes.</p>');
+brwSec.hidden=true;wrap.append(brwSec);
+{const st=el('style');st.textContent='#brwFrame{width:100%;height:72vh;border:1px solid var(--line,#d6dad8);border-radius:10px;background:#2b2b2b}.brwBar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.brwAsk{display:flex;gap:8px;align-items:flex-start}.brwAsk textarea{flex:1;min-height:52px}#brwOut{margin-top:8px;white-space:pre-line}';document.head.append(st)}
+$('brwOpen').href=BRW_URL;
+$('brwShow').addEventListener('click',()=>{const b=$('brwBox'),f=$('brwFrame');b.hidden=!b.hidden;if(!b.hidden&&!f.src)f.src=BRW_URL;$('brwShow').textContent=b.hidden?'Show it here':'Hide'});
+$('brwGo').addEventListener('click',()=>{const q=$('brwQ').value.trim(),o=$('brwOut'),b=$('brwGo');if(q.length<4){o.textContent='Type what Carter should do.';return}
+  b.disabled=true;o.textContent='Sending…';Y().call('aiAsk',[{mode:'ask',q:'do: '+q,tab:'owner'}]).then(r=>{o.textContent=String(r.text||r.error||'Sent.');$('brwQ').value=''}).catch(e=>{o.textContent=(e&&e.message)||String(e)}).finally(()=>{b.disabled=false})});
+brwSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
@@ -3578,7 +3594,7 @@ port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
 sales:[['work','Find work'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
-owner:[['cams','Cameras'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
+owner:[['cams','Cameras'],['browser',"Carter's browser"],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
