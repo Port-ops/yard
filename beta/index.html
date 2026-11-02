@@ -3291,8 +3291,8 @@ brwSec.hidden=true;wrap.append(brwSec);
 // glove-size buttons, big photos, sort, camera and type filters, which reasons show, auto-refresh, shift handoff, ideas to Richard.
 const gqSec=mk('gqSec','yard','containers','<h2>Gate camera queue <span class="t">trucks the cameras saw · no yard move logged</span></h2>'+
  '<p class="help">Each card is one truck at the gate with no check-in or check-out in DockRelay. Log it, or tap why it was not a yard move. Every box logged here gets billed.</p>'+
- '<div class="row gqBar"><button class="btn2" type="button" id="gqLoad">Refresh</button><button class="btn2" type="button" id="gqPrefB">⚙️ Make it yours</button><button class="btn2" type="button" id="gqShift">📋 Shift report</button><button class="btn" type="button" id="gqScanB">📷 Scan a box</button><span class="t" id="gqMsg">Loading…</span></div>'+
- '<div id="gqPref" class="gqPref" hidden></div><div id="gqRep" class="gqPref" hidden></div><div id="gqCk" class="gqList"></div><div id="gqList" class="gqList"></div>');
+ '<div class="row gqBar"><button class="btn2" type="button" id="gqLoad">Refresh</button><button class="btn2" type="button" id="gqPrefB">⚙️ Make it yours</button><button class="btn2" type="button" id="gqShift">📋 Shift report</button><button class="btn" type="button" id="gqScanB">📷 Scan a box</button><button class="btn2" type="button" id="gqPushB">🔔 Alerts</button><span class="t" id="gqMsg">Loading…</span></div>'+
+ '<div id="gqPush" class="gqPref" hidden></div><div id="gqPref" class="gqPref" hidden></div><div id="gqRep" class="gqPref" hidden></div><div id="gqCk" class="gqList"></div><div id="gqList" class="gqList"></div>');
 {const cs=$('cinForm')&&$('cinForm').closest('section');if(cs)cs.before(gqSec);else wrap.append(gqSec)}
 {const st=el('style');st.textContent='.gqList{display:grid;gap:10px;margin:8px 0 18px}.gqC{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:10px;background:var(--card,#fff);display:grid;grid-template-columns:120px 1fr;gap:10px}.gqC img{width:120px;height:90px;object-fit:cover;border-radius:8px;background:#ddd;cursor:zoom-in}.gqC .gqNo{width:120px;height:90px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#777}.gqC b{font-size:15px}.gqC .gqNum{font-family:var(--mono,monospace);font-weight:700;letter-spacing:.03em}.gqC .gqBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.gqC .gqBtns button{padding:6px 10px;font-size:13px}.gqC.done{opacity:.45}'+
  '.gqBig .gqC .gqBtns button{padding:14px 16px;font-size:17px;min-width:46%}.gqBig .gqC b{font-size:18px}.gqPhoto .gqC{grid-template-columns:1fr}.gqPhoto .gqC img,.gqPhoto .gqC .gqNo{width:100%;height:240px}'+
@@ -3370,7 +3370,7 @@ function gqInit(){try{if(!roles().length)return setTimeout(gqInit,3000);if(can('
 // and what they are doing; each one shows here until the gate person logs it or marks it a no-show.
 const GQ_MV={drop_loaded:'Drop a loaded box',drop_empty:'Drop an empty',pickup_loaded:'Pick up a loaded box',pickup_empty:'Pick up an empty',parking_in:'Parking: coming in',parking_out:'Parking: leaving',chassis_only:'Chassis only',other:'Other'};
 function gqCkDone(k,as,card){return gqTap('§gate checkin-done '+JSON.stringify({id:k.id,as}),k,as,card)}
-function gqCkRender(L){const H=$('gqCk');H.textContent='';L=(L||[]).filter(k=>!gqOut().some(o=>o.cmd.indexOf('"id":'+k.id+',')>0));if(!L.length)return;
+let GQ_CKSEEN=null;function gqCkRender(L){const H=$('gqCk');H.textContent='';{const ids=(L||[]).map(k=>k.id);if(GQ_CKSEEN&&ids.some(i=>!GQ_CKSEEN.has(i)))pushBeep();GQ_CKSEEN=new Set(ids)}L=(L||[]).filter(k=>!gqOut().some(o=>o.cmd.indexOf('"id":'+k.id+',')>0));if(!L.length)return;
   H.append(el('b','','🚚 Driver check-ins ('+L.length+') · drivers who checked in on their phone at the gate'));
   L.forEach(k=>{const c=el('div','gqC gqK'),b=el('div');b.append(el('b','',(k.name||'Driver')+(k.company?' · '+k.company:'')));
     b.append(el('div','',(GQ_MV[k.move]||k.move)+' · '+gqWhen(k.at)));
@@ -3457,6 +3457,8 @@ function drLoad(){if(!Y().call)return;const m=$('drMsg'),L=$('drLocks'),E=$('drE
     if(!r.connected){m.textContent='';const b=el('div','drL');b.append(el('b','','Kwikset is not connected yet'),el('div','t','1) Make a Seam account with your 2f-logistics.com email and add its API key as SEAM_API_KEY in Supabase (Claude cannot do either). 2) Turn off 2-step sign-in in the Kwikset app. 3) Tap Connect and sign in to Kwikset yourself.'));
       const c=el('button','btn','Connect Kwikset');c.type='button';const cm=el('div','t');c.addEventListener('click',()=>{cm.textContent='Getting the link…';drCall('§doors connect').then(x=>{if(x.url){window.open(x.url,'_blank','noopener');cm.textContent='Sign in to Kwikset in the new tab, then come back and tap Refresh.'}else cm.textContent=x.error||'Add SEAM_API_KEY first.'}).catch(e=>{cm.textContent=(e&&e.message)||String(e)})});b.append(c,cm);L.append(b);return}
     m.textContent=(r.locks||[]).length+' lock'+((r.locks||[]).length===1?'':'s');
+    if(!(r.locks||[]).length){const b=el('div','drL');b.append(el('b','','Link your Kwikset account'),el('div','t','Seam is set up. Tap Connect, sign in to Kwikset yourself in the new tab (turn off 2-step verification in the Kwikset app first), then come back and tap Refresh.'));
+      const c=el('button','btn','Connect Kwikset');c.type='button';const cm=el('div','t');c.addEventListener('click',()=>{const w=window.open('about:blank','_blank');cm.textContent='Getting the link…';drCall('§doors connect').then(x=>{if(x.url){if(w)w.location=x.url;else location.href=x.url;cm.textContent='Sign in to Kwikset in the new tab, then come back and tap Refresh.'}else{if(w)w.close();cm.textContent=x.error||'No link came back.'}}).catch(e=>{if(w)w.close();cm.textContent=(e&&e.message)||String(e)})});b.append(c,cm);L.append(b)}
     (r.locks||[]).forEach(k=>{const c=el('div','drL '+(k.locked===false?'open':k.locked?'shut':''));c.append(el('b','',k.name));
       c.append(el('div','drS',k.locked===false?'🔓 UNLOCKED':k.locked?'🔒 Locked':'? Unknown'));
       c.append(el('div','t',(k.online===false?'⚠️ Offline · ':'Online · ')+(k.battery!=null?'Battery '+Math.round(k.battery*100)+'%':'Battery ?')+(k.model?' · '+k.model:'')));
@@ -3468,6 +3470,55 @@ function drLoad(){if(!Y().call)return;const m=$('drMsg'),L=$('drLocks'),E=$('drE
 $('drRef').addEventListener('click',drLoad);
 try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!DR_LOADED)drLoad()}).observe(drSec)}catch(e){}
 drSec.hidden=false;
+// ---- PHONE ALERTS (owner 11/2/2026: "make Brandon's phone make a noise when something needs to be done"). Web push through the
+// app's service worker. Each person turns alerts on for their own phone (Brandon: Yard > Check in / out > 🔔 Alerts); Richard sends
+// alerts from Owner > Notify. iPhone needs DockRelay added to the Home Screen first (Apple's rule for web app alerts).
+function pushBeep(){try{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;const a=new A();[0,0.35,0.7].forEach(t=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(0.25,a.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+t+0.3);o.start(a.currentTime+t);o.stop(a.currentTime+t+0.3)});if(navigator.vibrate)navigator.vibrate([300,100,300])}catch(e){}}
+const pushCall=q=>Y().call('aiAsk',[{mode:'ask',q,tab:'yard'}]).then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Not saved');return r});
+const pushB64=s=>{const p='='.repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(b,c=>c.charCodeAt(0))};
+const pushIOS=()=>/iP(hone|ad|od)/.test(navigator.userAgent),pushStandalone=()=>window.matchMedia&&matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+async function pushSubNow(){const reg=await navigator.serviceWorker.ready;return reg.pushManager.getSubscription()}
+function pushPanel(host){host.textContent='';const P0={checkins:true,gate:true,from:7,to:18};let P=P0;try{P=Object.assign({},P0,JSON.parse(localStorage.getItem('pushPrefs')||'{}'))}catch(e){}
+  host.append(el('b','','🔔 Alerts on this phone'),el('div','t','Your phone makes a sound when something at the gate needs you, even when DockRelay is closed.'));
+  const msg=el('div','t');
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
+    host.append(el('div','t',pushIOS()&&!pushStandalone()?'iPhone: first add DockRelay to your Home Screen (Share button, then "Add to Home Screen"), open it from that icon, then come back here.':'This browser cannot get alerts. Use Chrome on Android, or DockRelay from the iPhone Home Screen.'));return}
+  const row=(lab,ctl)=>{const l=el('label');l.append(ctl,document.createTextNode(' '+lab));host.append(l)};
+  const ck=(k,lab)=>{const x=el('input');x.type='checkbox';x.checked=!!P[k];x.addEventListener('change',()=>{P[k]=x.checked;save()});row(lab,x)};
+  const hr=(k)=>{const s=el('select');for(let h=0;h<=24;h++){const o=el('option','',h===0||h===24?'midnight':h===12?'noon':(h%12)+(h<12?' AM':' PM'));o.value=h;s.append(o)}s.value=P[k];s.addEventListener('change',()=>{P[k]=Number(s.value);save()});return s};
+  ck('checkins','A driver checks in at the gate');ck('gate','The camera sees a truck nobody logged');
+  const hrs=el('label');hrs.append(document.createTextNode('Only between '),hr('from'),document.createTextNode(' and '),hr('to'));host.append(hrs);
+  const btns=el('div','row');btns.style.cssText='display:flex;gap:8px;flex-wrap:wrap';const on=el('button','btn','Turn on alerts'),off=el('button','btn2','Turn off'),test=el('button','btn2','Send me a test');[on,off,test].forEach(b=>{b.type='button';btns.append(b)});host.append(btns,msg);
+  async function save(){try{localStorage.setItem('pushPrefs',JSON.stringify(P))}catch(e){}const s=await pushSubNow().catch(()=>null);if(s)pushCall('§push prefs '+JSON.stringify({endpoint:s.endpoint,prefs:P})).then(r=>{msg.textContent=r.text||'Saved.'}).catch(e=>{msg.textContent=e.message})}
+  async function state(){const s=await pushSubNow().catch(()=>null);on.textContent=s?'Alerts are on ✓ (tap to refresh)':'Turn on alerts';off.hidden=!s;test.hidden=!s;if(Notification.permission==='denied')msg.textContent='Alerts are blocked for DockRelay in this phone\'s settings. Allow notifications there, then come back.'}
+  on.addEventListener('click',async()=>{on.disabled=true;msg.textContent='Asking your phone…';try{
+      const perm=await Notification.requestPermission();if(perm!=='granted')throw new Error('Your phone said no. Allow notifications for DockRelay in Settings, then try again.');
+      const k=await pushCall('§push key');const reg=await navigator.serviceWorker.ready;let s=await reg.pushManager.getSubscription();
+      if(!s)s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushB64(k.key)});
+      const r=await pushCall('§push sub '+JSON.stringify({sub:s.toJSON(),prefs:P,ua:navigator.userAgent.slice(0,150)}));msg.textContent=r.text||'Alerts are on.'}catch(e){msg.textContent=(e&&e.message)||String(e)}finally{on.disabled=false;state()}});
+  off.addEventListener('click',async()=>{const s=await pushSubNow().catch(()=>null);if(!s)return state();try{await pushCall('§push unsub '+JSON.stringify({endpoint:s.endpoint}));await s.unsubscribe();msg.textContent='Alerts are off on this phone.'}catch(e){msg.textContent=e.message}state()});
+  test.addEventListener('click',()=>{msg.textContent='Sending…';pushCall('§push test').then(r=>{msg.textContent=r.text}).catch(e=>{msg.textContent=e.message})});
+  state()}
+$('gqPushB').addEventListener('click',()=>{const P=$('gqPush');P.hidden=!P.hidden;if(!P.hidden)pushPanel(P)});
+const ntSec=mk('ntSec','owner','notify','<h2>Notify <span class="t">make someone\'s phone sound</span></h2>'+
+ '<p class="t">Sends an alert to the DockRelay app on their phone. They must turn alerts on once (Brandon: Yard &gt; Check in / out &gt; 🔔 Alerts).</p>'+
+ '<div id="ntWho" class="ntWho"></div><textarea id="ntText" maxlength="300" placeholder="e.g. Brandon, 2 trucks at the gate are not logged. Please check them now."></textarea>'+
+ '<div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="t"><input type="checkbox" id="ntUrg"> Urgent (stays on screen)</label><button class="btn" type="button" id="ntGo">Send alert</button><button class="btn2" type="button" id="ntRef">Refresh</button></div>'+
+ '<div class="t" id="ntMsg"></div><h3>Recent alerts</h3><div id="ntLog" class="t"></div><div id="ntMine" class="gqPref"></div>');
+ntSec.hidden=true;wrap.append(ntSec);
+{const st=el('style');st.textContent='.ntWho{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.ntWho label{border:1px solid var(--line,#d6dad8);border-radius:20px;padding:6px 12px}#ntText{width:100%;min-height:70px}#ntLog div{padding:3px 0;border-bottom:1px solid var(--line,#eee)}';document.head.append(st)}
+let NT_LOADED=false;
+function ntLoad(){if(!Y().call)return;$('ntMsg').textContent='Loading…';pushCall('§push people').then(r=>{NT_LOADED=true;const W=$('ntWho'),L=$('ntLog');W.textContent='';L.textContent='';
+    (r.subs||[]).forEach(s=>{const l=el('label'),x=el('input');x.type='checkbox';x.value=s.person;if(/brandon/i.test(s.person))x.checked=true;l.append(x,document.createTextNode(' '+s.person+(s.phones>1?' ('+s.phones+' phones)':'')));W.append(l)});
+    if(!W.children.length)W.append(el('div','t','Nobody has turned alerts on yet. Ask Brandon to open Yard > Check in / out > 🔔 Alerts > Turn on alerts.'));
+    (r.log||[]).forEach(x=>L.append(el('div','',x.at+' · '+(x.people||[]).join(', ')+' · '+x.title+' · '+(x.sent?'✓ delivered to '+x.sent:'✗ not delivered'))));if(!L.children.length)L.textContent='None yet.';
+    $('ntMsg').textContent=''}).catch(e=>{$('ntMsg').textContent=e.message});pushPanel($('ntMine'))}
+$('ntGo').addEventListener('click',()=>{const to=[...$('ntWho').querySelectorAll('input:checked')].map(x=>x.value),t=$('ntText').value.trim(),m=$('ntMsg'),b=$('ntGo');
+  if(!to.length){m.textContent='Pick who gets it.';return}if(t.length<2){m.textContent='Type the message.';return}b.disabled=true;m.textContent='Sending…';
+  pushCall('§push send '+JSON.stringify({to,text:t,urgent:$('ntUrg').checked})).then(r=>{m.textContent=r.text;$('ntText').value='';setTimeout(ntLoad,1500)}).catch(e=>{m.textContent=e.message}).finally(()=>{b.disabled=false})});
+$('ntRef').addEventListener('click',ntLoad);
+try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!NT_LOADED)ntLoad()}).observe(ntSec)}catch(e){}
+ntSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
@@ -3772,7 +3823,7 @@ port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
 sales:[['work','Find work'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
-owner:[['cams','Cameras'],['browser',"Carter's browser"],['mail',"Carter's email"],['doors','Office doors'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
+owner:[['cams','Cameras'],['browser',"Carter's browser"],['mail',"Carter's email"],['doors','Office doors'],['notify','Notify'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
