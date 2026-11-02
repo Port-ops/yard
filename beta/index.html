@@ -2090,7 +2090,7 @@ setTimeout(()=>{renderDS();loadDS()},3500);setInterval(()=>{if(document.visibili
 '.smW{font-size:12px;color:#8a6100;background:#fff6dc;border-radius:6px;padding:4px 8px;margin:4px 0}.smW.bad{color:#b3261e;background:#fdecea}'+
 '.smC{border:1px solid var(--line,#d5d9db);border-radius:10px;padding:12px;background:var(--card,#fff)}.smC label{display:block;font-size:12px;color:var(--mut,#5d686d);margin:8px 0 2px}.smC textarea{width:100%;min-height:150px;font:inherit;font-size:14px;padding:8px;box-sizing:border-box;text-transform:none}.smC input,.smC select{text-transform:none}.smChs{display:flex;flex-wrap:wrap;gap:6px}.smChs label{display:flex;gap:4px;align-items:center;border:1px solid var(--line,#ccd);border-radius:8px;padding:4px 8px;margin:0;color:var(--ink);font-size:13px}.smChs label.off{opacity:.5}'+
 '.smPv{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:8px}.smPv>div{border:1px solid var(--line,#d5d9db);border-radius:8px;padding:8px;font-size:13px}.smPv .hd{display:flex;justify-content:space-between;margin-bottom:4px}.smPv pre{white-space:pre-wrap;font:inherit;margin:0;max-height:180px;overflow:auto}.smPv img{width:100%;border-radius:6px;margin-top:4px}'+
-'.smDay{margin:10px 0 2px;font-weight:700}.smJ{border-left:4px solid #C8102E}.smJ .pay{font-weight:700;color:#2e7d4f}.smJ .cnt{font-weight:700}.stt.live{color:#2e7d4f;background:#e6f2ea}.stt.closed{color:#5d686d}.smC .two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.smC textarea.sm{min-height:70px}.smA a{font-weight:600}.smA .meta{font-size:12px;color:var(--mut,#5d686d)}.smBd{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#e4e7e8)}.smBd .on{color:#2e7d4f;font-weight:600}.smBd .offx{color:#5d686d}';document.head.append(st)}
+'.smDay{margin:10px 0 2px;font-weight:700}.smJ{border-left:4px solid #C8102E}.smJ .pay{font-weight:700;color:#2e7d4f}.smJFull{margin:8px 0;padding:10px 12px;background:var(--bg,#f6f7f9);border-radius:10px}.smJFull h5{margin:10px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.03em;color:#5b6472}.smJFull h5:first-child{margin-top:0}.smJFull ul{margin:0;padding-left:20px}.smJTxt{white-space:pre-line}.smJEin{margin-top:10px}.smJ .cnt{font-weight:700}.stt.live{color:#2e7d4f;background:#e6f2ea}.stt.closed{color:#5d686d}.smC .two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.smC textarea.sm{min-height:70px}.smA a{font-weight:600}.smA .meta{font-size:12px;color:var(--mut,#5d686d)}.smBd{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#e4e7e8)}.smBd .on{color:#2e7d4f;font-weight:600}.smBd .offx{color:#5d686d}';document.head.append(st)}
 let SM=null,SMF='review',SMB='all',SMEDIT=null;
 const SM_PEOPLE=['Richard Prescott','Lethaniel Stanley','Yanix Serafico','Julia Perez','Mari Diaz','Prince Santos','JC Palmos'];
 const smCan=()=>{const me=Y().S&&Y().S.me;return !!(me&&SM_PEOPLE.includes(me.n))};
@@ -2296,16 +2296,28 @@ function smJCard(j){const c=el('div','smP smJ'),h=el('h4'),st=j.status==='draft'
   const cnt=el('div','meta');cnt.append(el('span','cnt',String(j.applicants||0)),document.createTextNode(' applicants'+(j.new_7d?' · '+j.new_7d+' this week':'')+(j.status==='live'&&j.valid_through?' · listed until '+new Date(j.valid_through).toLocaleDateString():'')+(j.social_queued_at?' · hiring posts sent '+smDT(j.social_queued_at):'')+((j.channels||[]).length?'':' · no social posts')));c.append(cnt);
   if((j.approvals||[]).length)c.append(el('div','meta','Approved by '+j.approvals.map(a=>a.who.split(' ')[0]).join(' + ')));
   if(j.review_notes)c.append(el('div','smW',j.review_notes));
+  // owner 11/2/2026: "see the whole post and edit from right here" - full post and the editor open inside the card
+  const full=el('div','smJFull');full.hidden=true;{
+    const pay=j.pay_line||(j.pay_min!=null&&j.pay_min!==''?('$'+j.pay_min+(j.pay_max&&j.pay_max!=j.pay_min?'–$'+j.pay_max:'')+(j.pay_unit?' per '+String(j.pay_unit).toLowerCase():'')):'');
+    const sec=(t,v)=>{if(!v)return;full.append(el('h5','',t));const d=el('div','smJTxt');d.textContent=v;full.append(d)};
+    full.append(el('h5','','Pay'));full.append(el('div',pay?'pay':'smW bad',pay?(pay+(j.pay_note?' · '+j.pay_note:'')):'No pay set yet: job posts must show pay. Tap Edit to add it.'));
+    sec('Full description',j.description);
+    if((j.requirements||[]).length){full.append(el('h5','','Requirements'));const ul=el('ul');j.requirements.forEach(x=>ul.append(el('li','',x)));full.append(ul)}
+    sec('What you get',j.benefits);
+    const qs=Array.isArray(j.questions)?j.questions:[];if(qs.length){full.append(el('h5','','Questions applicants answer'));const ul=el('ul');qs.forEach(x=>ul.append(el('li','',(x&&x.q)||String(x))));full.append(ul)}
+    const ch=(j.channels||[]);full.append(el('div','meta','Posts to: careers page + Google Jobs'+(ch.length?' + '+ch.length+' social channel(s)':'')))}
+  c.append(full);const ed=el('div','smJEin');ed.hidden=true;
   const row=el('div','row'),B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));row.append(b)};
   if(smJNeedsMe(j))B('Approve and post','btn',b=>{if(!confirm('This puts the job live on the careers page and Google Jobs'+((j.channels||[]).length?' and posts it to '+j.channels.length+' social channel(s)':'')+'. Go?'))return;smRun('socialJob',{action:'approve',id:j.id},b)});
   if(j.status==='draft'&&smMine().role!=='editor')B('Ask for changes','btn2',b=>{const r=prompt('What should change? (the writer sees this)');if(r)smRun('socialJob',{action:'reject',id:j.id,reason:r},b)});
-  if(j.status!=='closed')B('Edit','btn2',()=>{if(j.status==='live'&&!confirm('Editing takes the job off the careers page until it is approved again. Continue?'))return;smJobEdit(j)});
+  B('Show full post','btn2',b=>{full.hidden=!full.hidden;b.textContent=full.hidden?'Show full post':'Hide full post'});
+  if(j.status!=='closed')B('Edit','btn2',()=>{if(j.status==='live'&&!confirm('Editing takes the job off the careers page until it is approved again. Continue?'))return;smJobEdit(j,ed)});
   if(j.status==='live'){B('Close job','btn2',b=>{if(confirm('Close "'+j.title+'"? It comes off the careers page and Google Jobs.'))smRun('socialJob',{action:'close',id:j.id},b)});
     const a=el('a','btn2','Open page');a.href=j.url;a.target='_blank';a.rel='noopener';row.append(a);
     B('Copy link','btn2',b=>{try{navigator.clipboard.writeText(j.url);b.textContent='Copied'}catch(e){prompt('Copy this link',j.url)}})}
   if(j.status==='closed'&&smMine().role==='manager'&&j.review_status==='approved')B('Reopen','btn2',b=>smRun('socialJob',{action:'reopen',id:j.id},b));
-  if(row.children.length)c.append(row);return c}
-function smJobEdit(j){const box=$('smJE');box.hidden=false;box.textContent='';const f=el('div','smC');box.append(f);
+  if(row.children.length)c.append(row);c.append(ed);return c}
+function smJobEdit(j,host){const box=host||$('smJE');box.hidden=false;box.textContent='';const f=el('div','smC');box.append(f);
   f.append(el('h3','',j?'Edit job #'+j.id:'New job'));
   const S=(opts,v)=>{const x=el('select');opts.forEach(([k,l])=>{const o=el('option','',l);o.value=k;x.append(o)});if(v)x.value=v;return x},I=(v,ph,type)=>{const x=el('input');x.value=v==null?'':v;x.placeholder=ph||'';if(type)x.type=type;return x},T=(v,ph,cls)=>{const x=el('textarea',cls||'');x.value=v||'';x.placeholder=ph||'';return x};
   const brand=S([['2FF','2FF Logistics'],['1Stop','1 Stop Logistics']],j&&j.brand),kind=S(SMJ_KIND,j?j.kind:'company_driver'),emp=S(SMJ_EMP,j?j.employment_type:'FULL_TIME');
