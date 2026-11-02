@@ -3153,7 +3153,7 @@ CXKEYS.forEach(([k])=>{const p=mk('cxP_'+k,'carter',k,'');p.className='cxPh';wra
 brSec.hidden=true;wrap.append(brSec);brSec.querySelector('.cxId').append(carterFace(44));
 const camSec=mk('camSec','owner','cams','<div class="cxHd"><div class="cxMeta"><h2>Yard cameras <span class="cxRole">Reolink · read by Carter</span></h2><div class="t" id="camAsof">loading…</div></div></div><nav class="cxTabs" id="camTabs" role="tablist" aria-label="Camera sections"></nav><div id="camBody"></div>');
 camSec.hidden=true;wrap.append(camSec);
-let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null;
+let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
 function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab()}).catch(()=>{brSec.hidden=true;camSec.hidden=true;BR=null})}
@@ -3177,6 +3177,21 @@ function cxCard(a){const c=el('article','cxCard'+(a.status!=='proposed'?' dec':'
   if(a.status==='proposed')c.append(cxBtns(a));else c.append(el('div','cxDone',(a.status==='approved'?(cxCam(a)?'⚠ Not expected':'✓ Approved'):a.status==='rejected'?(cxCam(a)?'False alarm':'✗ Rejected'):a.status==='expired'?'Closed':'✓ Done')+(a.note?' · '+a.note:'')));return c}
 const cxEmpty=t=>el('p','cxEmpty',t);
 function cxTile(v,l,n,read){const d=el('div','cxTile '+(read||''));d.append(el('b','',v),el('span','l',l));if(n)d.append(el('span','n',n));return d}
+// tap-through: where a brief item lives in the app, and a one-tap question to Carter
+const CXROUTES=[[/answer rate|main line|missed call|call ?back|unanswered|voicemail/i,'texts','todo','Open phone To-do'],[/text speed|texts? under|BH texts|reply time/i,'texts','perf','Open Scorecard'],
+  [/quote|pricing|rate con|carrier identity|double-broker/i,'sales','quotes','Open Quote desk'],[/gate|camera|yard log|container read|front gate/i,'@cams','overview','Open Cameras'],
+  [/LFD|at risk|per diem|free time|demurrage|in the yard/i,'yard','inyard','Open In the yard'],[/speed|safety|collision|harsh|mph/i,'safety','events','Open Safety events'],
+  [/overweight|permit/i,'port','ow','Open Overweight'],[/PIN/i,'port','pins','Open PINs']];
+function cxRoute(t){for(const [re,tab,sb,l] of CXROUTES)if(re.test(t||''))return {tab,sb,l};return null}
+function cxNav(r){if(!r)return;if(r.tab==='@cams'){camGo(r.sb);return}try{go(r.tab);sub(r.tab,r.sb);window.scrollTo(0,0)}catch(e){alert('That section is not available on your account.')}}
+function cxAsk(q){try{AIM='ask';go('ask')}catch(e){}setTimeout(()=>{const T=$('aiTab'),t=T&&T.querySelector('.aiIn textarea'),b=T&&T.querySelector('.aiIn button');if(t&&b){t.value=q;b.click()}},250)}
+function cxActs(text,ctx){const x=el('div','cxAct cxDrawerAct'),r=cxRoute(text+' '+(ctx||''));
+  if(r){const b=el('button','btn sm',r.l+' →');b.type='button';b.addEventListener('click',e=>{e.stopPropagation();cxNav(r)});x.append(b)}
+  const a=el('button','btn2 sm','Ask Carter about this');a.type='button';a.addEventListener('click',e=>{e.stopPropagation();cxAsk('From today\'s CEO brief: "'+text+'". '+(ctx||'')+' What exactly should I do next, who should do it, and what data is this based on?')});x.append(a);
+  const c=el('button','btn2 sm','Copy');c.type='button';c.addEventListener('click',e=>{e.stopPropagation();try{navigator.clipboard.writeText(text+(ctx?'\n'+ctx:''));c.textContent='Copied'}catch(_){}});x.append(c);return x}
+function cxTap(node,key,text,ctx){node.classList.add('cxTap');node.tabIndex=0;node.setAttribute('role','button');node.setAttribute('aria-expanded',CXOPEN===key?'true':'false');
+  const tog=()=>{CXOPEN=CXOPEN===key?'':key;renderBR()};node.addEventListener('click',e=>{if(e.target.closest('button,a'))return;tog()});node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();tog()}});
+  node.append(el('span','cxChev',CXOPEN===key?'Close ▴':'Tap for actions ▾'));if(CXOPEN===key)node.append(cxActs(text,ctx))}
 function cxGo(k){try{if(TAB!=='carter')go('carter');sub('carter',k)}catch(e){}renderBR()}
 function camGo(k){CMT=k;try{localStorage.setItem('camTab',k)}catch(e){}try{if(TAB!=='owner')go('owner');sub('owner','cams')}catch(e){}if(!CAM)loadCams();renderCamTab()}
 
@@ -3192,11 +3207,11 @@ function renderBR(){if(!BR)return;brSec.hidden=false;const br=BR.brief,open=cxOp
 
 function cxBrief(B){const br=BR.brief,b=br&&br.body;if(!b){B.append(cxEmpty('No brief yet. The first one runs at 6:07 AM.'));return}
   B.append(el('p','cxHeadline',b.headline||''));
-  if((b.scorecard||[]).length){const g=el('div','cxKpis');b.scorecard.forEach(m=>{const d=el('div','cxKpi '+(m.read||''));d.append(el('span','l',m.metric||''),el('b','',m.value||''));if(m.note)d.append(el('span','n',m.note));g.append(d)});B.append(g)}
-  const block=(title,arr,fn,cls)=>{if(!(arr||[]).length)return;const s=el('section','cxBlk '+(cls||''));s.append(el('h3','',title));const u=el('ul');arr.forEach(x=>{const li=el('li');fn(li,x);u.append(li)});s.append(u);B.append(s)};
-  block('Fires — act today',b.fires,(li,f)=>{li.append(el('b','',f.what||''));const m=[f.owner&&('Owner: '+f.owner),f.by_when&&('By '+f.by_when)].filter(Boolean).join(' · ');if(m)li.append(el('span','m',m));if(f.why_it_matters)li.append(el('span','w',f.why_it_matters))},'fire');
-  block('People',b.people,(li,p)=>{li.append(el('b','',p.name+': '),document.createTextNode(p.note||''))});
-  block('Outside 2FF',b.outside,(li,o)=>{li.append(el('b','',o.item||''),el('span','w','→ '+(o.so_what||'')))});
+  if((b.scorecard||[]).length){const g=el('div','cxKpis');b.scorecard.forEach((m,i)=>{const d=el('div','cxKpi '+(m.read||''));d.append(el('span','l',m.metric||''),el('b','',m.value||''));if(m.note)d.append(el('span','n',m.note));cxTap(d,'k'+i,(m.metric||'')+': '+(m.value||''),m.note||'');g.append(d)});B.append(g)}
+  const block=(title,arr,fn,cls,txt)=>{if(!(arr||[]).length)return;const s=el('section','cxBlk '+(cls||''));s.append(el('h3','',title));const u=el('ul','cxList');arr.forEach((x,i)=>{const li=el('li');fn(li,x);if(txt){const [t,c]=txt(x);cxTap(li,title.slice(0,4)+i,t,c)}u.append(li)});s.append(u);B.append(s)};
+  block('Fires — act today',b.fires,(li,f)=>{li.append(el('b','',f.what||''));const m=[f.owner&&('Owner: '+f.owner),f.by_when&&('By '+f.by_when)].filter(Boolean).join(' · ');if(m)li.append(el('span','m',m));if(f.why_it_matters)li.append(el('span','w',f.why_it_matters))},'fire',f=>[f.what||'',[f.owner&&'Owner: '+f.owner,f.by_when&&'By '+f.by_when,f.why_it_matters].filter(Boolean).join('. ')]);
+  block('People',b.people,(li,p)=>{li.append(el('b','',p.name+': '),document.createTextNode(p.note||''))},'',p=>[p.name+': '+(p.note||''),'']);
+  block('Outside 2FF',b.outside,(li,o)=>{li.append(el('b','',o.item||''),el('span','w','→ '+(o.so_what||'')))},'',o=>[o.item||'',o.so_what||'']);
   if(b.question_for_richard){const q=el('div','cxQ');q.append(el('span','l','Carter asks you'),el('p','',b.question_for_richard));B.append(q)}
   if(br.review&&br.review.text){const d=el('details','cxBlk');d.append(el('summary','','Second opinion (ChatGPT)'),el('p','t',br.review.text));B.append(d)}
   if((br.sources||[]).length){const d=el('details','cxBlk');d.append(el('summary','','Sources ('+br.sources.length+')'));const u=el('ul');br.sources.slice(0,12).forEach(s=>{const li=el('li'),a=el('a','',String(s).replace(/^https?:\/\//,'').slice(0,80));a.href=s;a.target='_blank';a.rel='noopener';li.append(a);u.append(li)});d.append(u);B.append(d)}}
@@ -3237,18 +3252,20 @@ const KIND={truck_with_container:'Truck + container',truck_with_chassis:'Truck +
 function camPhoto(p){const c=el('a','camC');if(p.url){c.href=p.url;c.target='_blank';c.rel='noopener';const i=el('img');i.loading='lazy';i.src=p.url;i.alt=(p.camera||'camera')+' photo';c.append(i)}else c.append(el('div','camNo','photo pending'));
   const cap=el('div','camT');cap.append(el('b','',(p.camera||'?')+' · '+cxWhen(p.received_at)));cap.append(el('span','',p.status==='read'?(KIND[p.kind]||p.kind||'')+(p.container?' · '+p.container+(p.container_valid?' ✓':' ?'):''):p.status==='error'?'Carter could not read it':'Carter is reading…'));
   const fl=[];if(p.alerted)fl.push('after hours');if(p.match_status==='no_log')fl.push('no move logged');if(p.match_status==='mismatch')fl.push('number mismatch');if(p.match_status==='matched')fl.push('matched to log');if(fl.length)cap.append(el('i',p.alerted||p.match_status==='no_log'||p.match_status==='mismatch'?'camF bad':'camF',fl.join(' · ')));if(p.note)cap.append(el('small','',p.note));c.append(cap);return c}
-function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;const cams=cxOpen().filter(cxCam),m=(CAM&&CAM.summary)||{};
+function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;let cams=cxOpen().filter(cxCam),m=(CAM&&CAM.summary)||{};
   $('camAsof').textContent=CAM&&CAM.summary&&CAM.summary.last_photo?'Last photo '+cxAgo(CAM.summary.last_photo)+' · yard open 24/7':'Photos arrive when the recorder sees a person or vehicle';
   try{subBadge('owner','cams',cams.length,false)}catch(e){}
   const T=$('camTabs');T.textContent='';[['overview','Overview'],['alerts','Alerts'],['photos','Photos']].forEach(([k,l])=>{const b=el('button','cxT'+(CMT===k?' on':''));b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',CMT===k?'true':'false');b.append(document.createTextNode(l));const n=k==='alerts'?cams.length:0;if(n)b.append(el('span','cxN',String(n)));b.addEventListener('click',()=>camGo(k));T.append(b)});
   const B=$('camBody');B.textContent='';
-  if(CMT==='overview'){const g=el('div','cxTiles');g.append(cxTile(String(m.gate_moving??m.gate_trucks??'—'),'Gate arrivals / departures','moving vehicles, 24h'),cxTile(String(m.containers_read??'—'),'Container numbers read','gate camera'),cxTile(String(m.no_log??'—'),'Not in the yard log',m.no_log?'check these':'',m.no_log?'bad':''),cxTile(String(cams.length),'Alerts to review','',cams.length?'watch':''));B.append(g);
+  if(CMT==='overview'){const g=el('div','cxTiles');const tl=(t,fn)=>{t.classList.add('cxTap');t.tabIndex=0;t.setAttribute('role','button');t.append(el('span','cxChev','Open ›'));t.addEventListener('click',fn);t.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fn()}});return t};
+    g.append(tl(cxTile(String(m.gate_moving??m.gate_trucks??'—'),'Gate arrivals / departures','moving vehicles, 24h'),()=>{CXPF='gate';CXC='all';camGo('photos')}),tl(cxTile(String(m.containers_read??'—'),'Container numbers read','gate camera'),()=>{CXPF='container';CXC='all';camGo('photos')}),tl(cxTile(String(m.no_log??'—'),'Not in the yard log',m.no_log?'check these':'',m.no_log?'bad':''),()=>{CXAF='nolog';camGo('alerts')}),tl(cxTile(String(cams.length),'Alerts to review','',cams.length?'watch':''),()=>{CXAF='all';camGo('alerts')}));B.append(g);
     if(m.note)B.append(el('p','cxHelp',m.note));
     if(!CAM){B.append(cxEmpty('Loading cameras…'));return}if(CAM.error){B.append(cxEmpty('Cameras unavailable: '+CAM.error));return}
     const P=CAM.photos||[],names=[...new Set(P.map(p=>p.camera||'?'))].sort();const s=el('section','cxBlk');s.append(el('h3','','All cameras · latest view'));const W=el('div','cxWall');
     names.forEach(n=>{const p=P.find(x=>(x.camera||'?')===n);const c=el('button','cxCamTile');c.type='button';if(p&&p.url){const i=el('img');i.loading='lazy';i.src=p.url;i.alt=n;c.append(i)}else c.append(el('div','camNo','no photo yet'));const cap=el('div','cap');cap.append(el('b','',n),el('span','',p?cxAgo(p.received_at):''));c.append(cap);c.addEventListener('click',()=>{CXC=n;camGo('photos')});W.append(c)});
     s.append(W,el('p','cxHelp','Tap a camera to see its recent photos.'));B.append(s);return}
-  if(CMT==='alerts'){if(!cams.length){B.append(cxEmpty('No camera alerts waiting.'));return}
+  if(CMT==='alerts'){{const f=el('div','cxFilt');[['all','All alerts'],['nolog','Not in the yard log'],['after','After hours']].forEach(([k,l])=>{const b=el('button','cxF'+(CXAF===k?' on':''),l);b.type='button';b.addEventListener('click',()=>{CXAF=k;renderCamTab()});f.append(b)});B.append(f)}
+    const all0=cams;cams=all0.filter(a=>CXAF==='all'||(CXAF==='nolog'?/no yard move|logged boxes/i.test(a.title):/^After hours/i.test(a.title)));if(!cams.length){B.append(cxEmpty(CXAF==='all'?'No camera alerts waiting.':'None of this kind waiting.'));return}
     const h=el('div','cxBar');h.append(el('span','t',cams.length+' alerts · grouped by camera and hour'));const clr=el('button','btn2 sm','Mark all reviewed');clr.type='button';
     clr.addEventListener('click',async()=>{if(!confirm('Mark all '+cams.length+' camera alerts as reviewed?'))return;clr.disabled=true;for(const a of cams)await brAct(a,'done',null,true);renderBR();renderCamTab()});h.append(clr);B.append(h);
     const G=new Map();cams.forEach(a=>{const d=new Date(a.at),k=(a.title.match(/ on (.+?) (?:\(|at \w{3} )/)||[,a.target||a.title.split(' - ')[0]])[1]+' · '+d.toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric'});if(!G.has(k))G.set(k,[]);G.get(k).push(a)});
@@ -3257,8 +3274,9 @@ function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;const cams=cxOpe
       arr.forEach(a=>d.append(cxCard(a)));if(G.size<=3)d.open=true;B.append(d)});return}
   // photos
   if(!CAM){B.append(cxEmpty('Loading photos…'));return}if(CAM.error){B.append(cxEmpty('Cameras unavailable: '+CAM.error));return}
-  const P=CAM.photos||[],names=[...new Set(P.map(p=>p.camera||'?'))].sort();const f=el('div','cxFilt');['all',...names].forEach(n=>{const b=el('button','cxF'+(CXC===n?' on':''),n==='all'?'All cameras':n);b.type='button';b.addEventListener('click',()=>{CXC=n;renderCamTab()});f.append(b)});B.append(f);
-  const G=el('div','camG');P.filter(p=>CXC==='all'||(p.camera||'?')===CXC).forEach(p=>G.append(camPhoto(p)));if(!G.childElementCount)G.append(cxEmpty('No photos for this camera in the last 7 days.'));B.append(G)}
+  const P=CAM.photos||[],names=[...new Set(P.map(p=>p.camera||'?'))].sort();const f=el('div','cxFilt');['all',...names].forEach(n=>{const b=el('button','cxF'+(CXC===n&&CXPF==='all'?' on':''),n==='all'?'All cameras':n);b.type='button';b.addEventListener('click',()=>{CXC=n;CXPF='all';renderCamTab()});f.append(b)});
+  [['gate','Gate traffic'],['container','Container read'],['flags','Flagged']].forEach(([k,l])=>{const b=el('button','cxF'+(CXPF===k?' on':''),l);b.type='button';b.addEventListener('click',()=>{CXPF=CXPF===k?'all':k;CXC='all';renderCamTab()});f.append(b)});B.append(f);
+  const G=el('div','camG');P.filter(p=>(CXC==='all'||(p.camera||'?')===CXC)&&(CXPF==='all'||(CXPF==='gate'?p.role==='gate'&&/truck|bobtail/.test(p.kind||''):CXPF==='container'?!!p.container:(p.alerted||p.match_status==='no_log'||p.match_status==='mismatch')))).forEach(p=>G.append(camPhoto(p)));if(!G.childElementCount)G.append(cxEmpty('No photos for this camera in the last 7 days.'));B.append(G)}
 
 {const st=el('style');st.textContent=
 '#brSec,#camSec{--cx-ink:var(--ink,#1d2326);--cx-mut:var(--muted,#5d686d);--cx-line:var(--line,#d6dad8);--cx-bg:var(--panel,#fff);--cx-soft:color-mix(in srgb,var(--brand,#2e2d6f) 6%,var(--cx-bg));--cx-brand:var(--brand,#2e2d6f);--cx-red:#b42318;--cx-green:#2e7d4f}.cxPh{display:none!important}'+
@@ -3285,6 +3303,7 @@ function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;const cams=cxOpe
 '.cxTbl{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--cx-bg)}.cxTbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--cx-mut);border-bottom:1px solid var(--cx-line);padding:6px 8px}.cxTbl td{border-bottom:1px solid var(--cx-line);padding:8px;vertical-align:top}.cxTbl td.num{text-align:right;font-variant-numeric:tabular-nums}.cxTbl .t{font-size:12px;color:var(--cx-mut)}'+
 '.cxWall{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}.cxCamTile{border:2px solid var(--cx-line);border-radius:10px;overflow:hidden;padding:0;background:#000;cursor:pointer;text-align:left;font:inherit}.cxCamTile img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}.cxCamTile .camNo{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:12px}.cxCamTile .cap{display:flex;justify-content:space-between;gap:6px;padding:6px 8px;background:var(--cx-bg);font-size:12.5px}.cxCamTile .cap span{color:var(--cx-mut)}'+
 '@media (max-width:600px){.cxTbl thead{display:none}.cxTbl tr{display:block;border-bottom:1px solid var(--cx-line);padding:6px 0}.cxTbl td{display:block;border:0;padding:2px 4px}.cxTbl td.num{text-align:left}.cxSpend{display:none}.cxHeadline{font-size:17px}}'+
+'.cxTap{cursor:pointer;position:relative;transition:box-shadow .15s,border-color .15s}.cxTap:hover,.cxTap:focus-visible{box-shadow:0 2px 10px rgba(20,30,60,.12);outline:none}.cxTap:active{transform:scale(.995)}.cxChev{font-size:11.5px;font-weight:700;color:var(--cx-brand);margin-top:4px;letter-spacing:.02em}.cxList{list-style:none;padding-left:0!important}.cxList li{border:1px solid var(--cx-line);border-radius:10px;padding:10px 12px;margin:0 0 8px;display:flex;flex-direction:column;gap:2px}.cxDrawerAct{margin-top:8px;padding-top:8px;border-top:1px dashed var(--cx-line)}'+
 '.btn.sm,.btn2.sm{font-size:12.5px;padding:4px 10px;min-height:32px}';document.head.append(st)}
 setTimeout(loadBR,6000);setTimeout(loadCams,9000);
 {let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='carter'||TAB==='owner'||n%20===0)){loadBR();if(TAB==='owner'&&n%4===0)loadCams()}},30000)}
