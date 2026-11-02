@@ -3251,7 +3251,7 @@ function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;const cams=cxOpe
   if(CMT==='alerts'){if(!cams.length){B.append(cxEmpty('No camera alerts waiting.'));return}
     const h=el('div','cxBar');h.append(el('span','t',cams.length+' alerts · grouped by camera and hour'));const clr=el('button','btn2 sm','Mark all reviewed');clr.type='button';
     clr.addEventListener('click',async()=>{if(!confirm('Mark all '+cams.length+' camera alerts as reviewed?'))return;clr.disabled=true;for(const a of cams)await brAct(a,'done',null,true);renderBR();renderCamTab()});h.append(clr);B.append(h);
-    const G=new Map();cams.forEach(a=>{const d=new Date(a.at),k=(a.title.match(/on (.+?) \(/)||[,a.title.split(' - ')[0]])[1]+' · '+d.toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric'});if(!G.has(k))G.set(k,[]);G.get(k).push(a)});
+    const G=new Map();cams.forEach(a=>{const d=new Date(a.at),k=(a.title.match(/ on (.+?) (?:\(|at \w{3} )/)||[,a.target||a.title.split(' - ')[0]])[1]+' · '+d.toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric'});if(!G.has(k))G.set(k,[]);G.get(k).push(a)});
     [...G.entries()].forEach(([k,arr])=>{const d=el('details','cxBlk cxGrp');const sm=el('summary');sm.append(el('b','',k),el('span','cxN',String(arr.length)));d.append(sm);
       const x=el('div','cxAct');const ok=el('button','btn sm','✓ All OK');ok.type='button';ok.addEventListener('click',async e=>{e.preventDefault();ok.disabled=true;for(const a of arr)await brAct(a,'done',null,true);renderBR();renderCamTab()});x.append(ok);d.append(x);
       arr.forEach(a=>d.append(cxCard(a)));if(G.size<=3)d.open=true;B.append(d)});return}
