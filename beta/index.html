@@ -3413,7 +3413,7 @@ brwSec.hidden=false;
 // Email text is shown as plain text only (never as HTML) and is never treated as instructions.
 const cmSec=mk('cmSec','owner','mail','<h2>Carter\'s email <span class="t">carter@2f-logistics.com · read-only here</span></h2>'+
  '<div class="row cmBar"><select id="cmFolder"><option value="inbox">Inbox</option><option value="sent">Sent</option><option value="all">All mail</option></select>'+
- '<input type="search" id="cmQ" placeholder="Search (name, company, container, subject)"><button class="btn2" type="button" id="cmGo">Search</button><button class="btn2" type="button" id="cmRef">Refresh</button></div>'+
+ '<input type="search" id="cmQ" placeholder="Search (name, company, container, subject)"><button class="btn2" type="button" id="cmGo">Search</button><button class="btn2" type="button" id="cmRef">Refresh</button><label class="t"><input type="checkbox" id="cmNoise"> Show RingCentral text alerts</label></div><p class="t">Carter reads new email here every 15 minutes and puts a 📨 card in Decisions for anything that needs you.</p>'+
  '<div class="t" id="cmMsg"></div><div id="cmList" class="cmList"></div><div class="row"><button class="btn2" type="button" id="cmMore" hidden>Older</button></div>'+
  '<div id="cmView" class="cmView" hidden></div>');
 cmSec.hidden=true;wrap.append(cmSec);
@@ -3423,7 +3423,7 @@ const cmCall=q=>Y().call('aiAsk',[{mode:'ask',q,tab:'owner'}]).then(r=>{if(!r||r
 const cmWhen=t=>t?new Date(t).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
 const cmName=s=>String(s||'').replace(/<[^>]*>/,'').replace(/"/g,'').trim()||String(s||'');
 function cmLoad(more){if(!Y().call)return;const m=$('cmMsg');m.textContent='Loading…';if(!more){CM_NEXT=null;$('cmList').textContent='';$('cmView').hidden=true}
-  cmCall('§mail inbox '+JSON.stringify({q:$('cmQ').value.trim(),folder:$('cmFolder').value,page:more?CM_NEXT:''})).then(r=>{CM_LOADED=true;CM_NEXT=r.next||null;$('cmMore').hidden=!CM_NEXT;
+  cmCall('§mail inbox '+JSON.stringify({q:$('cmQ').value.trim(),folder:$('cmFolder').value,noise:$('cmNoise').checked,page:more?CM_NEXT:''})).then(r=>{CM_LOADED=true;CM_NEXT=r.next||null;$('cmMore').hidden=!CM_NEXT;
     const L=$('cmList');(r.items||[]).forEach(x=>{const d=el('div','cmI'+(x.unread?' u':''));const top=el('div','cmTop');top.append(el('b','',cmName($('cmFolder').value==='sent'?'To: '+x.to:x.from)),el('span','t',cmWhen(x.at)));
       d.append(top,el('div','',(x.files?'📎 ':'')+x.subject),el('div','cmS',x.snippet));d.addEventListener('click',()=>cmOpen(x.id,d));L.append(d)});
     m.textContent=L.children.length?L.children.length+' shown'+(r.items&&r.items.some(x=>x.unread)?' · red = unread':''):'Nothing here.'}).catch(e=>{m.textContent=(e&&e.message)||String(e)})}
@@ -3440,7 +3440,7 @@ function cmOpen(id,row){const V=$('cmView');V.hidden=false;V.textContent='Openin
     const row2=el('div','row');row2.style.cssText='display:flex;gap:8px;margin-top:6px';row2.append(go,close);V.append(ta,row2,om);
     V.append(el('p','t','Nothing is sent from here. The reply comes back as a ✉️ card in Owner > Decisions; tap Approve to send it (from carter@, you copied).'))}).catch(e=>{V.textContent=(e&&e.message)||String(e)})}
 $('cmGo').addEventListener('click',()=>cmLoad());$('cmRef').addEventListener('click',()=>cmLoad());$('cmMore').addEventListener('click',()=>cmLoad(true));
-$('cmQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cmLoad()}});$('cmFolder').addEventListener('change',()=>cmLoad());
+$('cmQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cmLoad()}});$('cmFolder').addEventListener('change',()=>cmLoad());$('cmNoise').addEventListener('change',()=>cmLoad());
 try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!CM_LOADED)cmLoad()}).observe(cmSec)}catch(e){}
 cmSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
