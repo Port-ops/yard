@@ -3157,6 +3157,8 @@ let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
 function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab()}).catch(()=>{brSec.hidden=true;camSec.hidden=true;BR=null})}
+// photos for the alert cards: newest 40 flagged photos (after-hours / not logged); cam-learn v7 adds alert_urls for all open alerts
+let CAMF={},camFT=0;function loadCamFlags(){if(!Y().call||Date.now()-camFT<5*60e3)return;camFT=Date.now();Y().call('getCams',[{limit:40,only:'flags'}]).then(d=>{(d.photos||[]).forEach(p=>{if(p.url)CAMF[String(p.id)]=p.url});Object.assign(CAMF,d.alert_urls||{});renderCamTab()}).catch(()=>{camFT=0})}
 function loadCams(){if(!Y().call)return;Y().call('getCams',[{limit:40}]).then(d=>{CAM=d;renderCamTab();if(cxT()==='brief')renderBR()}).catch(e=>{CAM={error:(e&&e.message)||String(e)};renderCamTab()})}
 const cxAgo=t=>{if(!t)return'—';const m=Math.round((Date.now()-new Date(t))/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
 const cxWhen=t=>t?new Date(t).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
@@ -3185,6 +3187,7 @@ function cxBtns(a){const x=el('div','cxAct'),b=(l,st,cl,note)=>{const k=el('butt
 const TIERN=['Analysis','Internal','Routine message','Manager approves','Richard only'],SRCN={brief:'CEO brief',recap:'Day recap',study:'Study',coach:'Coaching',hire:'AI hiring',camera:'Camera',mail:'Email'};
 function cxCard(a){const c=el('article','cxCard'+(a.status!=='proposed'?' dec':''));const top=el('div','cxTop');
   top.append(el('span','cxPill t'+a.tier,cxCam(a)?'Camera':TIERN[a.tier]||('Tier '+a.tier)),el('span','cxSrc',cxCam(a)?'':(SRCN[a.source]||a.source||'')),el('span','cxAge',cxAgo(a.at)));c.append(top,el('h4','',a.title||''));
+  if(cxCam(a)&&a.pid){loadCamFlags();const u=CAMF[String(a.pid)]||(CAM&&((CAM.alert_urls||{})[a.pid]||((CAM.photos||[]).find(p=>String(p.id)===String(a.pid))||{}).url));const ph=el(u?'a':'div','cxShot');if(u){ph.href=u;ph.target='_blank';ph.rel='noopener';ph.title='Open full size';const i=el('img');i.loading='lazy';i.src=u;i.alt='Camera photo: '+(a.title||'');ph.append(i)}else ph.append(el('span','',camFT&&CAM?'Older photo – open Photos tab':'Loading photo…'));c.append(ph)}
   if(a.why)c.append(el('p','cxWhy',a.why));if(a.recommendation&&!cxCam(a)){const r=el('div','cxRec');r.textContent=a.recommendation;c.append(r)}
   if(a.owner&&!cxMail(a)&&!cxCam(a))c.append(el('div','cxOwn','Owner: '+a.owner));
   if(a.status==='proposed')c.append(cxBtns(a));else c.append(el('div','cxDone',(a.status==='approved'?(cxCam(a)?'⚠ Not expected':'✓ Approved'):a.status==='rejected'?(cxCam(a)?'False alarm':'✗ Rejected'):a.status==='expired'?'Closed':'✓ Done')+(a.note?' · '+a.note:'')));return c}
@@ -3308,6 +3311,7 @@ function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;let cams=cxOpen(
   const G=el('div','camG');P.filter(p=>(CXC==='all'||(p.camera||'?')===CXC)&&(CXPF==='all'||(CXPF==='gate'?p.role==='gate'&&/truck|bobtail/.test(p.kind||''):CXPF==='container'?!!p.container:(p.alerted||p.match_status==='no_log'||p.match_status==='mismatch')))).forEach(p=>G.append(camPhoto(p)));if(!G.childElementCount)G.append(cxEmpty('No photos for this camera in the last 7 days.'));B.append(G)}
 
 {const st=el('style');st.textContent=
+'.cxShot{display:block;margin:8px 0 6px;border-radius:10px;overflow:hidden;background:#0d1114;aspect-ratio:16/9}.cxShot img{display:block;width:100%;height:100%;object-fit:cover}.cxShot span{display:flex;height:100%;align-items:center;justify-content:center;color:#cfd6da;font-size:13px}'+
 '#brSec,#camSec{--cx-ink:var(--ink,#1d2326);--cx-mut:var(--muted,#5d686d);--cx-line:var(--line,#d6dad8);--cx-bg:var(--panel,#fff);--cx-soft:color-mix(in srgb,var(--brand,#2e2d6f) 6%,var(--cx-bg));--cx-brand:var(--brand,#2e2d6f);--cx-red:#b42318;--cx-green:#2e7d4f}.cxPh{display:none!important}'+
 '.cxHd{display:flex;align-items:center;gap:12px;margin-bottom:10px}.cxHd .cxId svg{display:block}.cxMeta{flex:1;min-width:0}.cxMeta h2{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}.cxRole{font:600 12px/1.2 var(--body);letter-spacing:.02em;color:var(--cx-mut);text-transform:none}'+
 '.cxSpend{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:var(--cx-mut);min-width:96px}.cxSpend b{font-size:15px;color:var(--cx-ink)}.cxSpend .bar{width:96px;height:4px;border-radius:2px;background:var(--cx-line);margin-top:4px;overflow:hidden}.cxSpend .bar i{display:block;height:100%;background:var(--cx-brand)}'+
