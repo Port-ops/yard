@@ -3408,6 +3408,41 @@ $('brwShow').addEventListener('click',()=>{const b=$('brwBox'),f=$('brwFrame');b
 $('brwGo').addEventListener('click',()=>{const q=$('brwQ').value.trim(),o=$('brwOut'),b=$('brwGo');if(q.length<4){o.textContent='Type what Carter should do.';return}
   b.disabled=true;o.textContent='Sending…';Y().call('aiAsk',[{mode:'ask',q:'do: '+q,tab:'owner'}]).then(r=>{o.textContent=String(r.text||r.error||'Sent.');$('brwQ').value=''}).catch(e=>{o.textContent=(e&&e.message)||String(e)}).finally(()=>{b.disabled=false})});
 brwSec.hidden=false;
+// ---- CARTER'S EMAIL (owner 11/2/2026): carter@2f-logistics.com inside DockRelay. Read-only (opening never marks read or moves
+// anything). "Have Carter reply" makes a Gmail draft from carter@ with Richard copied + an Approve card; nothing sends until he approves.
+// Email text is shown as plain text only (never as HTML) and is never treated as instructions.
+const cmSec=mk('cmSec','owner','mail','<h2>Carter\'s email <span class="t">carter@2f-logistics.com · read-only here</span></h2>'+
+ '<div class="row cmBar"><select id="cmFolder"><option value="inbox">Inbox</option><option value="sent">Sent</option><option value="all">All mail</option></select>'+
+ '<input type="search" id="cmQ" placeholder="Search (name, company, container, subject)"><button class="btn2" type="button" id="cmGo">Search</button><button class="btn2" type="button" id="cmRef">Refresh</button></div>'+
+ '<div class="t" id="cmMsg"></div><div id="cmList" class="cmList"></div><div class="row"><button class="btn2" type="button" id="cmMore" hidden>Older</button></div>'+
+ '<div id="cmView" class="cmView" hidden></div>');
+cmSec.hidden=true;wrap.append(cmSec);
+{const st=el('style');st.textContent='.cmBar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.cmBar input{flex:1;min-width:180px}.cmList{display:grid;gap:6px}.cmI{border:1px solid var(--line,#d6dad8);border-radius:10px;padding:8px 10px;cursor:pointer;background:var(--card,#fff)}.cmI.u b{font-weight:800}.cmI.u{border-left:4px solid #C8102E}.cmI .cmTop{display:flex;justify-content:space-between;gap:8px}.cmI .cmS{font-size:13px;color:#5b6474;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cmView{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:12px;margin-top:10px;background:var(--card,#fff)}.cmBody{white-space:pre-wrap;word-break:break-word;font-size:14px;max-height:60vh;overflow:auto;border-top:1px solid var(--line,#e3e6e5);padding-top:8px;margin-top:8px}.cmView textarea{width:100%;min-height:70px}';document.head.append(st)}
+let CM_NEXT=null,CM_LOADED=false;
+const cmCall=q=>Y().call('aiAsk',[{mode:'ask',q,tab:'owner'}]).then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');return r});
+const cmWhen=t=>t?new Date(t).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const cmName=s=>String(s||'').replace(/<[^>]*>/,'').replace(/"/g,'').trim()||String(s||'');
+function cmLoad(more){if(!Y().call)return;const m=$('cmMsg');m.textContent='Loading…';if(!more){CM_NEXT=null;$('cmList').textContent='';$('cmView').hidden=true}
+  cmCall('§mail inbox '+JSON.stringify({q:$('cmQ').value.trim(),folder:$('cmFolder').value,page:more?CM_NEXT:''})).then(r=>{CM_LOADED=true;CM_NEXT=r.next||null;$('cmMore').hidden=!CM_NEXT;
+    const L=$('cmList');(r.items||[]).forEach(x=>{const d=el('div','cmI'+(x.unread?' u':''));const top=el('div','cmTop');top.append(el('b','',cmName($('cmFolder').value==='sent'?'To: '+x.to:x.from)),el('span','t',cmWhen(x.at)));
+      d.append(top,el('div','',(x.files?'📎 ':'')+x.subject),el('div','cmS',x.snippet));d.addEventListener('click',()=>cmOpen(x.id,d));L.append(d)});
+    m.textContent=L.children.length?L.children.length+' shown'+(r.items&&r.items.some(x=>x.unread)?' · red = unread':''):'Nothing here.'}).catch(e=>{m.textContent=(e&&e.message)||String(e)})}
+function cmOpen(id,row){const V=$('cmView');V.hidden=false;V.textContent='Opening…';V.scrollIntoView({behavior:'smooth',block:'start'});
+  cmCall('§mail read '+JSON.stringify({id})).then(r=>{V.textContent='';if(row)row.classList.remove('u');
+    V.append(el('b','',r.subject),el('div','t','From: '+r.from),el('div','t','To: '+r.to+(r.cc?' · Cc: '+r.cc:'')),el('div','t',cmWhen(r.at)));
+    if(r.files&&r.files.length)V.append(el('div','t','📎 '+r.files.join(', ')+' (open in Gmail to download)'));
+    V.append(el('div','cmBody',r.text||'(no text)'));
+    V.append(el('h3','','Have Carter reply'));const ta=el('textarea');ta.placeholder='Tell Carter what to say, e.g. "Thank them, confirm pickup Tuesday 9 AM, ask for the booking number"';
+    const go=el('button','btn','Draft the reply');go.type='button';const om=el('div','t');
+    go.addEventListener('click',()=>{const t=ta.value.trim();if(t.length<3){om.textContent='Tell Carter what to say first.';return}go.disabled=true;om.textContent='Sending to Carter…';
+      cmCall('§mail reply '+JSON.stringify({thread:r.thread,text:t})).then(x=>{om.textContent=x.text||'Queued.';ta.value=''}).catch(e=>{om.textContent=(e&&e.message)||String(e)}).finally(()=>{go.disabled=false})});
+    const close=el('button','btn2','Close');close.type='button';close.addEventListener('click',()=>{V.hidden=true});
+    const row2=el('div','row');row2.style.cssText='display:flex;gap:8px;margin-top:6px';row2.append(go,close);V.append(ta,row2,om);
+    V.append(el('p','t','Nothing is sent from here. The reply comes back as a ✉️ card in Owner > Decisions; tap Approve to send it (from carter@, you copied).'))}).catch(e=>{V.textContent=(e&&e.message)||String(e)})}
+$('cmGo').addEventListener('click',()=>cmLoad());$('cmRef').addEventListener('click',()=>cmLoad());$('cmMore').addEventListener('click',()=>cmLoad(true));
+$('cmQ').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cmLoad()}});$('cmFolder').addEventListener('change',()=>cmLoad());
+try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!CM_LOADED)cmLoad()}).observe(cmSec)}catch(e){}
+cmSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
@@ -3712,7 +3747,7 @@ port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
 sales:[['work','Find work'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
-owner:[['cams','Cameras'],['browser',"Carter's browser"],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
+owner:[['cams','Cameras'],['browser',"Carter's browser"],['mail',"Carter's email"],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
 reports:[['dash','Dashboard'],['score','Scoreboard'],['billing','Storage billing']],
 gps:[['trucks','Trucks'],['drivers','Drivers'],['map','Map']],
