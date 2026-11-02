@@ -3960,7 +3960,7 @@ function aiDraw(){const sh=$('aiTab');if(!sh)return;sh.textContent='';const c=el
       Y().call('aiSignup',[{email:e}]).then(()=>{cd.hidden=false;em.disabled=true;b1.textContent='Verify';msg.textContent='Code sent to '+e+'. Check your inbox (and spam).';cd.focus()}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})}
       else Y().call('aiVerify',[{code:cd.value}]).then(()=>{const q0=AINE;AINE=null;aiDraw();if(q0==='__voice__'){vcTalk();return}const t=$('aiTab').querySelector('.aiIn textarea');if(t&&q0){t.value=q0;$('aiTab').querySelector('.aiIn button').click()}}).catch(x=>{msg.textContent=(x&&x.message)||String(x)}).finally(()=>{b1.disabled=false})})}
   const inp=el('div','aiIn'),ta=el('textarea'),send=el('button','btn','Send');ta.placeholder=AIM==='ask'?'Ask about the app or describe what to write…':'What do you want to find on the web?';ta.rows=1;send.type='button';inp.append(ta,send);c.append(inp);
-  {const tk=el('button','aiTalk');tk.type='button';tk.setAttribute('aria-label','Talk to the assistant by voice');tk.append(el('span','tkI','🎙'),el('span','','Talk'),el('small','','parked only'));tk.addEventListener('click',vcTalk);inp.append(tk)}
+  {const tk=el('button','aiTalk');tk.type='button';tk.setAttribute('aria-label','Talk to Carter by voice');tk.append(el('span','tkI','🎙'),el('span','','Talk to Carter'),el('small','','parked only'));tk.addEventListener('click',vcTalk);inp.append(tk)}
   function go(){const q=ta.value.trim();if(q.length<3||send.disabled)return;if(!navigator.onLine){alert('You are offline.');return}
     const h={q,a:''};H.push(h);const mode=AIM;aiDraw();const s2=$('aiTab').querySelector('.aiIn button');if(s2){s2.disabled=true;s2.textContent='…'}
     Y().call('aiAsk',[{mode,q,tab:TAB,hist:mode==='ask'?H.slice(0,-1).filter(x=>x.a&&!x.err).slice(-4).map(x=>({q:x.q,a:x.a})):[]}]).then(d=>{h.a=d.text;h.src=d.sources||[];if(d.budget)AIB={s:d.spent,b:d.budget,t:d.today,dc:d.dayCap}}).catch(e=>{const m=(e&&e.message)||String(e);if(/NEED_EMAIL/.test(m)){H.pop();AINE=q;ta0=q}else{h.a=m;h.err=true}}).finally(()=>{if(AIM===mode&&TAB==='ask')aiDraw()})}
@@ -3980,9 +3980,9 @@ function aiDraw(){const sh=$('aiTab');if(!sh)return;sh.textContent='';const c=el
 '.vcSafe p{font-size:16px;line-height:1.45;max-width:420px;text-align:center}';document.head.append(st)}
 let VC=null;const VC_SDK='https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.26.0/dist/lib.iife.js';
 function vcLoad(){return window.ElevenLabsClient?Promise.resolve(window.ElevenLabsClient):new Promise((ok,no)=>{const s=document.createElement('script');s.src=VC_SDK;s.onload=()=>ok(window.ElevenLabsClient);s.onerror=()=>no(new Error('Could not load the voice service. Check your signal.'));document.head.append(s)})}
-function vcPanel(){let p=$('vcPan');if(!p){p=el('div');p.id='vcPan';p.setAttribute('role','dialog');p.setAttribute('aria-label','Voice assistant');document.body.append(p)}p.hidden=false;p.textContent='';return p}
+function vcPanel(){let p=$('vcPan');if(!p){p=el('div');p.id='vcPan';p.setAttribute('role','dialog');p.setAttribute('aria-label','Carter');document.body.append(p)}p.hidden=false;p.textContent='';return p}
 function vcSafety(){const p=vcPanel(),c=el('div','vcSafe');c.style.cssText='display:flex;flex-direction:column;align-items:center;gap:18px;margin:auto';
-  c.append(el('div','vcOrb'),el('b','','Voice assistant'),el('p','','Use only when safely parked, or stopped in a safe place away from moving equipment. Never while driving.'),el('p','','It can explain the app and draft messages out loud. It cannot see loads, drivers or money, and it cannot approve or send anything. Each talk stops at 3 minutes. Nothing is recorded.'));
+  c.append(el('div','vcOrb'),el('b','','Carter'),el('p','','Use only when safely parked, or stopped in a safe place away from moving equipment. Never while driving.'),el('p','','It can explain the app and draft messages out loud. It cannot see loads, drivers or money, and it cannot approve or send anything. Each talk stops at 3 minutes. Nothing is recorded.'));
   const b=el('div','vcBtns'),go=el('button','vcEnd',"I'm safely stopped — start"),cx=el('button','vcMute','Cancel');go.type=cx.type='button';go.style.background='#2e7d4f';
   cx.addEventListener('click',()=>{p.hidden=true});go.addEventListener('click',()=>{try{sessionStorage.setItem('vcOK','1')}catch(e){}vcStart()});b.append(go,cx);c.append(b);p.append(c)}
 function vcTalk(){if(!navigator.onLine){alert('You are offline.');return}let ok=false;try{ok=sessionStorage.getItem('vcOK')==='1'}catch(e){}ok?vcStart():vcSafety()}
@@ -3990,7 +3990,7 @@ function vcTalk(){if(!navigator.onLine){alert('You are offline.');return}let ok=
 // Two ways to talk: "Tap to talk" (mic stays off until you tap, tap again when done, best in noisy yards) and "Auto" (open conversation,
 // best parked in a quiet cab). The choice is remembered on this phone. "Interrupt" stops the assistant's audio at once and opens your turn.
 async function vcStart(){const p=vcPanel();let mode='tap';try{mode=localStorage.getItem('vcMode')||'tap'}catch(e){}
-  const hd=el('div','vcHd'),ht=el('div'),hb=el('b','','Voice assistant'),hs=el('small','','Parked use only'),x=el('button','vcX','End');x.type='button';ht.append(hb,hs);hd.append(ht,x);
+  const hd=el('div','vcHd'),ht=el('div'),hb=el('b','','Carter'),hs=el('small','','Carter · parked use only'),x=el('button','vcX','End');x.type='button';ht.append(hb,hs);hd.append(ht,x);
   const st=el('div','vcSt'),orb=el('div','vcOrb'),stx=el('div'),ttl=el('b','','Connecting…'),sub=el('span','','Allow the microphone if your phone asks');stx.append(ttl,sub);st.append(orb,stx);
   const log=el('div','vcLog'),main=el('button','vcMain wait','Connecting…'),row=el('div','vcRow'),mb=el('button','',''),txt=el('button','','Switch to text'),snd=el('button','','Sound on');main.type=mb.type=txt.type=snd.type='button';
   row.append(mb,snd,txt);p.append(hd,st,log,main,row);
