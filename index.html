@@ -3282,7 +3282,7 @@ let HLX=null,HLXt=0;function cxChecks(){const L=((BR&&BR.status&&BR.status.check
 function cxStatus(B){if(Y().call&&Date.now()-HLXt>300000){HLXt=Date.now();Y().call('getHealth',[]).then(h=>{HLX=h;if(cxT()==='status')renderBR()}).catch(()=>{})}
   const L=cxChecks();if(!L.length){B.append(cxEmpty('Status loading…'));return}
   const nb=L.filter(c=>c.state==='bad').length,nw=L.filter(c=>c.state==='warn').length;
-  const hd=el('div','stHead '+(nb?'bad':nw?'warn':'ok'));hd.append(el('b','',nb?'✗ '+nb+' problem'+(nb>1?'s':'')+' need attention':nw?'⚠ '+nw+' thing'+(nw>1?'s':'')+' to watch':'✓ Everything is OK'),el('span','',L.length+' checks · checked '+cxAgo((BR.status&&BR.status.at)||new Date().toISOString())));
+  const hd=el('div','stHead '+(nb?'bad':nw?'warn':'ok'));hd.append(el('b','',nb?'✗ '+nb+(nb>1?' problems need':' problem needs')+' attention':nw?'⚠ '+nw+' thing'+(nw>1?'s':'')+' to watch':'✓ Everything is OK'),el('span','',L.length+' checks · checked '+cxAgo((BR.status&&BR.status.at)||new Date().toISOString())));
   const rf=el('button','btn2 sm','Check again');rf.type='button';rf.addEventListener('click',()=>{rf.disabled=true;rf.textContent='Checking…';HLXt=0;loadBR()});hd.append(rf);B.append(hd);
   const ord={bad:0,warn:1,ok:2},areas=[...new Set(L.map(c=>c.area))];
   areas.forEach(a=>{const s=el('section','cxBlk');s.append(el('h3','',a));L.filter(c=>c.area===a).sort((x,y)=>ord[x.state]-ord[y.state]).forEach(c=>{
