@@ -3162,13 +3162,26 @@ const cxAgo=t=>{if(!t)return'—';const m=Math.round((Date.now()-new Date(t))/60
 const cxWhen=t=>t?new Date(t).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
 const cxCam=a=>a.source==='camera',cxMail=a=>a.source==='mail';
 const cxOpen=()=>(BR&&BR.actions||[]).filter(a=>a.status==='proposed');
-function brAct(a,status,btn,quiet){const note=status==='rejected'&&!quiet?prompt(cxCam(a)?'What was it? (teaches Carter, optional)':'Why not? (teaches Carter)',''):'';if(note===null)return Promise.resolve();if(btn)btn.disabled=true;
+function brAct(a,status,btn,quiet,note0){const note=note0!=null?note0:'';if(btn)btn.disabled=true;
   return Y().call('brainAct',[{id:a.id,status,note:note||''}]).then(d=>{BR=d;if(!quiet){renderBR();renderCamTab()}}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
-function kbAct(k,status,btn){let aud=k.audience,note='';if(status==='approved'){const a=prompt('Who can hear this? caller = anyone on the phone, team = staff only, owner = only you',k.audience||'team');if(a===null)return;aud=(a||'').trim().toLowerCase();if(!['caller','team','owner'].includes(aud)){alert('Type caller, team or owner.');return}}else{note=prompt('Why not? (teaches Carter)','');if(note===null)return}
-  if(btn)btn.disabled=true;Y().call('brainKb',[{id:k.id,status,audience:aud,note}]).then(d=>{BR=d;renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
-function cxBtns(a){const x=el('div','cxAct'),b=(l,st,cl)=>{const k=el('button',cl,l);k.type='button';k.addEventListener('click',()=>brAct(a,st,k));x.append(k)};
-  if(cxCam(a)){b('✓ Reviewed, OK','done','btn');b('⚠ Not expected','approved','btn2');b('False alarm','rejected','btn2');return x}
-  b(cxMail(a)?'✓ Approve & send':'✓ Approve','approved','btn');b('✗ Reject','rejected','btn2');b(cxMail(a)?'Sent it myself':'Done already','done','btn2');return x}
+
+// lessons: answer = approve as written, approve with my correction, or choose why it is wrong (11/1/2026). A correction is sent as "ANSWER: ..." and the database stores it as the answer.
+function kbSend(k,status,aud,note,btn){if(btn)btn.disabled=true;Y().call('brainKb',[{id:k.id,status,audience:aud||k.audience||'team',note:note||''}]).then(d=>{BR=d;KBX={};renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
+let KBX={};
+
+const RJ_WHY=['Not now','Wrong or out-of-date info','Already handled','Someone else should do it','Too expensive / not worth it'];let RJX='';
+function cxBtns(a){const x=el('div','cxAct'),b=(l,st,cl,note)=>{const k=el('button',cl,l);k.type='button';k.addEventListener('click',()=>brAct(a,st,k,false,note));x.append(k);return k};
+  if(cxCam(a)){b('✓ Reviewed, OK','done','btn');b('⚠ Not expected','approved','btn2');b('False alarm','rejected','btn2','false alarm');return x}
+  b(cxMail(a)?'✓ Approve & send':'✓ Approve','approved','btn');
+  const r=el('button','btn2'+(RJX===String(a.id)?' on':''),'✗ Not this ▾');r.type='button';r.addEventListener('click',()=>{RJX=RJX===String(a.id)?'':String(a.id);renderBR()});x.append(r);
+  b(cxMail(a)?'Sent it myself':'Done already','done','btn2');
+  const ask=el('button','btn2','Ask Carter');ask.type='button';ask.addEventListener('click',()=>cxAsk('About your proposal "'+(a.title||'')+'": '+(a.recommendation||'')+' Explain why, what it costs, the risk if I do nothing, and a cheaper option.'));x.append(ask);
+  if(RJX===String(a.id)){const w=el('div','cxWhyBox');w.append(el('span','t','Why not? Carter learns from this:'));const ch=el('div','cxChoices');
+    RJ_WHY.forEach(t=>{const c=el('button','cxF',t);c.type='button';c.addEventListener('click',()=>{RJX='';brAct(a,'rejected',c,false,t)});ch.append(c)});
+    const o=el('input','cxIn');o.placeholder='Other reason…';const go2=el('button','btn sm','Reject');go2.type='button';go2.addEventListener('click',()=>{RJX='';brAct(a,'rejected',go2,false,o.value.trim()||'rejected')});
+    const row=el('div','cxRow');row.append(o,go2);w.append(ch,row);x.append(w)}
+  return x}
+
 const TIERN=['Analysis','Internal','Routine message','Manager approves','Richard only'],SRCN={brief:'CEO brief',recap:'Day recap',study:'Study',coach:'Coaching',hire:'AI hiring',camera:'Camera',mail:'Email'};
 function cxCard(a){const c=el('article','cxCard'+(a.status!=='proposed'?' dec':''));const top=el('div','cxTop');
   top.append(el('span','cxPill t'+a.tier,cxCam(a)?'Camera':TIERN[a.tier]||('Tier '+a.tier)),el('span','cxSrc',cxCam(a)?'':(SRCN[a.source]||a.source||'')),el('span','cxAge',cxAgo(a.at)));c.append(top,el('h4','',a.title||''));
@@ -3238,10 +3251,26 @@ function cxTeam(B){const s=el('section','cxBlk');s.append(el('h3','','People rig
   const s2=el('section','cxBlk');s2.append(el('h3','','Carter’s AI team ('+(BR.agents||[]).length+')'));const t=el('table','cxTbl');t.innerHTML='<thead><tr><th>Agent</th><th>Job</th><th>Acts outside?</th><th>Last run</th></tr></thead>';const tb=el('tbody');
   (BR.agents||[]).forEach(a=>{const r=el('tr');const n=el('td');n.append(el('b','',a.name||a.key),el('div','t',(a.department||'')+(a.status&&a.status!=='active'?' · '+a.status:'')));const m=el('td','',a.mission||'');const o=el('td','',a.acts_outside||'none');const l=el('td');l.append(document.createTextNode(cxAgo(a.last_run)));if(a.last_summary)l.append(el('div','t',a.last_summary));r.append(n,m,o,l);tb.append(r)});t.append(tb);s2.append(t);B.append(s2)}
 
-function cxLessons(B){B.append(el('p','cxHelp','Approve what is right. Only approved lessons are ever used; callers hear only lessons marked “caller”.'));const ls=BR.lessons||[];if(!ls.length){B.append(cxEmpty('Nothing waiting.'));return}
-  ls.forEach(k=>{const c=el('article','cxCard');const top=el('div','cxTop');top.append(el('span','cxPill'+(k.risk==='high'?' t4':' t1'),(k.risk==='high'?'High risk · ':'')+(k.audience||'')),el('span','cxSrc',k.topic||''));c.append(top,el('h4','',k.question||''),el('div','cxRec',k.answer||''));
+const KB_WRONG=['Not true','Out of date','True, but keep it private','Too vague','Duplicate'];
+function cxLessons(B){B.append(el('p','cxHelp','Every lesson needs an answer: approve it, fix it, or say why it is wrong. Only approved lessons are ever used. Choose who may hear it.'));const ls=BR.lessons||[];if(!ls.length){B.append(cxEmpty('Nothing waiting.'));return}
+  ls.forEach(k=>{const st=KBX[k.id]||(KBX[k.id]={aud:k.audience||'team',mode:''});const c=el('article','cxCard');const top=el('div','cxTop');top.append(el('span','cxPill'+(k.risk==='high'?' t4':' t1'),(k.risk==='high'?'High risk':'Lesson')),el('span','cxSrc',k.topic||''));c.append(top,el('h4','',k.question||''),el('div','cxRec',k.answer||''));
     if(k.quote)c.append(el('p','cxWhy','From: “'+k.quote+'”'));if(k.from&&k.from.length)c.append(el('div','cxOwn','Learned from '+k.from.join(', ')));
-    const x=el('div','cxAct'),bt=(l,st,cl)=>{const b=el('button',cl,l);b.type='button';b.addEventListener('click',()=>kbAct(k,st,b));x.append(b)};bt('✓ Approve','approved','btn');bt('✗ Wrong / retire','retired','btn2');c.append(x);B.append(c)})}
+    const au=el('div','cxAud');au.append(el('span','t','Who may hear it:'));[['caller','Callers & customers'],['team','Team only'],['owner','Only me']].forEach(([v,l])=>{const b=el('button','cxF'+(st.aud===v?' on':''),l);b.type='button';b.addEventListener('click',()=>{st.aud=v;renderBR()});au.append(b)});c.append(au);
+    const x=el('div','cxAct'),bt=(l,cl,fn)=>{const b=el('button',cl,l);b.type='button';b.addEventListener('click',()=>fn(b));x.append(b);return b};
+    bt('✓ Approve as written','btn',b=>kbSend(k,'approved',st.aud,'',b));
+    bt('✎ Fix the answer'+(st.mode==='edit'?' ▴':' ▾'),'btn2'+(st.mode==='edit'?' on':''),()=>{st.mode=st.mode==='edit'?'':'edit';renderBR()});
+    bt('✗ Wrong'+(st.mode==='wrong'?' ▴':' ▾'),'btn2'+(st.mode==='wrong'?' on':''),()=>{st.mode=st.mode==='wrong'?'':'wrong';renderBR()});
+    bt('Ask Carter','btn2',()=>cxAsk('Explain this lesson and how sure you are: Q: '+(k.question||'')+' A: '+(k.answer||'')+' Where did it come from, and what would make it wrong?'));
+    c.append(x);
+    if(st.mode==='edit'){const w=el('div','cxWhyBox');const ta=el('textarea','cxIn');ta.rows=4;ta.value=st.draft!=null?st.draft:(k.answer||'');ta.addEventListener('input',()=>{st.draft=ta.value});
+      const sv=el('button','btn sm','Save my answer & approve');sv.type='button';sv.addEventListener('click',()=>{const v=ta.value.trim();if(!v){alert('Type the right answer first.');return}kbSend(k,'approved',st.aud,'ANSWER: '+v,sv)});w.append(el('span','t','Write the correct answer. Carter will use your words.'),ta,sv);c.append(w)}
+    if(st.mode==='wrong'){const w=el('div','cxWhyBox');w.append(el('span','t','What is wrong with it? Carter learns from this:'));const ch=el('div','cxChoices');
+      KB_WRONG.forEach(t=>{const b=el('button','cxF',t);b.type='button';b.addEventListener('click',()=>{if(t==='True, but keep it private'){kbSend(k,'approved','owner','owner only',b);return}kbSend(k,'retired',st.aud,t,b)});ch.append(b)});
+      const o=el('input','cxIn');o.placeholder='Other reason…';const g=el('button','btn sm','Retire it');g.type='button';g.addEventListener('click',()=>kbSend(k,'retired',st.aud,o.value.trim()||'wrong',g));const row=el('div','cxRow');row.append(o,g);w.append(ch,row);c.append(w)}
+    B.append(c)})}
+
+
+
 
 function cxSpendTab(B){const cap=+BR.cap||0,sp=+BR.spent_today||0;const g=el('div','cxTiles');g.append(cxTile('$'+sp.toFixed(2),'Spent today','of $'+cap+' daily cap',sp>cap*.8?'watch':''),cxTile('$'+Number(BR.spend_7d||0).toFixed(2),'Last 7 days',''),cxTile('$'+(Number(BR.spend_7d||0)/7*30).toFixed(0),'Monthly pace','estimate'));B.append(g);
   const rows=BR.spend_by||[];if(!rows.length){B.append(cxEmpty('No AI spending logged this week.'));return}const t=el('table','cxTbl');t.innerHTML='<thead><tr><th>What Carter did</th><th>Calls</th><th>7 days</th></tr></thead>';const tb=el('tbody');
@@ -3304,6 +3333,7 @@ function renderCamTab(){if(!BR&&!CAM)return;camSec.hidden=false;let cams=cxOpen(
 '.cxWall{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}.cxCamTile{border:2px solid var(--cx-line);border-radius:10px;overflow:hidden;padding:0;background:#000;cursor:pointer;text-align:left;font:inherit}.cxCamTile img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}.cxCamTile .camNo{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:12px}.cxCamTile .cap{display:flex;justify-content:space-between;gap:6px;padding:6px 8px;background:var(--cx-bg);font-size:12.5px}.cxCamTile .cap span{color:var(--cx-mut)}'+
 '@media (max-width:600px){.cxTbl thead{display:none}.cxTbl tr{display:block;border-bottom:1px solid var(--cx-line);padding:6px 0}.cxTbl td{display:block;border:0;padding:2px 4px}.cxTbl td.num{text-align:left}.cxSpend{display:none}.cxHeadline{font-size:17px}}'+
 '.cxTap{cursor:pointer;position:relative;transition:box-shadow .15s,border-color .15s}.cxTap:hover,.cxTap:focus-visible{box-shadow:0 2px 10px rgba(20,30,60,.12);outline:none}.cxTap:active{transform:scale(.995)}.cxChev{font-size:11.5px;font-weight:700;color:var(--cx-brand);margin-top:4px;letter-spacing:.02em}.cxList{list-style:none;padding-left:0!important}.cxList li{border:1px solid var(--cx-line);border-radius:10px;padding:10px 12px;margin:0 0 8px;display:flex;flex-direction:column;gap:2px}.cxDrawerAct{margin-top:8px;padding-top:8px;border-top:1px dashed var(--cx-line)}'+
+'.cxWhyBox{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:10px;border:1px dashed var(--cx-line);border-radius:10px;width:100%;box-sizing:border-box}.cxChoices{display:flex;flex-wrap:wrap;gap:6px}.cxRow{display:flex;gap:6px}.cxIn{flex:1;font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--cx-line);border-radius:8px;text-transform:none;width:100%;box-sizing:border-box}.cxAud{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.btn2.on{border-color:var(--cx-brand);color:var(--cx-brand)}'+
 '.btn.sm,.btn2.sm{font-size:12.5px;padding:4px 10px;min-height:32px}';document.head.append(st)}
 setTimeout(loadBR,6000);setTimeout(loadCams,9000);
 {let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='carter'||TAB==='owner'||n%20===0)){loadBR();if(TAB==='owner'&&n%4===0)loadCams()}},30000)}
