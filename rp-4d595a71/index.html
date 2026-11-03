@@ -3,93 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>2FF HQ</title>
+<title>Richard's HQ</title>
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#1F2A5C">
+<meta name="theme-color" content="#0d1117">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="2FF HQ">
+<meta name="apple-mobile-web-app-title" content="HQ">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="/icon-192.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
-:root{--bg:#f2f3f7;--card:#fff;--ink:#18202e;--mut:#5c6678;--line:#dde1ea;--navy:#1F2A5C;--red:#C8102E;--ok:#1d7a3a;--warn:#b26a00;--bad:#C8102E;--chip:#e9ecf4;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#0e121b;--card:#171d2a;--ink:#e8ebf2;--mut:#98a2b6;--line:#2a3244;--navy:#8fa4ff;--red:#ff5d6e;--ok:#4fc77a;--warn:#f0a83a;--bad:#ff5d6e;--chip:#222a3b;color-scheme:dark}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Lato,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;-webkit-text-size-adjust:100%}
+:root{--bg:#0d1117;--card:#161b24;--ink:#eef1f6;--mut:#8d97a8;--line:#262d3a;--navy:#f5b524;--red:#f5b524;--acc:#f5b524;--ok:#3ccf7e;--warn:#f5b524;--bad:#ff5f5f;--chip:#1f2532;color-scheme:dark}
+@media (prefers-color-scheme:light){:root{--bg:#f4f1ea;--card:#fffdf8;--ink:#1b1d22;--mut:#6b6f78;--line:#e3ded2;--navy:#9a6a00;--red:#c98a00;--acc:#c98a00;--ok:#18864b;--warn:#a36300;--bad:#c62f2f;--chip:#ece6d8;color-scheme:light}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{overscroll-behavior-y:none}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Lato,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;-webkit-text-size-adjust:100%}
 a{color:inherit}
-header{background:#1F2A5C;color:#fff;border-bottom:4px solid #C8102E;padding-top:env(safe-area-inset-top,0px)}
-.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.hd{display:flex;align-items:center;gap:14px;padding-block:14px;flex-wrap:wrap}
-.hd img{height:38px;background:#fff;border-radius:8px;padding:3px 7px}
-.hd h1{font:600 24px/1 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
-.hd .sub{font-size:12.5px;opacity:.85}
-.hd .clock{margin-left:auto;text-align:right;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px}
-.gate{display:inline-block;margin-top:3px;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.g-open{background:#1d7a3a}.g-soon{background:#b26a00}.g-closed{background:#5c6678}
-nav.tabs{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
-nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
-nav.tabs button{font:600 13px/1 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.06em;border:0;background:none;color:var(--mut);padding:13px 12px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
-nav.tabs button.on{color:var(--ink);border-bottom-color:var(--red)}
-main{padding-block:18px 60px}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:0;z-index:6;background:var(--bg);padding-top:env(safe-area-inset-top,0px);border-bottom:1px solid var(--line)}
+.hd{display:flex;align-items:center;gap:12px;padding-block:12px}
+.mono{width:40px;height:40px;border-radius:11px;background:var(--acc);color:#0d1117;display:grid;place-items:center;font:600 17px/1 Oswald,"Arial Narrow",sans-serif;letter-spacing:.02em;flex:none}
+.hd h1{font:600 21px/1 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:0}
+.hd .sub{font:500 11.5px/1.3 "IBM Plex Mono",monospace;color:var(--mut);margin-top:3px}
+.gate{display:inline-block;margin-left:auto;padding:5px 9px;border-radius:99px;font:600 11px/1.2 "IBM Plex Mono",monospace;text-align:center;max-width:46%}
+.g-open{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok)}.g-soon{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}.g-closed{background:var(--chip);color:var(--mut)}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:7;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(6,1fr);gap:0}
+nav.tabs button{border:0;background:none;color:var(--mut);padding:9px 0 8px;cursor:pointer;display:grid;justify-items:center;gap:3px;font:600 9.5px/1 Lato,sans-serif;letter-spacing:.03em;text-transform:uppercase}
+nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs button.on{color:var(--acc)}
+main{padding-block:16px calc(90px + env(safe-area-inset-bottom,0px))}
 section[hidden]{display:none}
-h2{font:600 18px/1.2 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:22px 0 10px;color:var(--navy);text-wrap:balance}
+h2{font:600 17px/1.2 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 10px;color:var(--ink);text-wrap:balance}
 h2:first-child{margin-top:0}
-h2 small{font:500 11.5px/1 "IBM Plex Mono",monospace;color:var(--mut);text-transform:none;letter-spacing:0;margin-left:6px}
-.q{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:14px;color:var(--mut);font-size:14px}
+h2 small{font:500 11px/1 "IBM Plex Mono",monospace;color:var(--mut);text-transform:none;letter-spacing:0;margin-left:6px}
+.q{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:14px;padding:12px 14px;margin-bottom:14px;color:var(--mut);font-size:14.5px}
 .q b{color:var(--ink)}
-.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
-.tile{display:block;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 13px;min-width:0;transition:border-color .15s}
-.tile:hover{border-color:var(--navy)}
-.tile .k{font:500 10.5px/1 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
-.tile .n{font-weight:700;margin-top:5px}
-.tile .d{font-size:12.5px;color:var(--mut)}
-.cols{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
-.card h3{font:600 15px/1.2 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.tile{display:block;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 13px;min-width:0}
+.tile:active{transform:scale(.98)}
+.tile .k{font:500 10px/1.2 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.07em;color:var(--acc)}
+.tile .n{font-weight:700;margin-top:6px;overflow-wrap:anywhere}
+.tile .d{font-size:12.5px;color:var(--mut);line-height:1.35}
+.cols{display:grid;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+.card h3{font:600 16px/1.2 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .card h3 .when{font:500 11px/1 "IBM Plex Mono",monospace;color:var(--mut);text-transform:none;letter-spacing:0}
-.card h3 .cnt{margin-left:auto;font:500 12px/1 "IBM Plex Mono",monospace;color:var(--mut)}
-.bar{height:5px;background:var(--chip);border-radius:9px;overflow:hidden;margin:6px 0 8px}
+.card h3 .cnt{margin-left:auto;font:500 12px/1 "IBM Plex Mono",monospace;color:var(--acc)}
+.bar{height:6px;background:var(--chip);border-radius:9px;overflow:hidden;margin:8px 0 6px}
 .bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .2s}
 ul.chk{list-style:none;margin:0;padding:0}
 ul.chk li{border-top:1px solid var(--line)}
-ul.chk label{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;cursor:pointer;font-size:14px}
-ul.chk input{width:18px;height:18px;margin-top:1px;flex:none;accent-color:var(--ok)}
+ul.chk label{display:flex;gap:12px;align-items:flex-start;padding:11px 2px;cursor:pointer;font-size:15px}
+ul.chk input{width:22px;height:22px;margin-top:0;flex:none;accent-color:var(--ok)}
 ul.chk input:checked+span{color:var(--mut);text-decoration:line-through}
-.reset{font:inherit;font-size:12px;border:1px solid var(--line);background:none;color:var(--mut);border-radius:7px;padding:4px 9px;cursor:pointer;margin-top:8px}
-.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
-table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
-th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font:600 11px/1.2 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);background:var(--chip)}
-tr:last-child td{border-bottom:0}
-td.t{font-family:"IBM Plex Mono",monospace;font-size:12.5px;white-space:nowrap}
-.pill{display:inline-block;font:700 11px/1 "IBM Plex Mono",monospace;padding:4px 7px;border-radius:99px;white-space:nowrap}
-.p-bad{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
-.p-warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
-.p-ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.reset{font:inherit;font-size:13px;border:1px solid var(--line);background:none;color:var(--mut);border-radius:9px;padding:6px 12px;cursor:pointer;margin-top:8px}
+.tw{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+table{border-collapse:collapse;width:100%;font-size:14px}
+thead{display:none}
+tr{display:block;border-bottom:1px solid var(--line);padding:8px 0}
+tr:last-child{border-bottom:0}
+td{display:block;padding:3px 14px;border:0}
+td:first-child{font-weight:700}
+td.t{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--acc);font-weight:500}
+.stack td.t{padding-top:6px}
+.stack td:nth-child(2){font-weight:700}
+.pill{display:inline-block;font:700 11px/1 "IBM Plex Mono",monospace;padding:5px 8px;border-radius:99px;white-space:nowrap;margin-top:4px}
+.p-bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.p-warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.p-ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
 .p-mut{background:var(--chip);color:var(--mut)}
-.note{font-size:12.5px;color:var(--mut);margin:8px 2px 0}
-.who{font-size:12px;color:var(--mut)}
-footer{font-size:12px;color:var(--mut);text-align:center;padding-block:20px 40px}
-@media (max-width:640px){.stack table{min-width:0}.stack thead{display:none}.stack tr{display:block;border-bottom:1px solid var(--line);padding:6px 0}.stack td{display:block;border:0;padding:3px 14px}.stack td.t{padding-top:8px}}
-@media (max-width:560px){.hd .clock{margin-left:0;text-align:left;width:100%}}
+.note{font-size:13px;color:var(--mut);margin:10px 2px 0}
+.who{font-size:12.5px;color:var(--mut)}
+footer{font-size:12px;color:var(--mut);text-align:center;padding-block:0 calc(90px + env(safe-area-inset-bottom,0px))}
+#lock{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;padding:24px}
+#lock[hidden]{display:none}
+#lock .box{width:100%;max-width:320px;text-align:center;display:grid;gap:14px;justify-items:center}
+#lock p{color:var(--mut);margin:0;font-size:14px}
+#lock input{width:100%;font:600 26px/1 "IBM Plex Mono",monospace;letter-spacing:.4em;text-align:center;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+#lock button{width:100%;font:600 15px/1 Lato,sans-serif;padding:15px;border-radius:14px;border:0;background:var(--acc);color:#0d1117;cursor:pointer}
+#lock .err{color:var(--bad);min-height:1.2em;font-size:13px}
 </style>
 </head>
 <body>
+<div id="lock" hidden><div class="box"><div class="mono" style="width:64px;height:64px;font-size:26px;border-radius:16px">HQ</div><p id="lockMsg">Enter your passcode</p><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8"><div class="err" id="pinErr"></div><button id="pinGo">Unlock</button></div></div>
 <header>
  <div class="wrap hd">
-  <img src="/logo.png" alt="2FF Logistics">
-  <div><h1>2FF HQ</h1><div class="sub">Command center · America 1 Logistics – 2FF Agency · Savannah</div></div>
-  <div class="clock"><div id="now">—</div><span id="gate" class="gate g-closed">Garden City gates —</span></div>
+  <div class="mono">HQ</div>
+  <div><h1>Richard's HQ</h1><div class="sub" id="now">—</div></div>
+  <span id="gate" class="gate g-closed">Gates —</span>
  </div>
-</header>
-<nav class="tabs"><div class="wrap" id="tabs">
- <button data-t="today" class="on">Today</button>
- <button data-t="apps">Apps</button>
- <button data-t="deadlines">Deadlines</button>
- <button data-t="kpis">KPI targets</button>
- <button data-t="port">Port</button>
- <button data-t="week">Weekly review</button>
+</header><nav class="tabs"><div class="wrap" id="tabs">
+ <button data-t="today" class="on"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Today</button>
+ <button data-t="apps"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Apps</button>
+ <button data-t="deadlines"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Dates</button>
+ <button data-t="kpis"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>KPIs</button>
+ <button data-t="port"><svg viewBox="0 0 24 24"><path d="M2 20h20M5 20V9l7-5 7 5v11M9 20v-6h6v6"/></svg>Port</button>
+ <button data-t="week"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Friday</button>
 </div></nav>
 
 <main class="wrap">
@@ -160,7 +171,7 @@ footer{font-size:12px;color:var(--mut);text-align:center;padding-block:20px 40px
 </section>
 
 </main>
-<footer class="wrap">2FF HQ · private staff page · checkmarks are saved on this device only · built from Perplexity research, Nov 2026</footer>
+<footer class="wrap">Richard's HQ · private · checkmarks stay on this phone · built from Perplexity research, Nov 2026</footer>
 
 <script>
 const $=s=>document.querySelector(s);
@@ -171,14 +182,14 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 function sav(){const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',weekday:'short',hourCycle:'h23'}).formatToParts(new Date());const o={};p.forEach(x=>o[x.type]=x.value);return o}
 function tick(){
  const o=sav(),h=+o.hour,m=+o.minute,t=h*60+m,dow=o.weekday;
- $('#now').textContent=new Date().toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' ET';
+ $('#now').textContent=new Date().toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' · Savannah';
  let open=0,close=0,cut=0,label='';
  if(['Mon','Tue','Wed','Thu','Fri'].includes(dow)){open=240;close=1080;cut=990}else if(dow==='Sat'){open=480;close=1020;cut=930}
  const g=$('#gate');
- if(!close||t<open||t>=close){g.className='gate g-closed';label=close&&t<open?'Gates closed · Gate 4 opens '+(open/60)+':00':'Gates closed'}
- else if(t>=cut){g.className='gate g-soon';label='Past dry pickup cutoff · drop-offs till '+(dow==='Sat'?'4:00':'5:00')}
- else if(cut-t<=60){g.className='gate g-soon';label='Pickup cutoff in '+(cut-t)+' min'}
- else{g.className='gate g-open';label='Gate 4 open · pickup cutoff '+(dow==='Sat'?'3:30':'4:30')}
+ if(!close||t<open||t>=close){g.className='gate g-closed';label=close&&t<open?'Gate 4 opens '+(open/60)+':00':'Gates closed'}
+ else if(t>=cut){g.className='gate g-soon';label='Drop-offs till '+(dow==='Sat'?'4:00':'5:00')}
+ else if(cut-t<=60){g.className='gate g-soon';label='Cutoff in '+(cut-t)+' min'}
+ else{g.className='gate g-open';label='Gates open · cutoff '+(dow==='Sat'?'3:30':'4:30')}
  g.textContent=label;
 }
 tick();setInterval(tick,30000);
@@ -186,7 +197,7 @@ tick();setInterval(tick,30000);
 /* tabs, remembered + #hash */
 const tabs=[...document.querySelectorAll('#tabs button')];
 function show(t){if(!document.getElementById(t))t='today';tabs.forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==t);store('hq-tab',t)}
-tabs.forEach(b=>b.onclick=()=>{show(b.dataset.t);history.replaceState(null,'','#'+b.dataset.t)});
+tabs.forEach(b=>b.onclick=()=>{show(b.dataset.t);history.replaceState(null,'','#'+b.dataset.t);scrollTo(0,0)});
 window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
 show(location.hash.slice(1)||store('hq-tab')||'today');
 
@@ -312,6 +323,24 @@ const k2=[['Company-truck margin','Revenue − driver pay, fuel, tolls, chassis,
 ['Carrier verification','Loads on an approved, current carrier','100% before tender']];
 const kt=a=>a.map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+esc(r[1])+'</td><td class="t">'+esc(r[2])+'</td></tr>').join('');
 $('#k1').innerHTML=kt(k1);$('#k2').innerHTML=kt(k2);
+
+/* passcode lock: set on first open, kept (hashed) on this phone only */
+(async function(){
+ const L=$('#lock'),pin=$('#pin'),msg=$('#lockMsg'),err=$('#pinErr');
+ const h=async v=>{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('rphq:'+v));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')};
+ let saved=store('hq-pin'),first=null;
+ try{if(sessionStorage.getItem('hq-ok')==='1')return}catch(e){}
+ L.hidden=false;if(!saved)msg.textContent='Set a 4–8 digit passcode for this phone';
+ setTimeout(()=>pin.focus(),50);
+ const go=async()=>{const v=pin.value.trim();err.textContent='';
+  if(!/^\d{4,8}$/.test(v)){err.textContent='Use 4 to 8 digits';return}
+  if(!saved){if(first===null){first=v;pin.value='';msg.textContent='Enter it again to confirm';return}
+   if(v!==first){first=null;pin.value='';msg.textContent='Set a 4–8 digit passcode for this phone';err.textContent="Didn't match. Try again.";return}
+   saved=await h(v);store('hq-pin',saved)}
+  else if(await h(v)!==saved){pin.value='';err.textContent='Wrong passcode';return}
+  try{sessionStorage.setItem('hq-ok','1')}catch(e){}L.hidden=true};
+ $('#pinGo').onclick=go;pin.onkeydown=e=>{if(e.key==='Enter')go()};
+})();
 </script>
 </body>
 </html>
