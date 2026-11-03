@@ -3574,7 +3574,7 @@ ntSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
-function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab()}).catch(()=>{brSec.hidden=true;camSec.hidden=true;BR=null})}
+function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab();try{renderGR()}catch(e){console.warn('growth',e)}}).catch(()=>{brSec.hidden=true;camSec.hidden=true;BR=null;try{renderGR()}catch(e){}})}
 // photos for the alert cards: newest 40 flagged photos (after-hours / not logged); cam-learn v7 adds alert_urls for all open alerts
 let CAMF={},camFT=0;function loadCamFlags(){if(!Y().call||Date.now()-camFT<5*60e3)return;camFT=Date.now();Y().call('getCams',[{limit:40,only:'flags'}]).then(d=>{(d.photos||[]).forEach(p=>{if(p.url)CAMF[String(p.id)]=p.url});Object.assign(CAMF,d.alert_urls||{});renderCamTab()}).catch(()=>{camFT=0})}
 function loadCams(){if(!Y().call)return;Y().call('getCams',[{limit:40}]).then(d=>{CAM=d;renderCamTab();if(cxT()==='brief')renderBR()}).catch(e=>{CAM={error:(e&&e.message)||String(e)};renderCamTab()})}
@@ -3867,6 +3867,71 @@ function renderPF(){pfSec.hidden=!(TX&&TX.admin);if(!PSC)return;const P=PSC.peop
       r.append(el('span','t',new Date(x.at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})),el('b','',x.person),el('span','',(x.kind==='call_back_late'?'📞 ':x.kind==='text_late'?'💬 ':'✅ ')+x.detail+(x.who?' · '+txFmtN(x.who):'')),el('span','m',x.open?'still open':(x.min>=60?(x.min/60).toFixed(1)+' h':x.min+' min')+' late'));list.append(r)})};
     sel.addEventListener('change',draw);draw();box.append(hd,list);L.append(box)}}
 {let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&TAB==='texts'&&CUR.texts==='perf'&&n%4===0)loadPF()},15000)}
+// ---- GROWTH (owner 11/2/2026): Carter's research and money ideas in one place, newest first. Richard only: the data comes with getBrain,
+// which the server checks is Richard. Read-only here; approve or reject proposals in Carter > Decisions.
+const grSec=mk('grSec','growth','all','<div class="grHd"><h2>Growth <span class="t">Carter\'s research and money ideas · newest first</span></h2></div>'+
+ '<div class="row drBar"><button class="btn2" type="button" id="grRef">Refresh</button><span class="t" id="grMsg">Loading…</span></div><div id="grBody" class="grBody"></div>'+
+ '<p class="t">To act on an idea, approve or reject it in Carter &gt; Decisions.</p>');
+grSec.hidden=true;wrap.append(grSec);
+{const st=el('style');st.textContent='.grBody{display:grid;gap:10px}.grBox{border:1px solid var(--line,#d6dad8);border-radius:12px;background:var(--panel,#fff);overflow:hidden}'+
+'.grBox>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:12px;cursor:pointer;font:700 16px/1.25 var(--body,inherit)}.grBox>summary::-webkit-details-marker,.grIt>summary::-webkit-details-marker{display:none}'+
+'.grBox>summary::before,.grIt>summary::before{content:"\\25B8";color:var(--muted,#5b6578);transition:transform .15s}.grBox[open]>summary::before,.grIt[open]>summary::before{transform:rotate(90deg)}'+
+'.grN{margin-left:auto;font:600 12px/18px var(--body,inherit);min-width:22px;text-align:center;border-radius:9px;padding:0 6px;background:var(--line2,#eef1f6);color:var(--muted,#5b6578)}'+
+'.grIn{padding:0 12px 12px;display:grid;gap:8px}.grIt{border:1px solid var(--line,#e2e6ee);border-radius:10px;background:var(--bg,#f3f5f9)}'+
+'.grIt>summary{list-style:none;display:flex;gap:8px;align-items:flex-start;padding:10px;cursor:pointer;font-weight:600;line-height:1.3}.grIt>summary>span{flex:1;min-width:0;overflow-wrap:anywhere}'+
+'.grD{padding:0 10px 10px;display:grid;gap:8px;overflow-wrap:anywhere}.grD h4{margin:4px 0 0;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#5b6578)}'+
+'.grD ul{margin:0;padding-left:20px}.grD li{margin:2px 0}.grLead{font-weight:600}.grPr{border-left:4px solid var(--brand,#1F2A5C);padding:6px 10px;background:var(--panel,#fff);border-radius:6px}'+
+'.grAns{white-space:pre-wrap;line-height:1.45;font-size:14.5px}.grSrc a,.grAns a{color:var(--brand-text,#1F2A5C);word-break:break-all}.grSrc{display:grid;gap:4px;font-size:13px}'+
+'.grSt{flex:none;font:600 11px/16px var(--body,inherit);border-radius:8px;padding:1px 7px;background:var(--line2,#eef1f6);color:var(--muted,#5b6578);text-transform:capitalize}'+
+'.grSt.ok{background:var(--ok-bg,#e7f5ec);color:var(--ok,#1f7a44)}.grSt.no{background:var(--stop-bg,#fdecea);color:var(--stop,#b42318)}.grSt.wait{background:var(--warn-bg,#fff4e0);color:var(--warn,#a15c00)}'+
+'.grEmpty{color:var(--muted,#5b6578);font-size:14px}';document.head.append(st)}
+let GR_SIG='';const GR_OPEN=new Set();try{(JSON.parse(localStorage.getItem('grOpen')||'[]')||[]).forEach(k=>GR_OPEN.add(k))}catch(e){}
+const grSave=()=>{try{localStorage.setItem('grOpen',JSON.stringify([...GR_OPEN].slice(-60)))}catch(e){}};
+const grFmt=t=>t?new Date(t).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const grArr=v=>Array.isArray(v)?v:(v==null||v==='')?[]:[v];
+const grStr=v=>v==null?'':typeof v==='string'?v:typeof v==='number'||typeof v==='boolean'?String(v):
+  (v.metric||v.top_companies)?[v.metric,v.top_companies,v.source?'('+v.source+')':''].filter(Boolean).join(': ').replace(': (',' (')
+  :(v.text||v.title||v.name||v.summary||v.point||JSON.stringify(v));
+const grUrl=u=>{try{const x=new URL(String(u));return /^https?:$/.test(x.protocol)?x.href:''}catch(e){return ''}};
+function grLinkify(txt){const f=document.createDocumentFragment();String(txt||'').split(/(https?:\/\/[^\s<>"')\]]+)/).forEach((p,i)=>{
+  if(i%2){const u=grUrl(p);if(u){const a=el('a','',p);a.href=u;a.target='_blank';a.rel='noopener noreferrer';f.append(a);return}}if(p)f.append(document.createTextNode(p))});return f}
+function grDet(cls,key,sumKids,fill){const d=el('details',cls);if(GR_OPEN.has(key))d.open=true;const s=el('summary');sumKids.forEach(k=>s.append(k));d.append(s);
+  let done=false;const draw=()=>{if(done)return;done=true;const b=el('div',cls==='grBox'?'grIn':'grD');fill(b);d.append(b)};if(d.open)draw();
+  d.addEventListener('toggle',()=>{if(d.open){draw();GR_OPEN.add(key)}else GR_OPEN.delete(key);grSave()});return d}
+function grList(b,label,v){const a=grArr(v).map(grStr).filter(Boolean);if(!a.length)return;b.append(el('h4','',label));const u=el('ul');a.forEach(x=>{const li=el('li');li.append(grLinkify(x));u.append(li)});b.append(u)}
+function grProps(b,v,label){const a=grArr(v).filter(p=>p&&(p.title||p.recommendation));if(!a.length)return;b.append(el('h4','',label||'What Carter proposes'));
+  a.forEach(p=>{const c=el('div','grPr');c.append(el('b','',grStr(p.title)||'Proposal'));if(p.recommendation){const r=el('div');r.append(grLinkify(grStr(p.recommendation)));c.append(r)}
+    if(p.kpi)c.append(el('div','t','How we know it worked: '+grStr(p.kpi)));if(p.owner)c.append(el('div','t','Owner: '+grStr(p.owner)));b.append(c)})}
+function grCites(b,v,label){const a=grArr(v).map(x=>typeof x==='string'?{url:x}:x||{}).filter(x=>grUrl(x.url));if(!a.length)return;b.append(el('h4','',label||'Sources'));
+  const w=el('div','grSrc');a.forEach((x,i)=>{const r=el('div'),l=el('a','',x.title||x.url);l.href=grUrl(x.url);l.target='_blank';l.rel='noopener noreferrer';r.append(document.createTextNode('['+(i+1)+'] '),l);if(x.date)r.append(document.createTextNode(' · '+x.date));w.append(r)});b.append(w)}
+const grStCls=s=>/answer|done|approved|worked|pass|hit/i.test(s||'')?'grSt ok':/fail|reject|error|miss/i.test(s||'')?'grSt no':/open|queue|pending|propos|claim|running|new/i.test(s||'')?'grSt wait':'grSt';
+function grStudy(b,s){const B=s.body||s;if(B.headline)b.append(el('div','grLead',grStr(B.headline)));if(B.principle){const p=el('div');p.append(el('b','','Rule to live by: '),document.createTextNode(grStr(B.principle)));b.append(p)}
+  grList(b,'Where 2FF stands',B.where_2ff_stands);grList(b,'What the best do',B.best_practice);grList(b,'Benchmarks',B.benchmarks);grList(b,'Gaps',B.gaps);
+  grProps(b,B.proposals);grList(b,'Data Carter is missing',B.missing_data);grCites(b,s.citations)}
+function grBox(key,title,items,draw,empty){const n=items.length;return grDet('grBox','box:'+key,[el('span','',title),el('span','grN',String(n))],b=>{
+  if(!n){b.append(el('div','grEmpty',empty));return}items.forEach(draw.bind(null,b))})}
+function renderGR(){if(grSec.hidden)return;const M=$('grMsg'),B=$('grBody');
+  if(!BR){M.textContent='Could not load right now. Tap Refresh.';return}
+  const G=BR.growth;if(!G){M.textContent='Growth data is not switched on at the server yet.';B.textContent='';GR_SIG='';return}
+  const sig=JSON.stringify([G.money,G.lessons,G.research,G.checks].map(a=>(a||[]).map(x=>[x.id,x.at,x.status,x.answered_at])));
+  M.textContent='Updated '+grFmt(Date.now());if(sig===GR_SIG&&B.children.length)return;GR_SIG=sig;B.textContent='';
+  const byNew=(a,k)=>(a||[]).slice().sort((x,y)=>String(y[k]||y.at||'').localeCompare(String(x[k]||x.at||'')));
+  const money=byNew(G.money,'at'),tn={};(G.money_topics||[]).forEach(t=>{tn[t.key]=t.title});
+  B.append(grBox('money','Money ideas',money,(b,s)=>{b.append(grDet('grIt','m:'+s.id,[el('span','',s.title||tn[s.key]||s.key),el('span','t',grFmt(s.at))],d=>grStudy(d,s)))},
+    'Not studied yet. Carter studies "'+(tn.money_engine||'Money engine')+'" and "'+(tn.capital_raise||'Capital')+'" on his schedule; they show here when done.'));
+  B.append(grBox('lessons','Billion-dollar lessons',byNew(G.lessons,'at'),(b,s)=>{b.append(grDet('grIt','l:'+s.id,[el('span','',s.title||s.key),el('span','t',grFmt(s.at))],d=>{
+      if(s.headline)d.append(el('div','grLead',grStr(s.headline)));if(s.principle){const p=el('div');p.append(el('b','','Rule to live by: '),document.createTextNode(grStr(s.principle)));d.append(p)}
+      grList(d,'Gaps at 2FF',s.gaps);grProps(d,s.proposals);grCites(d,s.citations)}))},'No lessons yet.'));
+  B.append(grBox('research','Deep research answers',byNew(G.research,'answered_at'),(b,r)=>{const t=String(r.title||'Research'),ci=t.indexOf(':'),short=ci>0&&ci<120?t.slice(0,ci):t.length>110?t.slice(0,110)+'…':t,q=ci>0&&ci<120?t.slice(ci+1).trim():'';
+    b.append(grDet('grIt','r:'+r.id,[el('span','',short),el('span',grStCls(r.status),r.status||'')],d=>{
+      d.append(el('div','t',r.answered_at?'Answered '+grFmt(r.answered_at):'Asked '+grFmt(r.at)));
+      if(q){const qd=el('details');qd.append(el('summary','t','The question'),el('div','t',q));d.append(qd)}
+      if(r.answer){const a=el('div','grAns');a.append(grLinkify(r.answer));d.append(a)}else d.append(el('div','grEmpty','No answer yet.'));grCites(d,r.sources)}))},'No research answers yet.'));
+  B.append(grBox('checks','Did it work?',byNew(G.checks,'at'),(b,c)=>{b.append(grDet('grIt','c:'+c.id,[el('span','',grStr(c.title)||'Check'),el('span',grStCls(c.status),c.status||'')],d=>{
+      d.append(el('div','t',grFmt(c.at)));if(c.why){const w=el('div');w.append(grLinkify(grStr(c.why)));d.append(w)}}))},'No results checked yet. Carter checks the numbers after an approved idea has had time to work.'))}
+$('grRef').addEventListener('click',()=>{$('grMsg').textContent='Loading…';GR_SIG='';loadBR()});
+try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)){if(!BR)loadBR();else renderGR()}}).observe(grSec)}catch(e){}
+function grInit(){try{if(!roles().length)return setTimeout(grInit,3000);grSec.hidden=!fcCan();try{tabVis()}catch(e){}try{renderGR()}catch(e){}}catch(e){setTimeout(grInit,5000)}}grInit();
 const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
 // ---------- 3. bottom tab bar ----------
 const IC={texts:'<svg viewBox="0 0 24 24"><path d="M6.6 3.5h2.7l1.4 4-2 1.4a12 12 0 006.4 6.4l1.4-2 4 1.4v2.7a2 2 0 01-2.2 2A16.6 16.6 0 014.6 5.7a2 2 0 012-2.2z"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -3875,14 +3940,15 @@ yard:'<svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="13" height="8" rx="1"/
 port:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-4 6 4v11"/><path d="M9 20v-5h6v5"/></svg>',
 reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',sales:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',owner:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M12 15v2"/></svg>',social:'<svg viewBox="0 0 24 24"><path d="M4 11v2a1 1 0 001 1h2l5 4V6L7 10H5a1 1 0 00-1 1z"/><path d="M16 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',gps:'<svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0112 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',safety:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>'};
 IC.doors='<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>';
+IC.growth='<svg viewBox="0 0 24 24"><path d="M12 21v-9"/><path d="M12 12C12 8 9 5 4 5c0 4 3 7 8 7z"/><path d="M12 14c0-3 2.5-6 8-6 0 3.5-3 6-8 6z"/></svg>';
 IC.carter='<svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/><path d="M17.5 4.5l1-1.5M19.5 7h1.8"/></svg>';
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['owner','Owner'],['doors','Doors & Cams'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
+const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['growth','Growth'],['owner','Owner'],['doors','Doors & Cams'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
-const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],
+const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],growth:[['all','Growth']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
@@ -3973,7 +4039,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)close
 '.msItem i{position:absolute;top:6px;right:8px;font:700 10px/16px inherit;font-style:normal;min-width:16px;height:16px;border-radius:8px;padding:0 4px;background:#b42318;color:#fff}.msItem i.y{background:#e0a100}.msNote{font-size:12.5px;color:var(--muted);margin:12px 2px 0}';document.head.append(st)}
 
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()||fcCan()};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()||fcCan(),growth:fcCan()};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors','growth'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   try{pinTabs()}catch(e){console.warn('pinTabs',e);inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)'}
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
