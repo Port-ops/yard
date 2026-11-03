@@ -106,9 +106,10 @@ function detail(){get(API+'?j='+encodeURIComponent(slug)).then(function(d){app.t
     if(j.kind==='owner_operator')f.append(yn('own_truck','Do you own or lease your truck?'))}
   var msg=h('textarea',{id:'message',name:'message',rows:'3',placeholder:drv?'Experience, last company, best time to call':'Experience, best time to call'});f.append(field('Anything we should know?',msg,'(optional)'));
   var sms=h('input',{type:'checkbox',id:'sms_ok',name:'sms_ok'});f.append(h('label',{class:'check',for:'sms_ok'},[sms,document.createTextNode('Text me about this job at the number above. Message and data rates may apply. Reply STOP to opt out.')]));
+  var CALLTXT='2FF Logistics may call me at the number above about this job, including calls made by an automated or AI assistant. Not required to apply. I can say stop anytime.';var call=h('input',{type:'checkbox',id:'call_ok',name:'call_ok'});f.append(h('label',{class:'check',for:'call_ok'},[call,document.createTextNode(CALLTXT)]));
   f.append(h('div',{class:'hp','aria-hidden':'true'},[h('label',{for:'website',text:'Website'}),h('input',{id:'website',name:'website',tabindex:'-1',autocomplete:'off'})]));
   var btn=h('button',{class:'btn',type:'submit',text:'Send my application'});f.append(btn,err,h('p',{class:'fine',text:'We use your information only to contact you about jobs at 2FF Logistics and 1 Stop Logistics. '+EEO}));
-  f.addEventListener('submit',function(e){e.preventDefault();err.textContent='';var fd=new FormData(f),o={job:j.slug,t:Date.now()-t0,ref:ref};fd.forEach(function(v,k){o[k]=v});o.sms_ok=sms.checked;
+  f.addEventListener('submit',function(e){e.preventDefault();err.textContent='';var fd=new FormData(f),o={job:j.slug,t:Date.now()-t0,ref:ref};fd.forEach(function(v,k){o[k]=v});o.sms_ok=sms.checked;o.call_ok=call.checked;o.consent_text=call.checked?CALLTXT:'';
     if(!o.first_name||!o.last_name){err.textContent='Enter your first and last name.';return}if(String(o.phone||'').replace(/\D/g,'').length<10){err.textContent='Enter your 10-digit phone number.';return}
     btn.disabled=true;btn.textContent='Sending…';
     fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){return r.json()}).then(function(d){
