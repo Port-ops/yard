@@ -3984,9 +3984,20 @@ let GRD=null,GR_ERR='',GR_BUSY=false;
 function loadGR(){if(!Y().call||GR_BUSY)return;GR_BUSY=true;Y().call('getBrain',[{part:'growth'}]).then(g=>{GR_BUSY=false;if(g&&(g.lessons||g.research||g.money)){GRD=g;GR_ERR='';GR_SIG=''}else GR_ERR='Growth data is not switched on at the server yet.';renderGR()}).catch(()=>{GR_BUSY=false;GR_ERR='Could not load right now. Tap Refresh.';renderGR()})}
 function renderGR(){if(grSec.hidden)return;const M=$('grMsg'),B=$('grBody');
   const G=GRD;if(!G){M.textContent=GR_ERR||'Loading…';if(!GR_BUSY&&!GR_ERR)loadGR();return}
-  const sig=JSON.stringify([G.money,G.lessons,G.research,G.checks].map(a=>(a||[]).map(x=>[x.id,x.at,x.status,x.answered_at])));
+  const CR=G.credit||{},sig=JSON.stringify([G.money,G.lessons,G.research,G.checks,CR.bureaus,CR.accounts].map(a=>(a||[]).map(x=>[x.id||x.bureau,x.at||x.updated_at,x.status,x.answered_at,x.next_due,x.tradelines])));
   M.textContent='Updated '+grFmt(Date.now());if(sig===GR_SIG&&B.children.length)return;GR_SIG=sig;B.textContent='';
   const byNew=(a,k)=>(a||[]).slice().sort((x,y)=>String(y[k]||y.at||'').localeCompare(String(x[k]||x.at||'')));
+  // Business credit (owner 11/3/2026): bureau files + trade accounts. Carter proposes; Richard opens accounts himself.
+  const bu=CR.bureaus||[],ac=CR.accounts||[],dd=s=>s?new Date(String(s)+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';
+  B.append(grDet('grBox','box:credit',[el('span','','Business credit (2FF)'),el('span','grN',String(ac.filter(a=>a.status==='open').length)+' open')],b=>{
+    b.append(el('h4','','Bureau files'));
+    bu.forEach(x=>b.append(grDet('grIt','cb:'+x.bureau,[el('span','',x.bureau+' · '+(x.score||'')),el('span',/No file|Thin/i.test(x.status||'')?'grSt wait':'grSt ok',(x.tradelines||0)+' tradelines')],d=>{
+      [['File',x.file_id],['Status',x.status],['Address on file',x.address_on_file],['Pending',x.pending],['Note',x.note],['Last checked',dd(x.last_checked)]].forEach(([l,v])=>{if(v){const p=el('div');p.append(el('b','',l+': '),document.createTextNode(v));d.append(p)}})})));
+    b.append(el('h4','','Trade accounts'));
+    if(!ac.length)b.append(el('div','grEmpty','None tracked yet. Carter will propose vendors in Decisions; approve one and it lands here. Pay early to push the D&B score toward 100.'));
+    ac.forEach(a=>b.append(grDet('grIt','ca:'+a.id,[el('span','',a.vendor+' ('+a.kind+')'),el('span',grStCls(a.status==='open'?'done':a.status==='approved'?'pending':a.status),a.status+(a.next_due?' · due '+dd(a.next_due):''))],d=>{
+      [['Reports to',(a.reports_to||[]).join(', ')],['Showing on',(a.posted_to||[]).join(', ')||'not yet'],['Terms',a.terms_days?'Net '+a.terms_days:''],['Opened',dd(a.opened_on)],['Last paid',dd(a.last_paid)],['Note',a.note]].forEach(([l,v])=>{if(v){const p=el('div');p.append(el('b','',l+': '),document.createTextNode(v));d.append(p)}})})));
+    b.append(el('div','t','Carter pushes you 10 days before each due date (pay early), checks the bureaus with you monthly, and never applies for credit or signs anything.'))}));
   const money=byNew(G.money,'at'),tn={};(G.money_topics||[]).forEach(t=>{tn[t.key]=t.title});
   B.append(grBox('money','Money ideas',money,(b,s)=>{b.append(grDet('grIt','m:'+s.id,[el('span','',s.title||tn[s.key]||s.key),el('span','t',grFmt(s.at))],d=>grStudy(d,s)))},
     'Not studied yet. Carter studies "'+(tn.money_engine||'Money engine')+'" and "'+(tn.capital_raise||'Capital')+'" on his schedule; they show here when done.'));
