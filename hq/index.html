@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2FF HQ</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1F2A5C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="2FF HQ">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{--bg:#f2f3f7;--card:#fff;--ink:#18202e;--mut:#5c6678;--line:#dde1ea;--navy:#1F2A5C;--red:#C8102E;--ok:#1d7a3a;--warn:#b26a00;--bad:#C8102E;--chip:#e9ecf4;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0e121b;--card:#171d2a;--ink:#e8ebf2;--mut:#98a2b6;--line:#2a3244;--navy:#8fa4ff;--red:#ff5d6e;--ok:#4fc77a;--warn:#f0a83a;--bad:#ff5d6e;--chip:#222a3b;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Lato,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;-webkit-text-size-adjust:100%}
+a{color:inherit}
+header{background:#1F2A5C;color:#fff;border-bottom:4px solid #C8102E;padding-top:env(safe-area-inset-top,0px)}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hd{display:flex;align-items:center;gap:14px;padding-block:14px;flex-wrap:wrap}
+.hd img{height:38px;background:#fff;border-radius:8px;padding:3px 7px}
+.hd h1{font:600 24px/1 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+.hd .sub{font-size:12.5px;opacity:.85}
+.hd .clock{margin-left:auto;text-align:right;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px}
+.gate{display:inline-block;margin-top:3px;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.g-open{background:#1d7a3a}.g-soon{background:#b26a00}.g-closed{background:#5c6678}
+nav.tabs{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{font:600 13px/1 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.06em;border:0;background:none;color:var(--mut);padding:13px 12px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav.tabs button.on{color:var(--ink);border-bottom-color:var(--red)}
+main{padding-block:18px 60px}
+section[hidden]{display:none}
+h2{font:600 18px/1.2 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.04em;margin:22px 0 10px;color:var(--navy);text-wrap:balance}
+h2:first-child{margin-top:0}
+h2 small{font:500 11.5px/1 "IBM Plex Mono",monospace;color:var(--mut);text-transform:none;letter-spacing:0;margin-left:6px}
+.q{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:14px;color:var(--mut);font-size:14px}
+.q b{color:var(--ink)}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.tile{display:block;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 13px;min-width:0;transition:border-color .15s}
+.tile:hover{border-color:var(--navy)}
+.tile .k{font:500 10.5px/1 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+.tile .n{font-weight:700;margin-top:5px}
+.tile .d{font-size:12.5px;color:var(--mut)}
+.cols{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.card h3{font:600 15px/1.2 Oswald,"Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.card h3 .when{font:500 11px/1 "IBM Plex Mono",monospace;color:var(--mut);text-transform:none;letter-spacing:0}
+.card h3 .cnt{margin-left:auto;font:500 12px/1 "IBM Plex Mono",monospace;color:var(--mut)}
+.bar{height:5px;background:var(--chip);border-radius:9px;overflow:hidden;margin:6px 0 8px}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .2s}
+ul.chk{list-style:none;margin:0;padding:0}
+ul.chk li{border-top:1px solid var(--line)}
+ul.chk label{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;cursor:pointer;font-size:14px}
+ul.chk input{width:18px;height:18px;margin-top:1px;flex:none;accent-color:var(--ok)}
+ul.chk input:checked+span{color:var(--mut);text-decoration:line-through}
+.reset{font:inherit;font-size:12px;border:1px solid var(--line);background:none;color:var(--mut);border-radius:7px;padding:4px 9px;cursor:pointer;margin-top:8px}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1.2 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);background:var(--chip)}
+tr:last-child td{border-bottom:0}
+td.t{font-family:"IBM Plex Mono",monospace;font-size:12.5px;white-space:nowrap}
+.pill{display:inline-block;font:700 11px/1 "IBM Plex Mono",monospace;padding:4px 7px;border-radius:99px;white-space:nowrap}
+.p-bad{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.p-warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.p-ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.p-mut{background:var(--chip);color:var(--mut)}
+.note{font-size:12.5px;color:var(--mut);margin:8px 2px 0}
+.who{font-size:12px;color:var(--mut)}
+footer{font-size:12px;color:var(--mut);text-align:center;padding-block:20px 40px}
+@media (max-width:640px){.stack table{min-width:0}.stack thead{display:none}.stack tr{display:block;border-bottom:1px solid var(--line);padding:6px 0}.stack td{display:block;border:0;padding:3px 14px}.stack td.t{padding-top:8px}}
+@media (max-width:560px){.hd .clock{margin-left:0;text-align:left;width:100%}}
+</style>
+</head>
+<body>
+<header>
+ <div class="wrap hd">
+  <img src="/logo.png" alt="2FF Logistics">
+  <div><h1>2FF HQ</h1><div class="sub">Command center · America 1 Logistics – 2FF Agency · Savannah</div></div>
+  <div class="clock"><div id="now">—</div><span id="gate" class="gate g-closed">Garden City gates —</span></div>
+ </div>
+</header>
+<nav class="tabs"><div class="wrap" id="tabs">
+ <button data-t="today" class="on">Today</button>
+ <button data-t="apps">Apps</button>
+ <button data-t="deadlines">Deadlines</button>
+ <button data-t="kpis">KPI targets</button>
+ <button data-t="port">Port</button>
+ <button data-t="week">Weekly review</button>
+</div></nav>
+
+<main class="wrap">
+
+<!-- TODAY -->
+<section id="today">
+ <div class="q">Every day answers five questions: <b>What must move today? What could cost us money? Who can legally work? Are we making money on each move? What is ready to bill?</b> Every red item gets an owner, a next action, a deadline and the dollars at risk.</div>
+ <div class="grid" style="margin-bottom:16px">
+  <a class="tile" href="/" target="_blank" rel="noopener"><div class="k">Live numbers</div><div class="n">DockRelay</div><div class="d">Loads, Carter, Decisions, Growth</div></a>
+  <a class="tile" href="https://www.truckman3.com/operations/index.jsp" target="_blank" rel="noopener"><div class="k">Dispatch</div><div class="n">TruckMan</div><div class="d">Loads, A/R, settlements</div></a>
+  <a class="tile" href="https://gaports.com" target="_blank" rel="noopener"><div class="k">Port</div><div class="n">GPA / WebAccess</div><div class="d">Availability, holds, LFD, notices</div></a>
+  <a class="tile" href="https://app.ringcentral.com" target="_blank" rel="noopener"><div class="k">Phones</div><div class="n">RingCentral</div><div class="d">Calls, texts, team chat</div></a>
+ </div>
+ <div class="cols" id="daily"></div>
+</section>
+
+<!-- APPS -->
+<section id="apps" hidden>
+ <h2>Run the business <small>daily</small></h2>
+ <div class="grid" id="appsRun"></div>
+ <h2>Compliance &amp; safety</h2>
+ <div class="grid" id="appsComp"></div>
+ <h2>Money &amp; credit</h2>
+ <div class="grid" id="appsMoney"></div>
+ <h2>Claude</h2>
+ <div class="grid" id="appsClaude"></div>
+</section>
+
+<!-- DEADLINES -->
+<section id="deadlines" hidden>
+ <div class="q">2FF runs under <b>America 1 Logistics' authority (MC 752131 / USDOT 2164657)</b>. Several filings below belong to America 1, not 2FF. The <b>Owner</b> column says who files. Confirm anything marked "confirm" with America 1 in writing, because if nobody owns a filing, it gets missed.</div>
+ <div class="tw stack"><table><thead><tr><th>Due</th><th>Requirement</th><th>Owner</th><th>What to do</th><th>Status</th></tr></thead><tbody id="dl"></tbody></table></div>
+ <p class="note">Reminders fire internally at 60 / 30 / 14 / 7 days. They are an internal control, not the legal deadline. Every date is calculated from today in the browser. Per-driver and per-truck dates (CDL, medical card, TWIC, annual inspection, MVR, Clearinghouse annual query) belong on each driver and truck record in DockRelay.</p>
+</section>
+
+<!-- KPIS -->
+<section id="kpis" hidden>
+ <div class="q">These are <b>starting targets</b>, not regulations or industry averages. Measure a 30-day baseline in DockRelay and TruckMan, then tighten each target by lane and customer. Don't judge dispatchers on moves per truck alone, because that rewards easy turns and hides bad margin.</div>
+ <h2>Dispatch, port &amp; equipment</h2>
+ <div class="tw"><table><thead><tr><th>KPI</th><th>How it's measured</th><th>Target</th></tr></thead><tbody id="k1"></tbody></table></div>
+ <h2>Money &amp; agency</h2>
+ <div class="tw"><table><thead><tr><th>KPI</th><th>How it's measured</th><th>Target</th></tr></thead><tbody id="k2"></tbody></table></div>
+ <p class="note">Keep three money views separate so the same load is never counted twice: <b>company trucks</b> (truck economics), <b>leased owner-operators</b> (what 2FF keeps after settlement) and <b>agency loads</b> (2FF's commission from America 1). For lenders and bureaus, 2FF's revenue is its commission, not the gross freight bill.</p>
+</section>
+
+<!-- PORT -->
+<section id="port" hidden>
+ <h2>Garden City Terminal gates <small>verify on gaports.com before late moves</small></h2>
+ <div class="tw"><table><thead><tr><th>Gate</th><th>Weekdays</th><th>Saturday</th><th>Notes</th></tr></thead><tbody>
+  <tr><td><b>Gate 4</b></td><td class="t">4:00 am – 6:00 pm</td><td class="t">8:00 am – 5:00 pm</td><td>Reefer service starts 6:00 am. On Saturday, dry containers only.</td></tr>
+  <tr><td><b>Gates 3 &amp; 8</b></td><td class="t">6:00 am – 5:00 pm</td><td class="t">Closed</td><td></td></tr>
+  <tr><td><b>Dry pickup cutoff</b></td><td class="t">4:30 pm</td><td class="t">3:30 pm</td><td>Ask whether the move is still feasible before the cutoff, not just whether the gate is open.</td></tr>
+  <tr><td><b>Dry drop-off cutoff</b></td><td class="t">5:00 pm</td><td class="t">4:00 pm</td><td></td></tr>
+ </tbody></table></div>
+ <h2>Charge clocks <small>track separately for every container</small></h2>
+ <div class="tw"><table><thead><tr><th>Clock</th><th>Fields to keep</th><th>Alert</th></tr></thead><tbody>
+  <tr><td><b>Terminal demurrage / storage</b></td><td>Availability, holds, terminal LFD, tariff, pickup event</td><td>72 / 48 / 24 hrs before LFD. Red when the pickup is at risk.</td></tr>
+  <tr><td><b>Ocean per diem / detention</b></td><td>Full out-gate, free-time rule, empty deadline, accepted return location, empty-in EIR</td><td>72 / 48 / 24 hrs. Red when there's no workable return plan.</td></tr>
+  <tr><td><b>Chassis usage</b></td><td>Chassis ID, provider, start/stop, daily rate</td><td>Unexplained idle time over 24 hrs.</td></tr>
+ </tbody></table></div>
+ <p class="note">Avoidable demurrage and per diem target: <b>$0</b>. Investigate every charge. A missing LFD shows as "not verified", never green. Delivering the box doesn't close the container. Equipment exposure stays open until the empty-in EIR is on file. Navis is GPA's and the ocean carriers' internal system. Your visibility comes through WebAccess.</p>
+</section>
+
+<!-- WEEK -->
+<section id="week" hidden>
+ <div class="q">Run this every <b>Friday</b>. Pick <b>one</b> recurring failure each week, find the cause and give it a measurable fix with an owner.</div>
+ <div class="cols" id="weekly"></div>
+</section>
+
+</main>
+<footer class="wrap">2FF HQ · private staff page · checkmarks are saved on this device only · built from Perplexity research, Nov 2026</footer>
+
+<script>
+const $=s=>document.querySelector(s);
+function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* Savannah time */
+function sav(){const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',weekday:'short',hourCycle:'h23'}).formatToParts(new Date());const o={};p.forEach(x=>o[x.type]=x.value);return o}
+function tick(){
+ const o=sav(),h=+o.hour,m=+o.minute,t=h*60+m,dow=o.weekday;
+ $('#now').textContent=new Date().toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' ET';
+ let open=0,close=0,cut=0,label='';
+ if(['Mon','Tue','Wed','Thu','Fri'].includes(dow)){open=240;close=1080;cut=990}else if(dow==='Sat'){open=480;close=1020;cut=930}
+ const g=$('#gate');
+ if(!close||t<open||t>=close){g.className='gate g-closed';label=close&&t<open?'Gates closed · Gate 4 opens '+(open/60)+':00':'Gates closed'}
+ else if(t>=cut){g.className='gate g-soon';label='Past dry pickup cutoff · drop-offs till '+(dow==='Sat'?'4:00':'5:00')}
+ else if(cut-t<=60){g.className='gate g-soon';label='Pickup cutoff in '+(cut-t)+' min'}
+ else{g.className='gate g-open';label='Gate 4 open · pickup cutoff '+(dow==='Sat'?'3:30':'4:30')}
+ g.textContent=label;
+}
+tick();setInterval(tick,30000);
+
+/* tabs, remembered + #hash */
+const tabs=[...document.querySelectorAll('#tabs button')];
+function show(t){if(!document.getElementById(t))t='today';tabs.forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==t);store('hq-tab',t)}
+tabs.forEach(b=>b.onclick=()=>{show(b.dataset.t);history.replaceState(null,'','#'+b.dataset.t)});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
+show(location.hash.slice(1)||store('hq-tab')||'today');
+
+/* checklists */
+function checklist(host,id,title,when,items,period){
+ const key='hq-'+id+'-'+period;const st=store(key)||{};
+ const c=document.createElement('div');c.className='card';
+ c.innerHTML='<h3>'+esc(title)+' <span class="when">'+esc(when)+'</span><span class="cnt"></span></h3><div class="bar"><i></i></div><ul class="chk">'+items.map((x,i)=>'<li><label><input type="checkbox" data-i="'+i+'"'+(st[i]?' checked':'')+'><span>'+esc(x)+'</span></label></li>').join('')+'</ul><button class="reset">Clear</button>';
+ const upd=()=>{const n=Object.values(st).filter(Boolean).length;c.querySelector('.cnt').textContent=n+' / '+items.length;c.querySelector('.bar i').style.width=(100*n/items.length)+'%'};
+ c.querySelectorAll('input').forEach(i=>i.onchange=()=>{st[i.dataset.i]=i.checked;store(key,st);upd()});
+ c.querySelector('.reset').onclick=()=>{for(const k in st)delete st[k];store(key,st);c.querySelectorAll('input').forEach(i=>i.checked=false);upd()};
+ upd();host.appendChild(c);
+}
+const o0=sav(),today=o0.year+'-'+o0.month+'-'+o0.day;
+const d0=new Date(+o0.year,+o0.month-1,+o0.day);const fri=new Date(d0);fri.setDate(d0.getDate()-((d0.getDay()+2)%7));const wk=fri.toISOString().slice(0,10);
+const D=$('#daily');
+checklist(D,'am','Before dispatch','30 min · start of day',[
+ "Review today's appointments, import LFDs, empty-return deadlines and export cutoffs",
+ 'Check container availability and holds on WebAccess before sending a truck',
+ 'Confirm release/PIN, booking, terminal, size/type, weight and the right chassis',
+ 'Confirm every driver, tractor and chassis is legal to dispatch (CDL, med card, inspection, Clearinghouse)',
+ 'Check hours of service against the whole planned day, not just the first trip',
+ 'Confirm the empty-return location will accept the box before dispatching the empty',
+ 'Outside carriers: tender accepted and approved through America 1 carrier setup',
+ "Clear yesterday's leftovers: open moves, missing EIRs/PODs, yard count mismatches, unresolved charges",
+ 'Put an owner and a recovery plan on every red item'],today);
+checklist(D,'mid','Midday recovery','around noon',[
+ 'Compare gate events, GPS and driver updates against the plan',
+ 'Escalate any predicted miss before the appointment is missed',
+ 'Reassign LFD-today containers and empty returns that are falling behind',
+ 'Log detention start times, port delays, chassis splits, dry runs and pre-pulls',
+ 'Get written approval for accessorials where the customer requires it',
+ 'Send affected customers a revised ETA and a recovery plan',
+ 'Re-check terminal notices and empty-return instructions before late-day moves'],today);
+checklist(D,'pm','End of day','close the loops',[
+ 'Match every dispatch leg to gate events, EIRs, PODs and yard records',
+ "Confirm each container's physical location and who is responsible for it",
+ 'Keep equipment exposure open until the empty-in EIR is received',
+ 'Finish accessorial records and submit every invoice-ready load',
+ "Check tomorrow's coverage (target 95% covered by 3 pm), appointments and equipment",
+ 'Leave every open issue with an owner, next action and due time',
+ 'Send Richard the recap: done, missed, money at risk, money ready to bill, tomorrow\'s constraints'],today);
+
+const W=$('#weekly');
+checklist(W,'wk','Friday review','week of '+wk,[
+ 'Profitability: margin by customer, lane, truck, owner-operator, dispatcher and agency load; flag underpriced work',
+ 'Service: late moves, failed pickups, preventable dry runs, complaints, how well recovery worked',
+ 'Equipment: GPS vs physical count, chassis idle time, overdue returns, PM schedule, inspection expirations',
+ 'Billing: completed-but-unbilled loads, rejected accessorials, missing documents, disputed invoices',
+ 'Cash: A/R aging, who is collecting what, settlements, fuel, 30-day cash forecast',
+ 'Short-pays: every America 1 chargeback disputed or explained',
+ 'Compliance: 60/30/14/7-day expirations, random testing, Clearinghouse queries, DQ files, filing calendar',
+ "Agency controls: carrier verification exceptions, changed payment instructions (fraud check), claims, America 1 reconciliation",
+ 'Data quality: missing deadlines, duplicate containers, unmatched gate transactions, loads closed too early',
+ 'Improvement: one recurring failure, its cause, a measurable fix and an owner'],wk);
+
+/* apps */
+function tiles(id,arr){$(id).innerHTML=arr.map(a=>'<a class="tile" href="'+a[3]+'" target="_blank" rel="noopener"><div class="k">'+esc(a[0])+'</div><div class="n">'+esc(a[1])+'</div><div class="d">'+esc(a[2])+'</div></a>').join('')}
+tiles('#appsRun',[
+ ['2FF + 1 Stop','DockRelay','Yard app, Carter, Decisions, Growth','/'],
+ ['America 1 TMS','TruckMan','Loads, A/R aging, settlements','https://www.truckman3.com/operations/index.jsp'],
+ ['Port of Savannah','GPA','WebAccess, gate notices, holidays','https://gaports.com'],
+ ['Phones','RingCentral','Calls, texts, team chat','https://app.ringcentral.com'],
+ ['Email','Gmail','rp@2f-logistics.com','https://mail.google.com'],
+ ['Gate','Yard check-in','Driver gate check-in form','/gate/'],
+ ['Hiring','Careers page','Open jobs (public)','/jobs/'],
+ ['Research','Perplexity','Deep research','https://www.perplexity.ai']]);
+tiles('#appsComp',[
+ ['FMCSA','SAFER lookup','America 1 / carrier snapshot','https://safer.fmcsa.dot.gov'],
+ ['FMCSA','Drug & Alcohol Clearinghouse','Pre-employment + annual queries','https://clearinghouse.fmcsa.dot.gov'],
+ ['UCR','Unified Carrier Registration','Annual — due before Jan 1','https://plan.ucr.gov'],
+ ['FMCSA','Registration portal','MCS-150 / USDOT updates','https://www.fmcsa.dot.gov/registration']]);
+tiles('#appsMoney',[
+ ['Books','QuickBooks Online','2FF and 1 Stop books','https://qbo.intuit.com'],
+ ['Business credit','Nav','D&B, Experian, Equifax files','https://app.nav.com'],
+ ['D-U-N-S 12-496-1498','Dun & Bradstreet','Profile manager','https://my.dnb.com'],
+ ['Entities','Wyoming LLC Attorney','2FF, 1 Stop, IronBridge filings','https://app.wyomingllcattorney.com']]);
+tiles('#appsClaude',[
+ ['Start page','Richard\'s Start Here','Every app and document','https://claude.ai/artifact/JocSo7LSknY4CTqY27S4y6'],
+ ['Hubs','Claude projects','2FF Ops, Yard, Money, Legal…','https://claude.ai/projects'],
+ ['All chats','Recents','Newest first','https://claude.ai/recents'],
+ ['All pages','Artifacts','Plans, tools, reports','https://claude.ai/code/artifacts']]);
+
+/* deadlines, computed */
+function nextOf(list){const t=d0.getTime();return list.map(s=>new Date(s+'T00:00:00')).filter(d=>d.getTime()>=t).sort((a,b)=>a-b)[0]}
+function bizDay(d){d=new Date(d);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return d}
+const Y=d0.getFullYear(),f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+const iftaRaw=nextOf([Y+'-01-31',Y+'-04-30',Y+'-07-31',Y+'-10-31',(Y+1)+'-01-31']);
+const iftaQ={0:'Q4',3:'Q1',6:'Q2',9:'Q3'}[iftaRaw.getMonth()];const ifta=bizDay(iftaRaw);
+const rows=[
+ {d:nextOf([Y+'-12-01',(Y+1)+'-12-01']),r:'UCR registration (internal target)',o:'America 1 (confirm; 2FF too if it holds its own authority)',a:'Pay UCR for next year by Dec 1. The legal deadline is Jan 1. Keep the receipt and check the fleet-size bracket.'},
+ {d:ifta,r:'IFTA '+iftaQ+' return',o:'Whoever holds the IFTA license (America 1 for leased trucks, confirm)',a:'Reconcile miles and fuel weekly, close the quarter by the 15th. A return is due even with zero miles.'},
+ {d:new Date(Y+'-12-31T00:00:00')<d0?new Date((Y+1)+'-12-31T00:00:00'):new Date(Y+'-12-31T00:00:00'),r:'Random drug & alcohol testing — year end',o:'2FF safety (Julia) + consortium / C-TPA',a:'Year minimums: 50% drug, 10% alcohol. Check the roster, selections and completed tests.'},
+ {d:new Date('2027-07-01T00:00:00'),r:'MCS-150 biennial update (USDOT 2164657)',o:'America 1',a:'Odd-year July (last digit 7, next-to-last 5). FMCSA has paused enforcement during the Motus move; watch for a new date. Update within 30 days of any change.'},
+ {d:new Date('2027-08-01T00:00:00'),r:'Wyoming annual report — 2FF Logistics LLC',o:'2FF (Richard)',a:'File through Wyoming LLC Attorney. Fix the principal address (still shows Pooler) at the same time.'}
+].sort((a,b)=>a.d-b.d);
+$('#dl').innerHTML=rows.map(x=>{const n=Math.round((x.d-d0)/864e5);const c=n<0?'p-bad':n<=14?'p-bad':n<=30?'p-warn':n<=60?'p-warn':'p-ok';return '<tr><td class="t">'+f(x.d)+'</td><td><b>'+esc(x.r)+'</b></td><td class="who">'+esc(x.o)+'</td><td>'+esc(x.a)+'</td><td><span class="pill '+c+'">'+(n<0?Math.abs(n)+'d late':n===0?'today':n+' days')+'</span></td></tr>'}).join('')+
+ '<tr><td class="t">per driver</td><td><b>CDL, medical card, TWIC, annual MVR review, Clearinghouse annual query</b></td><td class="who">2FF safety (Julia)</td><td>Block dispatch on anything expired. The Clearinghouse runs on a 365-day cycle.</td><td><span class="pill p-mut">in DockRelay</span></td></tr>'+
+ '<tr><td class="t">per unit</td><td><b>Annual inspection: tractor and chassis/trailer</b></td><td class="who">2FF maintenance</td><td>Every 12 months. Keep the report on the vehicle and the record for 14 months. Block expired equipment.</td><td><span class="pill p-mut">in DockRelay</span></td></tr>';
+
+/* KPIs */
+const k1=[['On-time pickup / delivery','Appointments met ÷ due (pickup and delivery tracked separately)','≥ 98%'],
+['Tomorrow\'s coverage','Tomorrow\'s moves with an accepted driver or carrier','≥ 95% by 3 pm; 100% before release'],
+['Truck utilization','Dispatched truck-days ÷ available staffed truck-days','≥ 90%'],
+['Port turn time','Gate-in to gate-out','Median ≤ 60 min · 90th percentile ≤ 120 min'],
+['Deadhead','Empty miles ÷ total miles','≤ 20%'],
+['LFD execution','Available imports picked up by verified LFD','100%'],
+['Empty returns on time','Returned by free-time deadline','100%'],
+['Avoidable demurrage / per diem','Charges from preventable misses','$0'],
+['Chassis visibility','Chassis with known location and owner','100%'],
+['Status freshness','Active moves with a current ETA','≥ 98% (stale > 30 min = red)'],
+['Dispatch eligibility','Drivers/units passing the legal checklist','100%; zero overrides']];
+const k2=[['Company-truck margin','Revenue − driver pay, fuel, tolls, chassis, direct costs','Positive every load; ≥ 20% weekly'],
+['Owner-operator margin','Revenue − O/O settlement − carrier-paid costs','≥ 15%'],
+['Outside-carrier margin','Revenue − purchased transportation','≥ 15% (within America 1 pricing policy)'],
+['Agency commission','Commission from America 1 − agency costs','Track separately; meet the budget'],
+['Accessorial capture','Billable events actually billed','≥ 98%, same day'],
+['POD / EIR complete','Completed moves with documents attached','≥ 98% same day; 100% in 24 hrs'],
+['Invoice readiness','Completed loads ready to bill in 1 business day','≥ 95%'],
+['Unbilled aging','Completed loads not yet billed','None older than 2 business days'],
+['Receivables','Days to collect vs. terms','Terms + ≤ 5 days; chase anything 15+ days late'],
+['Settlement accuracy','Correct driver/carrier settlements','≥ 99.5%'],
+['Carrier verification','Loads on an approved, current carrier','100% before tender']];
+const kt=a=>a.map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+esc(r[1])+'</td><td class="t">'+esc(r[2])+'</td></tr>').join('');
+$('#k1').innerHTML=kt(k1);$('#k2').innerHTML=kt(k2);
+</script>
+</body>
+</html>
