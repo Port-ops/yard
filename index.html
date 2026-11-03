@@ -3910,9 +3910,10 @@ function grStudy(b,s){const B=s.body||s;if(B.headline)b.append(el('div','grLead'
   grProps(b,B.proposals);grList(b,'Data Carter is missing',B.missing_data);grCites(b,s.citations)}
 function grBox(key,title,items,draw,empty){const n=items.length;return grDet('grBox','box:'+key,[el('span','',title),el('span','grN',String(n))],b=>{
   if(!n){b.append(el('div','grEmpty',empty));return}items.forEach(draw.bind(null,b))})}
+let GRD=null,GR_ERR='',GR_BUSY=false;
+function loadGR(){if(!Y().call||GR_BUSY)return;GR_BUSY=true;Y().call('getBrain',[{part:'growth'}]).then(g=>{GR_BUSY=false;if(g&&(g.lessons||g.research||g.money)){GRD=g;GR_ERR='';GR_SIG=''}else GR_ERR='Growth data is not switched on at the server yet.';renderGR()}).catch(()=>{GR_BUSY=false;GR_ERR='Could not load right now. Tap Refresh.';renderGR()})}
 function renderGR(){if(grSec.hidden)return;const M=$('grMsg'),B=$('grBody');
-  if(!BR){M.textContent='Could not load right now. Tap Refresh.';return}
-  const G=BR.growth;if(!G){M.textContent='Growth data is not switched on at the server yet.';B.textContent='';GR_SIG='';return}
+  const G=GRD;if(!G){M.textContent=GR_ERR||'Loading…';if(!GR_BUSY&&!GR_ERR)loadGR();return}
   const sig=JSON.stringify([G.money,G.lessons,G.research,G.checks].map(a=>(a||[]).map(x=>[x.id,x.at,x.status,x.answered_at])));
   M.textContent='Updated '+grFmt(Date.now());if(sig===GR_SIG&&B.children.length)return;GR_SIG=sig;B.textContent='';
   const byNew=(a,k)=>(a||[]).slice().sort((x,y)=>String(y[k]||y.at||'').localeCompare(String(x[k]||x.at||'')));
@@ -3929,8 +3930,8 @@ function renderGR(){if(grSec.hidden)return;const M=$('grMsg'),B=$('grBody');
       if(r.answer){const a=el('div','grAns');a.append(grLinkify(r.answer));d.append(a)}else d.append(el('div','grEmpty','No answer yet.'));grCites(d,r.sources)}))},'No research answers yet.'));
   B.append(grBox('checks','Did it work?',byNew(G.checks,'at'),(b,c)=>{b.append(grDet('grIt','c:'+c.id,[el('span','',grStr(c.title)||'Check'),el('span',grStCls(c.status),c.status||'')],d=>{
       d.append(el('div','t',grFmt(c.at)));if(c.why){const w=el('div');w.append(grLinkify(grStr(c.why)));d.append(w)}}))},'No results checked yet. Carter checks the numbers after an approved idea has had time to work.'))}
-$('grRef').addEventListener('click',()=>{$('grMsg').textContent='Loading…';GR_SIG='';loadBR()});
-try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)){if(!BR)loadBR();else renderGR()}}).observe(grSec)}catch(e){}
+$('grRef').addEventListener('click',()=>{$('grMsg').textContent='Loading…';GR_SIG='';GR_ERR='';loadGR()});
+try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)){if(!GRD)loadGR();else renderGR()}}).observe(grSec)}catch(e){}
 function grInit(){try{if(!roles().length)return setTimeout(grInit,3000);grSec.hidden=!fcCan();try{tabVis()}catch(e){}try{renderGR()}catch(e){}}catch(e){setTimeout(grInit,5000)}}grInit();
 const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
 // ---------- 3. bottom tab bar ----------
