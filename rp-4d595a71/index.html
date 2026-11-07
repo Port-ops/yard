@@ -145,7 +145,8 @@ footer{font-size:12px;color:var(--mut);text-align:center;padding-block:0 calc(90
 <main class="wrap" id="app" hidden>
 <section id="apps"></section><section id="today" hidden></section><section id="deadlines" hidden></section>
 <section id="kpis" hidden></section><section id="port" hidden></section><section id="week" hidden></section>
-<p class="note" style="text-align:center;margin-top:28px">Private · only rp@ with your authenticator · Carter learns from your check-offs <button class="reset" id="signout">Sign out</button></p>
+<p class="note" style="text-align:center;margin-top:28px">Private · only rp@ with your authenticator · Carter learns from your check-offs <button class="reset" id="signout">Sign out</button> <button class="reset" id="chauth">Change authenticator app</button></p>
+<div id="authbox" hidden style="max-width:420px;margin:12px auto 40px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:10px;text-align:left"></div>
 </main>
 <script type="module">
 import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
@@ -183,6 +184,29 @@ async function gate(){
   $('#go').onclick=go;$('#code').onkeydown=e=>{if(e.key==='Enter')go()};$('#out').onclick=async()=>{await sb.auth.signOut();$('#lockMsg').textContent='Private. Sign in as rp@2f-logistics.com';gate()};$('#code').focus();return}
  load()}
 $('#signout').onclick=async()=>{await sb.auth.signOut();location.reload()};
+/* Move the HQ / DockRelay Finance sign-in code to a different authenticator app.
+   Richard does it himself while signed in: scan a new QR with the new app, type its code, then the old app stops working. */
+$('#chauth').onclick=async()=>{const box=$('#authbox');box.hidden=false;box.innerHTML='<b>Change authenticator app</b><p class="note" style="margin:0">Setting up the new app…</p>';
+ try{
+  const {data:f}=await sb.auth.mfa.listFactors();
+  for(const x of (f&&f.all||[]).filter(x=>x.factor_type==='totp'&&x.status!=='verified')){try{await sb.auth.mfa.unenroll({factorId:x.id})}catch(e){}}
+  const {data:en,error}=await sb.auth.mfa.enroll({factorType:'totp',friendlyName:'Richard phone '+new Date().toISOString().slice(0,16)});
+  if(error)throw error;
+  box.innerHTML='<b>Change authenticator app</b>'+
+   '<ol class="note" style="margin:0;padding-left:18px"><li>Open your <b>new</b> authenticator app and tap <b>+</b> / Add account.</li><li>Scan this code (or type the setup key).</li><li>Type the 6-digit code the <b>new</b> app shows, then tap Switch.</li></ol>'+
+   '<img alt="Setup QR code" style="width:200px;height:200px;background:#fff;border-radius:10px;padding:8px;justify-self:center" src="'+en.totp.qr_code+'">'+
+   '<div class="note" style="margin:0;word-break:break-all">Setup key: <b>'+esc(en.totp.secret)+'</b> — save it somewhere offline as your backup.</div>'+
+   '<input id="newcode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code from the NEW app" class="srch" style="margin:0">'+
+   '<div style="display:flex;gap:8px"><button class="gobtn" id="doswitch">Switch</button><button class="ghost" id="cancelsw">Cancel</button></div><div class="note" id="swmsg" style="margin:0"></div>';
+  $('#cancelsw').onclick=async()=>{try{await sb.auth.mfa.unenroll({factorId:en.id})}catch(e){}box.hidden=true};
+  $('#doswitch').onclick=async()=>{const m=$('#swmsg');m.textContent='Checking…';
+   const {error:ve}=await sb.auth.mfa.challengeAndVerify({factorId:en.id,code:$('#newcode').value.trim()});
+   if(ve){m.textContent=ve.message+' — make sure you typed the code from the NEW app.';return}
+   const {data:f2}=await sb.auth.mfa.listFactors();
+   for(const x of (f2&&f2.totp||[]).filter(x=>x.status==='verified'&&x.id!==en.id)){const {error:ue}=await sb.auth.mfa.unenroll({factorId:x.id});if(ue){m.textContent='New app works, but the old one could not be removed: '+ue.message;return}}
+   box.innerHTML='<b>Done ✓</b><p class="note" style="margin:0">From now on use the <b>new</b> app for HQ and the DockRelay Finance tab. The old app’s code no longer works here. Keep it until you have moved your other accounts off it.</p>';};
+ }catch(e){box.innerHTML='<b>Could not start</b><p class="note" style="margin:0">'+esc(e.message||e)+'. Sign out, sign back in with your current app, then try again.</p>'}};
+
 
 let DOC=null,CH={},BR=[],DW=0;
 async function load(){const {data,error}=await sb.rpc('hq_get',{p_day:TODAY,p_week:WEEK});
