@@ -245,12 +245,14 @@ function renderLaunch(){const L=DOC.launch;if(!L){$('#apps').innerHTML='<div cla
  h+='<h2>Library <small>Carter keeps this current</small></h2><div class="chips" id="lfilt">'+['All','Operations','Money','Company'].map(f=>'<button class="chip'+(f===LFILT?' on':'')+'">'+f+'</button>').join('')+'</div><div class="lib" id="llib"></div>';
  $('#apps').innerHTML=h;drawLib();wireLaunch()}
 function drawLib(){$('#llib').innerHTML=DOC.launch.library.filter(x=>LFILT==='All'||x[2]===LFILT).map(x=>'<a '+la(x[1])+' data-k="'+esc(x[3])+'">'+esc(x[0])+'<span>'+esc(x[3])+'</span></a>').join('')}
+const hqlog=(k,l,u)=>{try{sb.rpc('hq_log',{p_kind:k,p_label:l||'',p_url:u||null}).then(()=>{},()=>{})}catch(e){}};
 function wireLaunch(){const L=DOC.launch,ta=$('#lprompt');
+ $('#apps').addEventListener('click',e=>{const a=e.target.closest('a.pinx,a.tile,#llib a,#lres a[href]:not([href="#"])');if(!a)return;const u=(a.getAttribute('href')||'').replace('claude://','https://');const t=((a.querySelector('.n')||a.querySelector('div')||a).firstChild||{}).textContent||'';hqlog('open',t,u)},{once:false});
  try{ta.value=localStorage.getItem('hq-draft')||''}catch(e){}
  ta.oninput=()=>{try{localStorage.setItem('hq-draft',ta.value)}catch(e){}};
  const say=t=>{$('#lmsg').textContent=t;setTimeout(()=>{if($('#lmsg'))$('#lmsg').textContent=''},6000)};
- $('#ltpl').onclick=e=>{const b=e.target.closest('button');if(!b)return;ta.value=L.templates[+b.dataset.i][2];ta.oninput();ta.focus()};
- const open=()=>{const v=ta.value.trim();if(v.length>8000){copy();say('Long prompt — copied. Paste it into Claude.');return}
+ $('#ltpl').onclick=e=>{const b=e.target.closest('button');if(!b)return;hqlog('template',L.templates[+b.dataset.i][0]);ta.value=L.templates[+b.dataset.i][2];ta.oninput();ta.focus()};
+ const open=()=>{const v=ta.value.trim();hqlog('ask','open in claude');if(v.length>8000){copy();say('Long prompt — copied. Paste it into Claude.');return}
    const h=cURL('https://claude.ai/new'+(v?'?q='+encodeURIComponent(v):''));if(h.startsWith('claude://')){location.href=h;say('Opening the Claude app. If nothing happens, tap Desktop app ✓ to switch to Browser.')}else{window.open(h,'_blank','noopener');say('Opened Claude with your draft — review and send.')}};
  const copy=()=>{const v=ta.value;if(!v)return say('Nothing to copy yet.');(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>say('Copied.'),()=>{ta.select();say('Press ⌘/Ctrl C to copy.')})};
  $('#lgo').onclick=open;$('#lcopy').onclick=copy;ta.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();open()}};
@@ -262,6 +264,7 @@ function wireLaunch(){const L=DOC.launch,ta=$('#lprompt');
  const q=$('#lsrch'),r=$('#lres');
  q.oninput=()=>{const s=q.value.trim().toLowerCase();if(!s){r.hidden=true;return}
   const hits=idx.map(it=>({it,v:sc(it,s)})).filter(x=>x.v).sort((a,b)=>b.v-a.v).slice(0,7).map(x=>x.it);
+  clearTimeout(q._m);if(!hits.length&&s.length>=3)q._m=setTimeout(()=>hqlog('search_miss',s),2500);
   r.innerHTML=hits.map((x,i)=>x.tpl!=null?'<a href="#" data-tpl="'+x.tpl+'">'+esc(x.t)+'<span>Prompt</span></a>':'<a '+la(x.u)+'>'+esc(x.t)+'<span>'+esc(x.k)+'</span></a>').join('')+'<a href="#" data-ask="1">Ask Claude: “'+esc(q.value.trim())+'”<span>Claude</span></a>';r.hidden=false};
  r.onclick=e=>{const a=e.target.closest('a');if(!a)return;if(a.dataset.tpl!=null){e.preventDefault();ta.value=L.templates[+a.dataset.tpl][2];ta.oninput();ta.focus();r.hidden=true;q.value=''}else if(a.dataset.ask){e.preventDefault();ta.value=q.value.trim();ta.oninput();open()}};
  q.onkeydown=e=>{if(e.key==='Enter'){const a=r.querySelector('a');if(a){e.preventDefault();a.click()}}};
