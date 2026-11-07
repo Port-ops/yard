@@ -81,6 +81,7 @@ footer{font-size:12px;color:var(--mut);text-align:center;padding-block:0 calc(90
 #lock[hidden]{display:none}
 @media (min-width:1000px){
  .wrap{max-width:1180px}
+ nav.tabs button{font-size:11.5px}nav.tabs button svg{width:24px;height:24px}
  .grid{grid-template-columns:repeat(4,minmax(0,1fr))}
  .lib{grid-template-columns:repeat(4,minmax(0,1fr))}
  .cols{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -192,7 +193,7 @@ async function load(){const {data,error}=await sb.rpc('hq_get',{p_day:TODAY,p_we
 const tabs=[...document.querySelectorAll('#tabs button')];
 function show(t){if(!document.getElementById(t)||t==='app')t='today';tabs.forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('#app>section').forEach(s=>s.hidden=s.id!==t);try{localStorage.setItem('hq-tab',t)}catch(e){}}
 tabs.forEach(b=>b.onclick=()=>{show(b.dataset.t);history.replaceState(null,'','#'+b.dataset.t);scrollTo(0,0)});
-let start='apps';try{start=location.hash.slice(1)||localStorage.getItem('hq-tab')||'apps'}catch(e){}show(start);
+let start='apps';try{start=location.hash.slice(1)||'apps'}catch(e){}show(start);
 
 const tiles=a=>'<div class="grid">'+a.map(x=>'<a class="tile" href="'+esc(x[3])+'" target="_blank" rel="noopener"><div class="k">'+esc(x[0])+'</div><div class="n">'+esc(x[1])+'</div><div class="d">'+esc(x[2])+'</div></a>').join('')+'</div>';
 function list(L){const per=L.period==='week'?WEEK:TODAY;const c=mk('div',{class:'card'});
