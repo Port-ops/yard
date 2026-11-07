@@ -102,9 +102,9 @@ footer{font-size:12px;color:var(--mut);text-align:center;padding-block:0 calc(90
 .chip.on{background:var(--acc);color:#0d1117;border-color:var(--acc)}
 .gobtn{font:700 15px Lato,sans-serif;border:0;background:var(--acc);color:#0d1117;border-radius:12px;padding:12px 16px;min-height:46px;cursor:pointer}
 .ghost{font:600 14px Lato,sans-serif;border:1px solid var(--line);background:none;color:var(--ink);border-radius:12px;padding:10px 14px;min-height:46px;cursor:pointer}
-.lib{display:grid;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.lib a{display:flex;justify-content:space-between;gap:8px;padding:11px 14px;border-top:1px solid var(--line);text-decoration:none;min-height:46px;align-items:center}
-.lib a:first-child{border-top:0}
+.lib{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lib a{display:flex;flex-direction:column-reverse;justify-content:flex-end;gap:6px;text-decoration:none;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--kc,var(--acc));border-radius:14px;padding:11px 12px;min-height:80px;font-weight:700;line-height:1.2;overflow-wrap:anywhere;min-width:0}
+.lib a[data-k="App"]{--kc:var(--ok)}.lib a[data-k="Hub"],.lib a[data-k="Claude"]{--kc:#e0835f}
 
 #lock .box{width:100%;max-width:320px;text-align:center;display:grid;gap:14px;justify-items:center}
 #lock p{color:var(--mut);margin:0;font-size:14px}
@@ -236,7 +236,7 @@ function renderLaunch(){const L=DOC.launch;if(!L){$('#apps').innerHTML='<div cla
  h+='<h2>Claude hubs <small>start the chat inside one — filed automatically</small></h2><div class="grid">'+L.hubs.map(x=>'<a class="tile" '+la(x[1])+'><div class="k">+ chat</div><div class="n">'+esc(x[0])+'</div></a>').join('')+'</div>';
  h+='<h2>Library <small>Carter keeps this current</small></h2><div class="chips" id="lfilt">'+['All','Operations','Money','Company'].map(f=>'<button class="chip'+(f===LFILT?' on':'')+'">'+f+'</button>').join('')+'</div><div class="lib" id="llib"></div>';
  $('#apps').innerHTML=h;drawLib();wireLaunch()}
-function drawLib(){$('#llib').innerHTML=DOC.launch.library.filter(x=>LFILT==='All'||x[2]===LFILT).map(x=>'<a '+la(x[1])+'>'+esc(x[0])+'<span>'+esc(x[3])+'</span></a>').join('')}
+function drawLib(){$('#llib').innerHTML=DOC.launch.library.filter(x=>LFILT==='All'||x[2]===LFILT).map(x=>'<a '+la(x[1])+' data-k="'+esc(x[3])+'">'+esc(x[0])+'<span>'+esc(x[3])+'</span></a>').join('')}
 function wireLaunch(){const L=DOC.launch,ta=$('#lprompt');
  try{ta.value=localStorage.getItem('hq-draft')||''}catch(e){}
  ta.oninput=()=>{try{localStorage.setItem('hq-draft',ta.value)}catch(e){}};
