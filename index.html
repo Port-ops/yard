@@ -3643,7 +3643,7 @@ ntSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
-function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab();try{renderGR()}catch(e){console.warn('growth',e)}}).catch(()=>{brSec.hidden=true;camSec.hidden=true;BR=null;try{renderGR()}catch(e){}try{renderDC([])}catch(e){}})}
+function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab();try{renderGR()}catch(e){console.warn('growth',e)}}).catch(err=>{if(BR)return;brSec.hidden=false;camSec.hidden=true;try{$('brAsof').textContent='Carter could not load: '+((err&&err.message)||String(err)).slice(0,200)+'. Retrying every 30 seconds.';$('cxBody').textContent=''}catch(x){}BR=null;try{renderGR()}catch(e){}try{renderDC([])}catch(e){}})}
 // photos for the alert cards: newest 40 flagged photos (after-hours / not logged); cam-learn v7 adds alert_urls for all open alerts
 let CAMF={},camFT=0;function loadCamFlags(){if(!Y().call||Date.now()-camFT<5*60e3)return;camFT=Date.now();Y().call('getCams',[{limit:40,only:'flags'}]).then(d=>{(d.photos||[]).forEach(p=>{if(p.url)CAMF[String(p.id)]=p.url});Object.assign(CAMF,d.alert_urls||{});renderCamTab()}).catch(()=>{camFT=0})}
 function loadCams(){if(!Y().call)return;Y().call('getCams',[{limit:40}]).then(d=>{CAM=d;renderCamTab();if(cxT()==='brief')renderBR()}).catch(e=>{CAM={error:(e&&e.message)||String(e)};renderCamTab()})}
