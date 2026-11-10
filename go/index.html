@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2FF Logistics · Savannah Drayage</title>
+<meta name="description" content="2FF Logistics, Port of Savannah container drayage and intermodal. Drive with us, lease on as an owner-operator, or get a drayage quote.">
+<link rel="canonical" href="https://yard.2f-logistics.com/go/">
+<link rel="icon" href="/icon-192.png">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<meta property="og:title" content="2FF Logistics · Savannah Drayage">
+<meta property="og:description" content="Drive with us, lease on, or get a Port of Savannah drayage quote.">
+<meta property="og:image" content="https://yard.2f-logistics.com/social/fleet/cascadia-container.jpg">
+<style>
+:root{--navy:#1F2A5C;--red:#C8102E;--ink:#1f2933;--mut:#5b6474;--line:#e3e6ee;--bg:#f4f5f8;--card:#fff;--ok:#1F6B29}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Lato,system-ui,-apple-system,Segoe UI,Arial,sans-serif;-webkit-text-size-adjust:100%}
+a{color:var(--navy)}
+.hero{background:linear-gradient(180deg,rgba(31,42,92,.55),rgba(31,42,92,.92)),url(/social/fleet/cascadia-container.jpg) center 40%/cover;color:#fff;border-bottom:5px solid var(--red)}
+.w{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hero .w{padding-block:34px 26px}
+.brand{font:600 15px/1 Oswald,Arial Narrow,sans-serif;letter-spacing:1.5px;text-transform:uppercase;opacity:.85}
+h1{font:600 38px/1.05 Oswald,Arial Narrow,sans-serif;text-transform:uppercase;margin:10px 0 8px;text-wrap:balance}
+.sub{margin:0;opacity:.92}
+main .w{padding-block:20px 40px;display:flex;flex-direction:column;gap:14px}
+.door{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-left:6px solid var(--navy);border-radius:12px;padding:18px;text-decoration:none;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.door:hover,.door:focus-visible{border-left-color:var(--red);outline:none;box-shadow:0 3px 10px rgba(31,42,92,.12)}
+.door b{display:block;font:600 22px/1.15 Oswald,Arial Narrow,sans-serif;text-transform:uppercase;color:var(--navy)}
+.door span{display:block;color:var(--mut);font-size:15px}
+.door i{margin-left:auto;font-style:normal;font:600 26px Oswald,sans-serif;color:var(--red)}
+.door .ic{flex:0 0 46px;height:46px;border-radius:10px;background:#eef0f7;display:grid;place-items:center;font-size:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.card[hidden]{display:none!important}
+h2{font:600 22px/1.2 Oswald,Arial Narrow,sans-serif;text-transform:uppercase;color:var(--navy);margin:0 0 6px}
+label{display:block;font-weight:700;font-size:14px;margin:12px 0 5px}
+label .h{font-weight:400;color:var(--mut)}
+input,select,textarea{width:100%;font:16px Lato,system-ui,sans-serif;padding:11px 12px;border:1px solid #c9cedb;border-radius:8px;background:#fff;color:var(--ink)}
+textarea{min-height:80px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.two>*{min-width:0}
+@media(max-width:420px){.two{grid-template-columns:1fr}}
+.btn{display:block;width:100%;margin-top:18px;background:var(--red);color:#fff;border:0;border-radius:10px;padding:15px;font:600 20px Oswald,Arial Narrow,sans-serif;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;text-align:center;text-decoration:none}
+.btn.alt{background:var(--navy)}
+.err{color:var(--red);font-weight:700;margin-top:10px}
+.ok{color:var(--ok);font-weight:700}
+.hp{position:absolute;left:-5000px}
+.fine{font-size:13px;color:var(--mut);margin:12px 0 0}
+footer{text-align:center;color:var(--mut);font-size:13px;padding:0 16px 30px}
+</style>
+</head>
+<body>
+<div class="hero"><div class="w">
+<div class="brand">2FF Logistics · Agency of America 1 Logistics</div>
+<h1>Port of Savannah drayage</h1>
+<p class="sub">Container drayage &amp; intermodal from our gated yard at 116 Gulfstream Rd. GA · SC · NC · FL · AL · TN.</p>
+</div></div>
+<main><div class="w">
+<a class="door" id="d-drive" href="/jobs/"><div class="ic">🚛</div><div><b>Drive for us</b><span>CDL-A company driver jobs · local &amp; regional</span></div><i>›</i></a>
+<a class="door" id="d-owner" href="/jobs/?j=owner-operator-regional-containers-america1"><div class="ic">🔑</div><div><b>Owner-operators</b><span>Lease on with America 1 Logistics</span></div><i>›</i></a>
+<a class="door" id="d-quote" href="#quote"><div class="ic">📦</div><div><b>Get a quote</b><span>Shippers &amp; brokers: Savannah containers</span></div><i>›</i></a>
+
+<form class="card" id="quote" hidden novalidate>
+<h2>Drayage quote</h2>
+<p class="fine" style="margin-top:0">Tell us the move. We answer during business hours (Mon–Sat, 6 AM–6 PM). Rather talk? Call <b>(877) 940-2647</b>.</p>
+<div class="two"><div><label for="name">Your name</label><input id="name" name="name" autocomplete="name" required></div>
+<div><label for="company">Company <span class="h">(optional)</span></label><input id="company" name="company" autocomplete="organization"></div></div>
+<div class="two"><div><label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel"></div>
+<div><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email"></div></div>
+<div class="two"><div><label for="move_type">Move</label><select id="move_type" name="move_type"><option value="">Choose…</option><option>Import</option><option>Export</option><option>Intermodal / rail</option><option>Other</option></select></div>
+<div><label for="container">Container</label><select id="container" name="container"><option value="">Choose…</option><option>20'</option><option>40'</option><option>40' HC</option><option>45'</option><option>Reefer</option><option>Flat rack / OOG</option><option>Several / mixed</option></select></div></div>
+<label for="origin_dest">Pick up → deliver to <span class="h">(terminal or city/ZIP)</span></label><input id="origin_dest" name="origin_dest" placeholder="e.g. Garden City Terminal → Atlanta 30336">
+<div class="two"><div><label for="weight_lbs">Cargo weight <span class="h">(lbs)</span></label><input id="weight_lbs" name="weight_lbs" inputmode="numeric"></div>
+<div><label for="ready_date">Ready date</label><input id="ready_date" name="ready_date" type="date"></div></div>
+<label for="hazmat"><input type="checkbox" id="hazmat" name="hazmat" style="width:auto;margin-right:8px">Hazmat</label>
+<label for="notes">Anything else <span class="h">(volume, appointments, special handling)</span></label><textarea id="notes" name="notes"></textarea>
+<input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+<button class="btn" type="submit">Send my quote request</button>
+<div class="err" id="qerr" role="alert"></div>
+<p class="fine">Don't post container numbers or bookings publicly. We use your details only to answer this request.</p>
+</form>
+<div class="card ok" id="thanks" hidden>Thanks, we have it. Someone from 2FF will call or email you shortly. Need it now? Call (877) 940-2647.</div>
+
+<a class="btn alt" href="tel:+18779402647">Call (877) 940-2647</a>
+</div></main>
+<footer>2FF Logistics LLC · 116 Gulfstream Rd, Savannah, GA 31408 · An agency of America 1 Logistics</footer>
+<script>
+(function(){
+var q=new URLSearchParams(location.search),src=(q.get('src')||q.get('utm_source')||q.get('ref')||'').replace(/[^a-z0-9_-]/gi,'').slice(0,40)||'go',t0=Date.now();
+function add(a){var u=new URL(a.getAttribute('href'),location.href);u.searchParams.set('ref',src);a.href=u.pathname+u.search}
+add(document.getElementById('d-drive'));add(document.getElementById('d-owner'));
+var f=document.getElementById('quote'),err=document.getElementById('qerr'),ty=document.getElementById('thanks');
+function open(){f.hidden=false;f.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){document.getElementById('name').focus()},300)}
+document.getElementById('d-quote').addEventListener('click',function(e){e.preventDefault();open()});
+if(location.hash==='#quote')open();
+f.addEventListener('submit',function(e){e.preventDefault();err.textContent='';
+ var o={t:Date.now()-t0,ref:src};new FormData(f).forEach(function(v,k){o[k]=v});o.hazmat=document.getElementById('hazmat').checked;
+ if(!String(o.name||'').trim()){err.textContent='Enter your name.';return}
+ if(!String(o.phone||'').trim()&&!String(o.email||'').trim()){err.textContent='Give us a phone number or an email.';return}
+ var b=f.querySelector('button');b.disabled=true;b.textContent='Sending…';
+ fetch('https://lzwidcwiejowjhgzkcxo.supabase.co/functions/v1/quote-public',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(o)})
+  .then(function(r){return r.json()}).then(function(d){if(d.ok){f.hidden=true;ty.hidden=false;ty.scrollIntoView({block:'center'})}else{err.textContent=d.error||'Something went wrong. Call (877) 940-2647.';b.disabled=false;b.textContent='Send my quote request'}})
+  .catch(function(){err.textContent='No connection. Call (877) 940-2647.';b.disabled=false;b.textContent='Send my quote request'});
+});
+})();
+</script>
+</body>
+</html>
