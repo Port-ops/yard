@@ -1693,7 +1693,82 @@ function renderDAT(){const q=String(document.getElementById('datQ').value||'').t
   L.append(x?el('div','wfrate','Us on '+x.l+': median '+slMoney(x.med)+' over '+x.n+' quotes ('+slMoney(x.lo)+'–'+slMoney(x.hi)+')'+(x.med120?' · last 120 days '+slMoney(x.med120):'')+'. Compare with DAT\'s lane rate.'):el('div','meta','No quote history for '+k+' yet.'))}
 document.getElementById('datQ').addEventListener('input',renderDAT);
 document.getElementById('datC').addEventListener('click',e=>{const q=String(document.getElementById('datQ').value||'').trim();try{navigator.clipboard.writeText('Savannah, GA → '+q);e.target.textContent='Copied ✓'}catch(x){}});
-function renderSL(){[fwSec,qtSec,imSec,lnSec,rsSec,datSec].forEach(s=>s.hidden=!slCan());if(!slCan())return;if(SL)fwSec.querySelector('#fwAsof').textContent='load requests nobody at 2FF has answered yet · updated '+slDate(new Date(SL.at).getTime());renderFW();renderQT();renderIM();try{renderLN();renderLMV()}catch(e){}}
+function renderSL(){[fwSec,qtSec,imSec,lnSec,rsSec,datSec,lfSec].forEach(s=>s.hidden=!slCan());if(!slCan())return;if(SL)fwSec.querySelector('#fwAsof').textContent='load requests nobody at 2FF has answered yet · updated '+slDate(new Date(SL.at).getTime());renderFW();renderQT();renderIM();try{renderLF()}catch(e){console.error(e)}try{renderLN();renderLMV()}catch(e){}}
+// ===== Loads & carriers (owner 11/9/2026: "add it to dock relay where it finds the load and find the carrier, it doesn't have to just be port moves") =====
+// Carter (Supabase freight.tick, every 10 min) pulls every load request from Find Work, works out who the shipper is, and lists outside carriers near
+// the pickup from the FMCSA census with a risk score. Nothing here calls, emails or books anyone. A broker's load only goes on our own trucks;
+// an outside carrier can be picked only after it is approved (US 1 setup, insurance checked) and the shipper is confirmed direct or NVOCC.
+const lfSec=mk('lfSec','sales','loads','<h2>Loads &amp; carriers <span class="t" id="lfAsof">every load request, any lane · Carter finds carriers near the pickup every 10 minutes</span></h2>'+
+'<p class="help">Carter never calls, emails or books anyone. Call the carrier yourself, check it on SAFER, then <b>Ask US 1 to set up</b>. A carrier can be picked only after it is <b>approved</b>, and only on a load from a <b>direct shipper or NVOCC</b>. A broker\'s load goes on our own trucks only (re-brokering it is double brokering).</p>'+
+'<div class="qdTop"><button class="btn2" type="button" id="lfAddB">＋ Add a load</button><span class="t" id="lfMsg"></span></div>'+
+'<div class="vwAdd" id="lfAdd" hidden><b>Add a load</b><div class="lfG">'+
+'<input id="lfShip" placeholder="Shipper / company" style="text-transform:none"><input id="lfCon" placeholder="Contact name" style="text-transform:none"><input id="lfEm" placeholder="Contact email" style="text-transform:none">'+
+'<select id="lfKind"><option value="">Shipper type: let Carter decide</option><option value="direct">Direct shipper</option><option value="nvocc">NVOCC</option><option value="broker">Broker</option></select>'+
+'<select id="lfMode"><option value="drayage">Container (drayage)</option><option value="dry_van">Dry van</option><option value="reefer">Reefer</option><option value="flatbed">Flatbed</option><option value="power_only">Power only</option><option value="other">Other</option></select>'+
+'<input id="lfO" placeholder="Pickup city, ST (e.g. Dalton, GA)" style="text-transform:none"><input id="lfD" placeholder="Delivery city, ST" style="text-transform:none"><input id="lfDt" type="date"><input id="lfBx" type="number" min="1" placeholder="Loads / boxes"><input id="lfWt" type="number" placeholder="Weight lbs"><input id="lfSell" type="number" placeholder="Customer rate $ (optional)">'+
+'<label class="t"><input type="checkbox" id="lfHz"> Hazmat</label><input id="lfNt" placeholder="Notes" style="text-transform:none"></div>'+
+'<div class="qdAct" style="position:static"><button class="btn2 pri" type="button" id="lfGo">Add &amp; find carriers</button><button class="btn2" type="button" id="lfX">Cancel</button></div></div>'+
+'<div class="fchips" id="lfF"></div><div class="drow"><input id="lfQ" placeholder="Search shipper, city, lane, carrier" autocomplete="off" style="text-transform:none;flex:1"></div><div id="lfL"></div>');
+{const a=$('imSec');if(a&&a.parentNode)a.parentNode.insertBefore(lfSec,a);else wrap.append(lfSec)}
+{const st=el('style');st.textContent='.lfG{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin:6px 0}.lfC{border:1px solid var(--line,#e4e7e8);border-radius:12px;padding:10px 12px;margin:8px 0;background:var(--card,#fff)}.lfC h4{margin:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;cursor:pointer;font-size:15px}.lfK{display:flex;flex-direction:column;gap:6px;margin-top:8px}.lfR{border-top:1px solid var(--line,#eee);padding-top:6px;display:flex;flex-direction:column;gap:4px}.lfR .nm{font-weight:700}.lfRisk{display:inline-block;min-width:34px;text-align:center;border-radius:8px;padding:1px 6px;font-weight:700;font-size:12px;background:#e8f3ec;color:#1f6b3a}.lfRisk.m{background:#fff4e0;color:#8a5a00}.lfRisk.b{background:#fde8e8;color:#b42318}.lfFl{font-size:12px;color:#8a5a00}.lfBt{display:flex;flex-wrap:wrap;gap:6px}.lfBt .btn2{padding:4px 10px;font-size:13px}.tag.k-direct,.tag.k-nvocc{background:#e8f3ec;color:#1f6b3a}.tag.k-broker{background:#fde8e8;color:#b42318}.tag.k-unknown{background:#fff4e0;color:#8a5a00}';document.head.append(st)}
+let LFF='ready',LFQ='';const LFOPEN=new Set();
+const LFKIND={direct:'Direct shipper',nvocc:'NVOCC',broker:'Broker — own trucks only',unknown:'Shipper not confirmed'};
+const LFMODE={drayage:'Container',dry_van:'Dry van',reefer:'Reefer',flatbed:'Flatbed',power_only:'Power only',other:'Other'};
+const LFST={new:'New',searching:'Finding carriers…',carriers_found:'Carriers found',own_trucks_only:'Own trucks only',carrier_picked:'Carrier picked',quoted:'Quoted',booked:'Booked',lost:'Lost',pass:'Pass'};
+const CST={candidate:'Not set up',us1_setup_requested:'US 1 setup requested',approved:'Approved',blocked:'Blocked'};
+function lfRun(action,data,btn){if(btn){btn.disabled=true;btn.dataset.t=btn.textContent;btn.textContent='Saving…'}
+  return Y().call('salesLf',[{action,data}]).then(d=>{SL=d;renderSL();return d}).catch(e=>{if(btn){btn.disabled=false;btn.textContent=btn.dataset.t||'Try again'}const m=String((e&&e.message)||e||'');alert(/unknown|not (a )?function|not found|salesLf/i.test(m)?'These buttons switch on after the DockRelay server update is deployed (Apps Script function salesLf). Calling, emailing and SAFER links work now.':(m||'Could not save.'))})}
+function lfNote(label,action,data,btn,need){const n=prompt(label+' — add a note? (who you talked to, rate, next step)'+(need?'':' Leave blank to skip.'),'');if(n===null)return;if(need&&!n.trim())return alert('A note is required.');data.note=n.trim();lfRun(action,data,btn)}
+function lfBtn(t,fn,cls){const b=el('button','btn2'+(cls?' '+cls:''),t);b.type='button';b.addEventListener('click',e=>{e.stopPropagation();fn(b)});return b}
+function lfA(t,h){const a=el('a','btn2',t);a.href=h;a.target=/^(tel|mailto):/.test(h)?'_self':'_blank';a.rel='noopener';a.addEventListener('click',e=>e.stopPropagation());return a}
+function renderLF(){const D=(SL&&SL.lf)||{loads:[],matches:[],carriers:{}},L=lfSec.querySelector('#lfL'),R=D.loads||[],C=D.carriers||{},M={};
+  (D.matches||[]).forEach(([lid,dot,rk,st])=>{(M[lid]=M[lid]||[]).push({dot,rk,st})});
+  if(D.tick&&D.tick.at)lfSec.querySelector('#lfAsof').textContent='every load request, any lane · Carter last looked for carriers '+wfAgo(D.tick.at);
+  const grp=r=>['booked','quoted','carrier_picked'].includes(r.status)?'working':['lost','pass'].includes(r.status)?'closed':r.shipper_kind==='broker'?'own':r.shipper_kind==='unknown'?'confirm':'ready';
+  const F=[['ready','Ready to cover'],['confirm','Confirm shipper'],['own','Broker — own trucks'],['working','Picked / quoted / booked'],['closed','Lost / pass'],['all','All']];
+  slChips(lfSec.querySelector('#lfF'),F.map(([k,l])=>[k,l,k==='all'?R.length:R.filter(r=>grp(r)===k).length]),LFF,k=>{LFF=k;renderLF()});
+  const q=LFQ.toLowerCase(),rows=R.filter(r=>(LFF==='all'||grp(r)===LFF)&&(!q||[r.shipper,r.contact,r.email,r.origin,r.destination,r.notes].concat((M[r.id]||[]).map(m=>(C[m.dot]||{}).n)).join(' ').toLowerCase().includes(q)));
+  L.textContent='';if(!rows.length){L.append(el('p','muted',SL?'No loads here.':'Loading…'));return}
+  rows.forEach(r=>{const open=LFOPEN.has(r.id),c=el('div','lfC'),h=el('h4'),ms=(M[r.id]||[]).sort((a,b)=>a.rk-b.rk);
+    h.append(el('span','imchev',open?'▾':'▸'),el('span','',(r.origin||'?')+' → '+(r.destination||'?')));
+    [[LFMODE[r.mode]||r.mode,''],[LFKIND[r.shipper_kind],'k-'+r.shipper_kind],[LFST[r.status]||r.status,''],r.hazmat?['Hazmat','']:null,r.boxes?[r.boxes+' load(s)','']:null].filter(Boolean).forEach(([t,k])=>h.append(el('span','tag '+k,t)));
+    h.addEventListener('click',()=>{open?LFOPEN.delete(r.id):LFOPEN.add(r.id);renderLF()});c.append(h);
+    c.append(el('div','meta',[r.shipper,r.contact,r.email,r.pickup_date&&('pickup '+r.pickup_date),r.target_sell&&('rate $'+r.target_sell),wfAgo(r.created_at),r.source==='manual'?'added by '+(r.updated_by||'staff'):'from Find Work'].filter(Boolean).join(' · ')));
+    if(!open){if(ms.length){const t=ms.slice(0,3).map(m=>(C[m.dot]||{}).n).filter(Boolean).join(', ');c.append(el('div','meta',ms.length+' carrier(s) near pickup: '+t+(ms.length>3?'…':'')))}L.append(c);return}
+    if(r.notes)c.append(el('div','meta','Notes: '+r.notes));
+    const K=el('div','lfBt');
+    if(r.shipper_kind!=='direct')K.append(lfBtn('✔ Direct shipper',b=>lfRun('load_kind',{id:r.id,kind:'direct'},b)));
+    if(r.shipper_kind!=='nvocc')K.append(lfBtn('✔ NVOCC',b=>lfRun('load_kind',{id:r.id,kind:'nvocc'},b)));
+    if(r.shipper_kind!=='broker')K.append(lfBtn('Broker',b=>lfRun('load_kind',{id:r.id,kind:'broker'},b)));
+    [['quoted','Quoted'],['booked','Booked'],['lost','Lost'],['pass','Pass']].filter(([k])=>k!==r.status).forEach(([k,l])=>K.append(lfBtn(l,b=>lfNote(l,'load_status',{id:r.id,status:k},b,false))));
+    if(r.shipper_kind!=='broker')K.append(lfBtn('🔄 Find carriers again',b=>lfRun('research',{id:r.id},b)));
+    c.append(K);
+    const box=el('div','lfK');
+    if(r.shipper_kind==='broker')box.append(el('div','lfFl','Broker load: cover it with our own trucks only. No outside carriers.'));
+    else if(!ms.length)box.append(el('div','meta',r.status==='searching'||r.status==='new'?'Carter is looking for carriers near the pickup…':'No carriers found near the pickup.'));
+    else{if(r.shipper_kind==='unknown')box.append(el('div','lfFl','Confirm who the shipper is (Direct / NVOCC / Broker) before using an outside carrier.'));
+      ms.forEach(m=>{const k=C[m.dot]||{},x=el('div','lfR'),top=el('div');const rc=k.r>=85?'':k.r>=65?' m':' b';
+        top.append(el('span','lfRisk'+rc,String(k.r==null?'?':k.r)),document.createTextNode(' '),el('span','nm',k.n||('USDOT '+m.dot)),document.createTextNode(' · '+[k.mc,'DOT '+m.dot,k.at,k.u&&(k.u+' trucks'),k.hz?'hazmat':''].filter(Boolean).join(' · ')));
+        x.append(top);x.append(el('div','meta','Carrier: '+(CST[k.s]||k.s)+(m.st&&m.st!=='suggested'?' · this load: '+m.st:'')));
+        if(k.f&&k.f.length)x.append(el('div','lfFl','⚠ '+k.f.join(' · ')));
+        x.append(el('div','lfFl','Insurance not checked yet — check SAFER before any offer.'));
+        const B=el('div','lfBt');if(k.ph)B.append(lfA('📞 '+String(k.ph).replace(/^(\d{3})(\d{3})(\d{4})$/,'($1) $2-$3'),'tel:'+k.ph));if(k.em)B.append(lfA('✉️ Email','mailto:'+k.em));
+        B.append(lfA('🔎 SAFER','https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string='+m.dot));
+        [['called','Called'],['interested','Interested'],['declined','Declined']].filter(([s])=>s!==m.st).forEach(([s,l])=>B.append(lfBtn(l,b=>lfRun('match_status',{id:r.id,usdot:m.dot,status:s},b))));
+        if(k.s==='approved'&&['direct','nvocc'].includes(r.shipper_kind)&&m.st!=='picked')B.append(lfBtn('✅ Pick for this load',b=>lfNote('Pick '+k.n,'match_status',{id:r.id,usdot:m.dot,status:'picked'},b,false),'pri'));
+        if(k.s==='candidate')B.append(lfBtn('Ask US 1 to set up',b=>lfNote('US 1 setup for '+k.n,'carrier_status',{usdot:m.dot,status:'us1_setup_requested'},b,false)));
+        if(SL&&SL.admin&&k.s!=='approved'&&k.s!=='blocked')B.append(lfBtn('Approve (US 1 set up, insurance checked)',b=>lfNote('Approve '+k.n+' — confirm US 1 set it up and insurance is on file','carrier_status',{usdot:m.dot,status:'approved'},b,true)));
+        if(k.s!=='blocked')B.append(lfBtn('Block',b=>lfNote('Block '+k.n+' — why?','carrier_status',{usdot:m.dot,status:'blocked'},b,true)));
+        x.append(B);box.append(x)})}
+    c.append(box);L.append(c)});
+  try{subBadge('sales','loads',R.filter(r=>grp(r)==='ready'&&r.status==='carriers_found').length,false)}catch(e){}}
+lfSec.querySelector('#lfQ').addEventListener('input',e=>{LFQ=e.target.value.trim();renderLF()});
+lfSec.querySelector('#lfAddB').addEventListener('click',()=>{lfSec.querySelector('#lfAdd').hidden=false});
+lfSec.querySelector('#lfX').addEventListener('click',()=>{lfSec.querySelector('#lfAdd').hidden=true});
+lfSec.querySelector('#lfGo').addEventListener('click',e=>{const g=id=>lfSec.querySelector('#'+id),d={shipper:g('lfShip').value.trim(),contact:g('lfCon').value.trim(),email:g('lfEm').value.trim(),kind:g('lfKind').value,mode:g('lfMode').value,origin:g('lfO').value.trim(),destination:g('lfD').value.trim(),pickup:g('lfDt').value,boxes:g('lfBx').value,weight:g('lfWt').value,sell:g('lfSell').value,hazmat:g('lfHz').checked?'true':'',notes:g('lfNt').value.trim()};
+  if(!d.origin||!/,\s*[A-Za-z]{2}\b|savannah|gct|garden city/i.test(d.origin))return alert('Pickup must be "City, ST" (or Savannah / GCT).');if(!d.shipper)return alert('Add the shipper.');
+  lfRun('add_load',d,e.target).then(x=>{if(!x)return;lfSec.querySelectorAll('#lfAdd input').forEach(i=>{if(i.type==='checkbox')i.checked=false;else i.value=''});lfSec.querySelector('#lfAdd').hidden=true;LFF='all';renderLF();lfSec.querySelector('#lfMsg').textContent='Added. Carriers show up in a minute or two — tap Refresh.'})});
+
 fwSec.querySelector('#fwQ').addEventListener('input',renderFW);
 {const B=fwSec.querySelector('#fwLmBox'),T=fwSec.querySelector('#fwLmTxt'),N=fwSec.querySelector('#fwLmN');
  fwSec.querySelector('#fwLmB').addEventListener('click',()=>{B.hidden=!B.hidden;if(!B.hidden)T.focus()});fwSec.querySelector('#fwLmX').addEventListener('click',()=>{B.hidden=true});
@@ -4036,7 +4111,7 @@ tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['wee
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
 texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
-sales:[['work','Find work'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
+sales:[['work','Find work'],['loads','Loads & carriers'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['mail','Email'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
 owner:[['browser',"Carter's browser"],['notify','Notify'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
 social:[['home','Home'],['today','Approvals'],['calendar','Calendar'],['content','Content'],['hiring','Hiring'],['results','Results'],['deals','Deal scout'],['settings','Settings']],
