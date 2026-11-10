@@ -1751,13 +1751,13 @@ function renderLF(){const D=(SL&&SL.lf)||{loads:[],matches:[],carriers:{}},L=lfS
         top.append(el('span','lfRisk'+rc,String(k.r==null?'?':k.r)),document.createTextNode(' '),el('span','nm',k.n||('USDOT '+m.dot)),document.createTextNode(' · '+[k.mc,'DOT '+m.dot,k.at,k.u&&(k.u+' trucks'),k.hz?'hazmat':''].filter(Boolean).join(' · ')));
         x.append(top);x.append(el('div','meta','Carrier: '+(CST[k.s]||k.s)+(m.st&&m.st!=='suggested'?' · this load: '+m.st:'')));
         if(k.f&&k.f.length)x.append(el('div','lfFl','⚠ '+k.f.join(' · ')));
-        x.append(el('div','lfFl','Insurance not checked yet — check SAFER before any offer.'));
+        if(k.ins&&k.ins.length){k.ins.forEach((t,i)=>{const d=el('div',i===0&&k.bipd>=1000000?'meta':'lfFl',(i===0?'🛡 ':'⚠ ')+t);x.append(d)})}else x.append(el('div','lfFl','Insurance check pending (Carter checks FMCSA every 10 min) — check SAFER before any offer.'));
         const B=el('div','lfBt');if(k.ph)B.append(lfA('📞 '+String(k.ph).replace(/^(\d{3})(\d{3})(\d{4})$/,'($1) $2-$3'),'tel:'+k.ph));if(k.em)B.append(lfA('✉️ Email','mailto:'+k.em));
         B.append(lfA('🔎 SAFER','https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string='+m.dot));
         [['called','Called'],['interested','Interested'],['declined','Declined']].filter(([s])=>s!==m.st).forEach(([s,l])=>B.append(lfBtn(l,b=>lfRun('match_status',{id:r.id,usdot:m.dot,status:s},b))));
         if(k.s==='approved'&&['direct','nvocc'].includes(r.shipper_kind)&&m.st!=='picked')B.append(lfBtn('✅ Pick for this load',b=>lfNote('Pick '+k.n,'match_status',{id:r.id,usdot:m.dot,status:'picked'},b,false),'pri'));
         if(k.s==='candidate')B.append(lfBtn('Ask US 1 to set up',b=>lfNote('US 1 setup for '+k.n,'carrier_status',{usdot:m.dot,status:'us1_setup_requested'},b,false)));
-        if(SL&&SL.admin&&k.s!=='approved'&&k.s!=='blocked')B.append(lfBtn('Approve (US 1 set up, insurance checked)',b=>lfNote('Approve '+k.n+' — confirm US 1 set it up and insurance is on file','carrier_status',{usdot:m.dot,status:'approved'},b,true)));
+        if(SL&&SL.admin&&k.s!=='approved'&&k.s!=='blocked'&&k.bipd>=750000)B.append(lfBtn('Approve (US 1 set up, insurance checked)',b=>lfNote('Approve '+k.n+' — confirm US 1 set it up and insurance is on file','carrier_status',{usdot:m.dot,status:'approved'},b,true)));
         if(k.s!=='blocked')B.append(lfBtn('Block',b=>lfNote('Block '+k.n+' — why?','carrier_status',{usdot:m.dot,status:'blocked'},b,true)));
         x.append(B);box.append(x)})}
     c.append(box);L.append(c)});
