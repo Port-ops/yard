@@ -2663,8 +2663,8 @@ function liCard(){const me=Y().S&&Y().S.me,adm=!!(me&&(me.r||[]).includes('admin
   if(d.err){c.append(el('div','smW',/Unknown function|not a function|socialLinkedIn/i.test(d.err)?'Needs the next Apps Script deploy.':d.err));return c}
   const row=el('div','aiRow'),B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));row.append(b)};
   const act=(a,b)=>{b.disabled=true;const t=b.textContent;b.textContent='Working…';return Y().call('socialLinkedIn',[{action:a}]).then(r=>{if(a==='start'&&r.url){location.href=r.url;return}LIS=r;renderSMS()}).catch(e=>alert((e&&e.message)||String(e))).finally(()=>{b.disabled=false;b.textContent=t})};
-  if(!d.keys){c.append(el('div','meta','Waiting for the LinkedIn developer app keys. Until then, LinkedIn posts keep going out through the Chrome publisher.'));return c}
-  if(!d.connected){c.append(el('div','meta','Not connected yet. A 2FF page admin signs in to LinkedIn once; DockRelay then posts approved LinkedIn page posts on schedule.'));if(adm)B('Connect LinkedIn company pages','btn',b=>act('start',b));else c.append(el('div','meta','An admin connects this.'));c.append(row);return c}
+  if(!d.keys){c.append(el('div','meta','Company pages: waiting for LinkedIn to approve the company-page app (Community Management API). Page posts wait until then.'));liMeBox(c,d.me||{},adm,dt);return c}
+  if(!d.connected){c.append(el('div','meta','Not connected yet. A 2FF page admin signs in to LinkedIn once; DockRelay then posts approved LinkedIn page posts on schedule.'));if(adm)B('Connect LinkedIn company pages','btn',b=>act('start',b));else c.append(el('div','meta','An admin connects this.'));c.append(row);liMeBox(c,d.me||{},adm,dt);return c}
   const O=d.orgs||{},pg=[['2FF','2FF Logistics'],['1Stop','1 Stop Logistics']].map(([k,l])=>l+(O[k]?' ✓':' – not found')).join(' · ');
   c.append(el('div','',pg),el('div','meta','Connected by '+(d.connected_by||'an admin')+(d.connected_at?' on '+dt(d.connected_at):'')+'.'));
   const left=d.access_expires?Math.round((new Date(d.access_expires)-Date.now())/864e5):null;
@@ -2677,7 +2677,7 @@ function liCard(){const me=Y().S&&Y().S.me,adm=!!(me&&(me.r||[]).includes('admin
 function liMeBox(c,m,adm,dt){const me=Y().S&&Y().S.me,isR=!!(me&&me.n==='Richard Prescott');c.append(el('h3','','Richard\'s personal LinkedIn'));
   const row=el('div','aiRow'),go=(a,b)=>{b.disabled=true;Y().call('socialLinkedIn',[{action:a,kind:'me'}]).then(r=>{if(a==='start'&&r.url){location.href=r.url;return}LIS=r;renderSMS()}).catch(e=>alert((e&&e.message)||String(e))).finally(()=>{b.disabled=false})};
   const B=(t,cls,f)=>{const b=el('button',cls,t);b.type='button';b.addEventListener('click',()=>f(b));row.append(b)};
-  if(!m.keys){c.append(el('div','meta','Uses the same LinkedIn app keys. Facebook and Instagram stay business pages only.'));return}
+  if(!m.keys){c.append(el('div','meta','Waiting for the personal LinkedIn app keys (LINKEDIN_ME_CLIENT_ID / SECRET in Supabase). Facebook and Instagram stay business pages only.'));return}
   if(!m.connected){c.append(el('div','meta','Not connected. Richard signs in once; approved "LinkedIn (Richard)" posts then go out from his profile.'));if(isR)B('Connect my personal LinkedIn','btn',b=>go('start',b));else c.append(el('div','meta','Only Richard connects his own profile.'));c.append(row);return}
   const left=m.access_expires?Math.round((new Date(m.access_expires)-Date.now())/864e5):null;
   c.append(el('div','','Connected'+(m.member_name?' as '+m.member_name:'')+(m.connected_at?' on '+dt(m.connected_at):'')+'.'));
