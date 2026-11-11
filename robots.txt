@@ -5,4 +5,12 @@ Allow: /go/
 Allow: /legal/
 Allow: /social/
 Disallow: /
+User-agent: facebookexternalhit
+User-agent: Facebot
+Allow: /jobs/
+Allow: /go/
+Allow: /legal/
+Allow: /social/
+Disallow: /
+
 Sitemap: https://yard.2f-logistics.com/sitemap.xml
