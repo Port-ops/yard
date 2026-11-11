@@ -1,5 +1,8 @@
-# DockRelay is a private staff app. Only the public careers pages may be crawled (Google for Jobs, Indeed).
+# DockRelay is a private staff app. Only public pages may be crawled: careers (Google for Jobs, Indeed), the /go link page, legal pages (Meta app review) and social photos.
 User-agent: *
 Allow: /jobs/
+Allow: /go/
+Allow: /legal/
+Allow: /social/
 Disallow: /
 Sitemap: https://yard.2f-logistics.com/sitemap.xml
