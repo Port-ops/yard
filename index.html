@@ -3719,7 +3719,7 @@ ntSec.hidden=false;
 let BR=null,CAM=null,CXF='all',CXC='all',CMT='overview',CXG=null,CXPF='all',CXAF='all',CXOPEN='';
 try{const s=localStorage.getItem('camTab');if(['overview','alerts','photos'].includes(s))CMT=s}catch(e){}
 const cxT=()=>{try{return (CUR&&CUR.carter)||'brief'}catch(e){return 'brief'}};
-function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab();try{renderGR()}catch(e){console.warn('growth',e)}}).catch(err=>{if(BR)return;brSec.hidden=false;camSec.hidden=true;try{$('brAsof').textContent='Carter could not load: '+((err&&err.message)||String(err)).slice(0,200)+'. Retrying every 30 seconds.';$('cxBody').textContent=''}catch(x){}BR=null;try{renderGR()}catch(e){}try{renderDC([])}catch(e){}})}
+function loadBR(){if(!Y().call)return;Y().call('getBrain',[{}]).then(d=>{BR=d;renderBR();renderCamTab();try{if(CD)cdRender()}catch(e){};try{renderGR()}catch(e){console.warn('growth',e)}}).catch(err=>{if(BR)return;brSec.hidden=false;camSec.hidden=true;try{$('brAsof').textContent='Carter could not load: '+((err&&err.message)||String(err)).slice(0,200)+'. Retrying every 30 seconds.';$('cxBody').textContent=''}catch(x){}BR=null;try{renderGR()}catch(e){}try{renderDC([])}catch(e){}})}
 // photos for the alert cards: newest 40 flagged photos (after-hours / not logged); cam-learn v7 adds alert_urls for all open alerts
 let CAMF={},camFT=0;function loadCamFlags(){if(!Y().call||Date.now()-camFT<5*60e3)return;camFT=Date.now();Y().call('getCams',[{limit:40,only:'flags'}]).then(d=>{(d.photos||[]).forEach(p=>{if(p.url)CAMF[String(p.id)]=p.url});Object.assign(CAMF,d.alert_urls||{});renderCamTab()}).catch(()=>{camFT=0})}
 function loadCams(){if(!Y().call)return;Y().call('getCams',[{limit:40}]).then(d=>{CAM=d;renderCamTab();if(cxT()==='brief')renderBR()}).catch(e=>{CAM={error:(e&&e.message)||String(e)};renderCamTab()})}
@@ -3731,7 +3731,7 @@ function brAct(a,status,btn,quiet,note0){const note=note0!=null?note0:'';if(btn)
   return Y().call('brainAct',[{id:a.id,status,note:note||''}]).then(d=>{BR=d;if(!quiet){renderBR();renderCamTab()}}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
 
 // lessons: answer = approve as written, approve with my correction, or choose why it is wrong (11/1/2026). A correction is sent as "ANSWER: ..." and the database stores it as the answer.
-function kbSend(k,status,aud,note,btn){if(btn)btn.disabled=true;Y().call('brainKb',[{id:k.id,status,audience:aud||k.audience||'team',note:note||''}]).then(d=>{BR=d;KBX={};renderBR()}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
+function kbSend(k,status,aud,note,btn){if(btn)btn.disabled=true;Y().call('brainKb',[{id:k.id,status,audience:aud||k.audience||'team',note:note||''}]).then(d=>{BR=d;KBX={};renderBR();try{TK.done++;cdRender()}catch(e){}}).catch(e=>{alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false})}
 let KBX={};
 
 const RJ_WHY=['Not now','Wrong or out-of-date info','Already handled','Someone else should do it','Too expensive / not worth it'];let RJX='';
@@ -4240,9 +4240,28 @@ function cdReview(r){const V=CDVIEW['rv'+r.id]||(CDVIEW['rv'+r.id]={}),B=el('div
 function cdItem(t){const row=el('div','cdI'+(t.done_at?' ok':'')),btn=el('button','ck',t.done_at?'✓':(t.kind==='info'?'ℹ':t.kind==='meeting'?'📅':''));btn.type='button';btn.title=t.done_at?'Mark not done':'Mark done';btn.onclick=()=>cdTick(t,btn);
   const tx=el('div');tx.style.flex='1';tx.append(el('b','',t.title));const meta=[t.why,t.where_hint,t.minutes?('~'+t.minutes+' min'):''].filter(Boolean).join(' · ');if(meta)tx.append(el('div','help',meta));
   if(t.how){const d=el('details');d.append(el('summary','','How'));cdLines(t.how).forEach((x,i)=>d.append(el('p','help',(i+1)+'. '+x)));tx.append(d)}row.append(btn,tx);return row}
+// ---------- Teach Carter (owner 11/12/2026): the top lessons waiting for Richard, on his Today tab. Same actions as Carter > Lessons ----------
+// (brainKb): approve for the team, approve for me only, or say why it is wrong. Fixing the wording opens the full Lessons screen.
+let TK={done:0,ask:false,open:{}};
+function tkCard(){const ls=((typeof BR!=='undefined'&&BR&&BR.lessons)||[]).slice();const W=el('div','cdL');W.style.background='linear-gradient(135deg,#2b3a2b,#3f6b47)';
+  const k=el('div','k');k.append(el('span','','🧠 Teach Carter'));k.append(el('span','',ls.length+' waiting'));if(TK.done)k.append(el('span','','✓ '+TK.done+' today'));W.append(k);
+  if(!ls.length){W.append(el('div','w',BR?'Nothing waiting. Carter only uses lessons you approve.':'Loading Carter’s lessons…'));return W}
+  W.append(el('div','w','Carter only uses what you approve. 5 at a time, high risk first.'));
+  ls.sort((a,b)=>(b.risk==='high')-(a.risk==='high')||((b.evidence||0)-(a.evidence||0)));
+  ls.slice(0,5).forEach(l=>{const P=el('div','cdP'),o=TK.open[l.id];P.append(el('div','help',(l.risk==='high'?'⚠ High risk · ':'')+(l.topic||'')+(l.evidence>1?' · seen '+l.evidence+'×':'')));P.append(el('b','',l.question||''));P.append(el('div','',l.answer||''));
+    if(l.quote)P.append(el('div','help','From: “'+l.quote+'”'));
+    const F=el('div','cdF'),bt=(lab,cl,fn)=>{const b=el('button',cl,lab);b.type='button';b.style.background=cl==='dn'?'':'#eef1f8';if(cl!=='dn')b.style.color='#1F2A5C';b.onclick=()=>fn(b);F.append(b);return b};
+    bt('✓ Approve','dn',b=>kbSend(l,'approved',l.audience==='owner'?'owner':'team','',b));
+    bt('🔒 Only me','rt',b=>kbSend(l,'approved','owner','owner only',b));
+    bt('✎ Fix','rt',()=>{try{go('carter');sub('carter','lessons')}catch(e){}});
+    bt(o?'✗ Wrong ▴':'✗ Wrong ▾','rt',()=>{TK.open[l.id]=!o;cdRender()});P.append(F);
+    if(o){const C=el('div','cdF');KB_WRONG.forEach(t=>{const b=el('button','rt',t);b.type='button';b.style.background='#fdecea';b.style.color='#7a1f1a';b.onclick=()=>{if(t==='True, but keep it private')kbSend(l,'approved','owner','owner only',b);else kbSend(l,'retired',l.audience||'team',t,b)};C.append(b)});P.append(C)}
+    W.append(P)});
+  const all=el('button','ak','Review all '+ls.length+' →');all.type='button';all.style.marginTop='8px';all.onclick=()=>{try{go('carter');sub('carter','lessons')}catch(e){}};W.append(all);return W}
 function cdRender(){const b=cdBox();if(!b)return;b.textContent='';if(!CD){b.hidden=true;return}b.hidden=false;
   const R=CD.rows||[],focus=R.filter(r=>r.kind==='focus'),rest=R.filter(r=>r.kind!=='focus'),dn=R.filter(r=>r.done_at).length;
   const hd=el('div','mdHd');hd.append(el('b','','From Carter'));const right=el('span','mdCount');if(CD.streak)right.append(el('span','cdS','🔥 '+CD.streak+'-day streak'),document.createTextNode(' '));if(R.length)right.append(document.createTextNode(dn+' of '+R.length+' done'));hd.append(right);b.append(hd);
+  if((CD.team||[]).length){if(typeof BR==='undefined'||!BR){if(!TK.ask){TK.ask=true;try{loadBR()}catch(e){}}}b.append(tkCard())}
   if(CD.day&&CD.today&&CD.day!==CD.today)b.append(el('p','help','Today\'s list comes at about 7 AM Eastern. Showing your last list ('+CD.day+').'));
   if(!R.length)b.append(el('p','help','Every morning Carter posts your list and a task of the day for your job, with steps, an example and a quick check.'));
   if(CD.review)b.append(cdReview(CD.review));
