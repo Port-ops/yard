@@ -5190,4 +5190,29 @@ all();
   addEventListener('load',function(){setTimeout(label,800)});
 })();
 </script>
+<script>// Pull down at the top of any screen to refresh (owner 11/12/2026). Phones/installed app only; skipped while typing or inside pop-ups.
+(function(){
+  if(!('ontouchstart' in window))return;
+  var y0=null,x0=0,d=0,on=false,box=document.createElement('div');
+  box.id='ptr';box.innerHTML='<span class="ptrI">↓</span><span class="ptrT">Pull to refresh</span>';document.body.append(box);
+  var st=document.createElement('style');st.textContent='#ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translate(-50%,-80px);z-index:9999;display:flex;align-items:center;gap:8px;background:#1F2A5C;color:#fff;font:600 13px/1 system-ui,-apple-system,sans-serif;padding:9px 14px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .15s}#ptr .ptrI{display:inline-block;transition:transform .15s}#ptr.go .ptrI{transform:rotate(180deg)}#ptr.spin .ptrI{animation:ptrS 0.8s linear infinite}@keyframes ptrS{to{transform:rotate(360deg)}}';
+  document.head.append(st);
+  function blocked(el){
+    var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;
+    if(el&&el.nodeType===3)el=el.parentElement;
+    for(var e=el;e&&e.nodeType===1&&e!==document.body;e=e.parentElement){
+      if(/^(INPUT|TEXTAREA|SELECT|CANVAS|VIDEO)$/.test(e.tagName))return true;
+      var cs=getComputedStyle(e);if(cs.position==='fixed')return true;
+      if(e.scrollTop>0&&/(auto|scroll)/.test(cs.overflowY))return true}
+    return false}
+  function show(p){box.style.opacity=Math.min(1,p);box.style.transform='translate(-50%,'+Math.min(0,-80+p*80)+'px)'}
+  addEventListener('touchstart',function(e){y0=null;on=false;if(e.touches.length!==1||window.scrollY>0||blocked(e.target))return;y0=e.touches[0].clientY;x0=e.touches[0].clientX;d=0},{passive:true});
+  addEventListener('touchmove',function(e){if(y0===null)return;var dy=e.touches[0].clientY-y0,dx=Math.abs(e.touches[0].clientX-x0);
+    if(window.scrollY>0||(dx>dy&&dx>12)){y0=null;show(0);return}
+    d=Math.max(0,dy);if(d>10){on=true;var p=Math.min(1,d/110);show(p);box.classList.toggle('go',d>110);box.querySelector('.ptrT').textContent=d>110?'Release to refresh':'Pull to refresh'}},{passive:true});
+  addEventListener('touchend',function(){if(y0===null)return;y0=null;
+    if(on&&d>110){box.classList.remove('go');box.classList.add('spin');box.querySelector('.ptrI').textContent='↻';box.querySelector('.ptrT').textContent='Refreshing…';show(1);setTimeout(function(){location.reload()},150)}
+    else show(0);on=false},{passive:true});
+})();
+</script>
 </body></html>
