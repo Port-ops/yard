@@ -4091,6 +4091,83 @@ $('grRef').addEventListener('click',()=>{$('grMsg').textContent='Loading…';GR_
 try{new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)){if(!GRD)loadGR();else renderGR()}}).observe(grSec)}catch(e){}
 function grInit(){try{if(!roles().length)return setTimeout(grInit,3000);grSec.hidden=!fcCan();try{tabVis()}catch(e){}try{renderGR()}catch(e){}}catch(e){setTimeout(grInit,5000)}}grInit();
 const aiSec=mk('aiSec','ask','chat','<div id="aiTab"></div>');wrap.append(aiSec);
+// ---------- Time tab (owner 11/11/2026): clock in / break / clock out, weekly timesheet, review, owner approval ----------
+// Sign-in = the person's own DockRelay code: "§gate token" (Apps Script checks the code, the brain signs a 10-minute ticket) -> time-clock checks it.
+// No screenshots, keystrokes or activity scores. Manila: set salary, hours confirm attendance. Reviewers: yard.config time_reviewers. Richard approves last.
+let TMOK=false,TM=null,TMT=null,TMTK=null,TMTKX=0,TMBUSY=false;
+const TM_URL='https://lzwidcwiejowjhgzkcxo.supabase.co/functions/v1/time-clock';
+const tmSec=mk('tmSec','time','clock','<h2>My time <span class="t" id="tmAsof"></span></h2><div id="tmMain"><p class="help">Loading…</p></div>');
+const tmTeam=mk('tmTeam','time','team','<h2>Team time <span class="t">reviewers</span></h2><div id="tmTeamB"><p class="help">Loading…</p></div>');
+const tmAppr=mk('tmAppr','time','approve','<h2>Approve timesheets <span class="t">Richard only</span></h2><div id="tmApprB"><p class="help">Loading…</p></div>');
+[tmSec,tmTeam,tmAppr].forEach(s=>{s.hidden=true;wrap.append(s)});
+{const st=document.createElement('style');st.textContent='#tmMain .tmBig{font-size:20px;font-weight:700;margin:6px 0}#tmMain .tmSub{color:var(--mut,#5d686d);font-size:13px}.tmBtns{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.tmBtns .btn,.tmBtns .btn2{flex:1;min-width:120px;min-height:48px;font-size:16px}.tmRcpt{background:#e8f5e9;border-left:4px solid #2e7d32;padding:8px 10px;margin:8px 0;border-radius:6px}.tmErr{background:#fdecea;border-left:4px solid #c8102e;padding:8px 10px;margin:8px 0;border-radius:6px}.tmWarn{background:#fff8e1;border-left:4px solid #f9a825;padding:8px 10px;margin:8px 0;border-radius:6px}.tmTbl{width:100%;border-collapse:collapse;font-size:14px}.tmTbl td,.tmTbl th{padding:6px 4px;border-bottom:1px solid #e3e6e8;text-align:left;vertical-align:top}.tmTag{display:inline-block;padding:1px 7px;border-radius:9px;font-size:12px;background:#eef1f3}.tmTag.ok{background:#e8f5e9}.tmTag.bad{background:#fdecea}.tmBanner{position:sticky;top:0;z-index:5;background:#1f2a44;color:#fff;padding:6px 12px;font-size:14px;text-align:center;cursor:pointer}';document.head.append(st)}
+const tmH=m=>{m=+m||0;return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'};
+const tmFmt=(ts,tz)=>ts?new Date(ts).toLocaleString('en-US',{timeZone:tz,weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+const tmT=(ts,tz)=>ts?new Date(ts).toLocaleTimeString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'}):'';
+const tmBoth=(ts,tz)=>tz==='America/New_York'?tmT(ts,tz)+' Eastern':tmT(ts,tz)+' Manila · '+tmT(ts,'America/New_York')+' Eastern';
+const tmWk=w=>{const d=new Date(w+'T12:00:00Z'),e=new Date(d.getTime()+6*86400000),f=x=>x.toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});return f(d)+' – '+f(e)};
+const TMST={draft:['Open','tmTag'],submitted:['Waiting for review','tmTag'],returned:['Sent back','tmTag bad'],reviewed:['Waiting for Richard','tmTag'],owner_approved:['Approved','tmTag ok'],paid_by_human:['Paid','tmTag ok']};
+async function tmTicket(force){if(!force&&TMTK&&Date.now()<TMTKX)return TMTK;const r=await Y().call('aiAsk',[{mode:'ask',q:'§gate token',tab:'time'}]);if(!r||!r.ticket)throw new Error((r&&r.error)||'Could not sign you in. Check your signal.');TMTK=r.ticket;TMTKX=Date.now()+8*60000;return TMTK}
+async function tmCall(verb,o,retry){const ticket=await tmTicket(retry);const r=await fetch(TM_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket,verb,o:o||{}})});const j=await r.json().catch(()=>({ok:false,error:'No answer from the time server.'}));
+  if(r.status===401&&!retry)return tmCall(verb,o,true);if(!j.ok)throw new Error(j.error||'Not saved');return j}
+function tmMsg(box,cls,txt){const d=el('div',cls,txt);box.prepend(d);setTimeout(()=>d.remove(),cls==='tmErr'?12000:6000)}
+async function tmLoad(){if(!Y().call||!navigator.onLine)return;try{TM=await tmCall('me');TMOK=true;tmSec.hidden=false;tmTeam.hidden=!TM.reviewer;tmAppr.hidden=!TM.owner;try{tabVis()}catch(e){}tmRender();tmBanner();if(TM.reviewer&&TAB==='time')tmLoadTeam()}
+  catch(e){const m=String((e&&e.message)||e);if(/not on the time-tracking list/i.test(m)){TMOK=false;[tmSec,tmTeam,tmAppr].forEach(s=>s.hidden=true);try{tabVis()}catch(x){}return}$('tmMain').textContent='';tmMsg($('tmMain'),'tmErr',m)}}
+async function tmAct(verb,o,label){if(TMBUSY)return;TMBUSY=true;document.querySelectorAll('#tmMain button').forEach(b=>b.disabled=true);
+  try{const r=await tmCall(verb,o);await tmLoad();tmMsg($('tmMain'),'tmRcpt','✓ '+(r.text||label||'Saved')+' · '+tmBoth(new Date().toISOString(),(TM&&TM.tz)||'America/New_York'))}
+  catch(e){tmMsg($('tmMain'),'tmErr',String((e&&e.message)||e))}finally{TMBUSY=false;document.querySelectorAll('#tmMain button').forEach(b=>b.disabled=false)}}
+function tmRender(){const B=$('tmMain');if(!B||!TM)return;B.textContent='';const tz=TM.tz,me=TM.me;
+  $('tmAsof').textContent=me.name+' · '+(me.class==='employee'?'W-2':'contractor')+' · '+(tz==='Asia/Manila'?'week runs Mon–Sun Manila time':'week runs Mon–Sun Eastern');
+  (TM.confirm||[]).forEach(c=>{const w=el('div','tmWarn');w.append(el('b','','You left a shift open. '),document.createTextNode('Started '+tmFmt(c.clock_in,tz)+'. It was closed automatically. When did you actually stop?'));
+    const i=document.createElement('input');i.type='datetime-local';i.style.margin='6px 0';const b=el('button','btn','Save my stop time');b.type='button';
+    b.addEventListener('click',()=>{if(!i.value)return tmMsg(B,'tmErr','Pick the time you stopped.');const d=new Date(i.value);tmAct('confirm',{id:c.id,out:d.toISOString()},'End time saved')});w.append(el('br'),i,b);B.append(w)});
+  const o=TM.open,card=el('div');
+  if(o){const mins=Math.round((Date.now()-new Date(o.clock_in))/60000);card.append(el('div','tmBig',o.break_start?'☕ On break':'🟢 Working since '+tmBoth(o.clock_in,tz)),el('div','tmSub',o.break_start?'Break started '+tmBoth(o.break_start,tz):'Elapsed '+tmH(mins)+' (breaks not counted until you stop)'))}
+  else card.append(el('div','tmBig','⚪ Not working'),el('div','tmSub','Tap Start when you begin work.'));
+  const bt=el('div','tmBtns');const mk2=(t,c,verb,lab)=>{const b=el('button',c,t);b.type='button';b.addEventListener('click',()=>tmAct(verb,{},lab));bt.append(b)};
+  if(TM.owner&&!o)card.append(el('p','help','You approve; you do not clock in.'));
+  else if(!o)mk2('▶ Start work','btn','in','Started');else if(o.break_start)mk2('↩ Back from break','btn','back','Back');else{mk2('☕ Start break','btn2','break','On break');mk2('■ Stop work','btn','out','Stopped')}
+  card.append(bt);B.append(card);
+  const wkMin=(TM.shifts||[]).filter(s=>s.week===TM.week).reduce((a,s)=>a+(+s.worked_minutes||0),0);
+  B.append(el('h3','', 'This week · '+tmWk(TM.week)+' · '+tmH(wkMin)));
+  const t=document.createElement('table');t.className='tmTbl';const hr=document.createElement('tr');['Day','Start','Stop','Worked'].forEach(h=>hr.append(el('th','',h)));t.append(hr);
+  (TM.shifts||[]).filter(s=>s.week===TM.week).forEach(s=>{const r=document.createElement('tr');[tmFmt(s.clock_in,tz).split(',').slice(0,2).join(','),tmT(s.clock_in,tz),tmT(s.clock_out,tz),tmH(s.worked_minutes)].forEach(v=>r.append(el('td','',v)));t.append(r)});
+  if(t.children.length>1)B.append(t);else B.append(el('p','help','No finished shifts yet this week.'));
+  B.append(el('h3','','My timesheets'));
+  (TM.sheets||[]).forEach(s=>{const row=el('div');row.style.margin='6px 0';const st=TMST[s.status]||[s.status,'tmTag'];row.append(el('b','',tmWk(s.week)+' · '+tmH(s.worked_minutes)+' '),el('span',st[1],st[0]));
+    if(s.status==='returned'&&s.return_reason)row.append(el('div','tmSub','Reason: '+s.return_reason));
+    if((s.status==='draft'||s.status==='returned')&&s.week<TM.week){const b=el('button','btn2','Submit this week');b.type='button';b.style.marginLeft='8px';b.addEventListener('click',()=>{if(confirm('Submit '+tmWk(s.week)+' ('+tmH(s.worked_minutes)+')? You confirm these hours are correct.'))tmAct('submit',{id:s.id},'Submitted')});row.append(b)}
+    B.append(row)});
+  if(!(TM.sheets||[]).length)B.append(el('p','help','Your weekly timesheet appears here after your first shift.'));
+  B.append(el('p','help',me.class==='employee'?'Hours are reviewed, approved by Richard, and paid through ADP.':me.company==='1 Stop'?'Hours are logged for billing only.':'Your pay is your set rate. Hours confirm attendance and are reviewed weekly.'))}
+async function tmLoadTeam(){const T=$('tmTeamB');if(!TM||!TM.reviewer)return;try{TMT=await tmCall('team');tmRenderTeam()}catch(e){T.textContent=String((e&&e.message)||e)}}
+function tmRenderTeam(){const T=$('tmTeamB'),A=$('tmApprB');if(!TMT)return;T.textContent='';
+  T.append(el('h3','','Working now ('+(TMT.now||[]).length+')'));(TMT.now||[]).forEach(n=>T.append(el('div','',(n.on_break?'☕ ':'🟢 ')+n.display_name+' · since '+tmBoth(n.clock_in,'America/New_York'))));
+  if(!(TMT.now||[]).length)T.append(el('p','help','Nobody is clocked in.'));
+  T.append(el('h3','','To review ('+(TMT.review||[]).length+')'));
+  (TMT.review||[]).forEach(s=>T.append(tmSheetCard(s,'review')));
+  if(!(TMT.review||[]).length)T.append(el('p','help','Nothing waiting. Timesheets show here after people submit them on Monday.'));
+  if((TMT.exceptions||[]).length){T.append(el('h3','','Flags (last 3 weeks)'));const K={auto_closed_needs_confirmation:'Left a shift open',manual_correction:'Time was corrected',long_shift_over_10h:'Shift over 10 hours',over_weekly_budget:'Over weekly hours'};
+    TMT.exceptions.forEach(x=>T.append(el('div','tmSub','⚑ '+x.display_name+' · '+(K[x.kind]||x.kind)+' · '+tmFmt(x.at,'America/New_York'))));T.append(el('p','help','Flags are for a conversation, not automatic deductions.'))}
+  if(A&&TM.owner){A.textContent='';(TMT.approve||[]).forEach(s=>A.append(tmSheetCard(s,'approve')));if(!(TMT.approve||[]).length)A.append(el('p','help','Nothing waiting for you.'))}}
+function tmSheetCard(s,mode){const c=el('div','tmWarn');c.style.background='#f6f8f9';c.style.borderLeftColor='#1f2a44';
+  c.append(el('b','',s.display_name+' · '+tmWk(s.week)+' · '+tmH(s.worked_minutes)));
+  if(mode==='approve')c.append(el('div','tmSub','Reviewed by '+(s.reviewed_by||'?')+' · pays through '+(s.pay_channel==='adp'?'ADP':s.pay_channel==='wise'?'Wise':'—')));
+  const det=el('div');const sh=el('button','btn2','Show shifts');sh.type='button';sh.addEventListener('click',async()=>{sh.disabled=true;try{const r=await tmCall('shifts',{id:s.id});det.textContent='';const t=document.createElement('table');t.className='tmTbl';
+    (r.rows||[]).forEach(x=>{const tr=document.createElement('tr');tr.append(el('td','',tmFmt(x.clock_in,'America/New_York')),el('td','','→ '+tmT(x.clock_out,'America/New_York')+' ET'),el('td','',tmH(x.worked_minutes)+(x.end_kind==='corrected'?' ✎':x.end_kind==='system_estimated'?' ⚠':'')));t.append(tr);
+      (x.edits||[]).forEach(ed=>{const er=document.createElement('tr');er.append(el('td','tmSub','✎ '+ed.by+': '+ed.why));er.firstChild.colSpan=3;t.append(er)})});det.append(t)}catch(e){det.textContent=String(e.message||e)}finally{sh.disabled=false}});
+  const bt=el('div','tmBtns');
+  if(mode==='review'){const ok=el('button','btn','✓ Hours look right');ok.type='button';ok.addEventListener('click',()=>tmTeamAct('review',{id:s.id,approve:true}));
+    const no=el('button','btn2','Send back');no.type='button';no.addEventListener('click',()=>{const r=prompt('Why are you sending it back? (they will see this)');if(r&&r.trim().length>2)tmTeamAct('review',{id:s.id,approve:false,reason:r.trim()})});bt.append(ok,no)}
+  else{const ok=el('button','btn','Approve & lock');ok.type='button';ok.addEventListener('click',()=>tmTeamAct('approve',{id:s.id}));bt.append(ok)}
+  c.append(el('br'),sh,det,bt);return c}
+async function tmTeamAct(verb,o){try{const r=await tmCall(verb,o);await tmLoadTeam();tmMsg($('tmTeamB'),'tmRcpt','✓ '+(r.text||'Saved'))}catch(e){tmMsg(TM&&TM.owner&&verb==='approve'?$('tmApprB'):$('tmTeamB'),'tmErr',String((e&&e.message)||e))}}
+function tmBanner(){let b=$('tmBan');const o=TM&&TM.open;if(!o){if(b)b.remove();return}if(!b){b=el('div','tmBanner');b.id='tmBan';b.addEventListener('click',()=>go('time'));document.body.prepend(b)}
+  b.textContent=(o.break_start?'☕ On break':'🟢 Working since '+tmT(o.clock_in,TM.tz))+' · tap to stop'}
+function tmInit(){try{if(!roles().length)return setTimeout(tmInit,3000);tmLoad()}catch(e){setTimeout(tmInit,5000)}}tmInit();
+setInterval(()=>{if(document.visibilityState==='visible'&&TMOK){if(TAB==='time')tmLoad();else if(TM&&TM.open)tmBanner()}},120000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&TMOK)tmLoad()});
+
 // ---------- 3. bottom tab bar ----------
 const IC={texts:'<svg viewBox="0 0 24 24"><path d="M6.6 3.5h2.7l1.4 4-2 1.4a12 12 0 006.4 6.4l1.4-2 4 1.4v2.7a2 2 0 01-2.2 2A16.6 16.6 0 014.6 5.7a2 2 0 012-2.2z"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 tasks:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg>',
@@ -4100,14 +4177,15 @@ reports:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><
 IC.doors='<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>';
 IC.growth='<svg viewBox="0 0 24 24"><path d="M12 21v-9"/><path d="M12 12C12 8 9 5 4 5c0 4 3 7 8 7z"/><path d="M12 14c0-3 2.5-6 8-6 0 3.5-3 6-8 6z"/></svg>';
 IC.decisions='<svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 12l3 3 5-6"/></svg>';
+IC.time='<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2.5h5M12 2.5V5"/></svg>';
 IC.carter='<svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/><path d="M17.5 4.5l1-1.5M19.5 7h1.8"/></svg>';
-const TABS=[['today','Today'],['tasks','Tasks'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['decisions','Decisions'],['growth','Growth'],['owner','Owner'],['doors','Doors & Cams'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
+const TABS=[['today','Today'],['tasks','Tasks'],['time','Time'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['decisions','Decisions'],['growth','Growth'],['owner','Owner'],['doors','Doors & Cams'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
-const SUBS={ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],growth:[['all','Growth']],decisions:[['all','Decisions']],
+const SUBS={time:[['clock','My time'],['team','Team'],['approve','Approve']],ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],growth:[['all','Growth']],decisions:[['all','Decisions']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
@@ -4198,7 +4276,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)close
 '.msItem i{position:absolute;top:6px;right:8px;font:700 10px/16px inherit;font-style:normal;min-width:16px;height:16px;border-radius:8px;padding:0 4px;background:#b42318;color:#fff}.msItem i.y{background:#e0a100}.msNote{font-size:12.5px;color:var(--muted);margin:12px 2px 0}';document.head.append(st)}
 
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()||fcCan(),growth:fcCan(),decisions:fcCan()};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors','growth','decisions'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()||fcCan(),growth:fcCan(),decisions:fcCan(),time:TMOK};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors','growth','decisions','time'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   try{pinTabs()}catch(e){console.warn('pinTabs',e);inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)'}
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
