@@ -4244,11 +4244,12 @@ function cdItem(t){const row=el('div','cdI'+(t.done_at?' ok':'')),btn=el('button
 // (brainKb): approve for the team, approve for me only, or say why it is wrong. Fixing the wording opens the full Lessons screen.
 let TK={done:0,ask:false,open:{}};
 function tkCard(){const ls=((typeof BR!=='undefined'&&BR&&BR.lessons)||[]).slice();const W=el('div','cdL');W.style.background='linear-gradient(135deg,#2b3a2b,#3f6b47)';
-  const k=el('div','k');k.append(el('span','','🧠 Teach Carter'));k.append(el('span','',ls.length+' waiting'));if(TK.done)k.append(el('span','','✓ '+TK.done+' today'));W.append(k);
+  const k=el('div','k');k.append(el('span','','🧠 Teach Carter'));k.append(el('span','',((BR&&BR.lessons_waiting)||ls.length)+' waiting'));if(TK.done)k.append(el('span','','✓ '+TK.done+' today'));W.append(k);
   if(!ls.length){W.append(el('div','w',BR?'Nothing waiting. Carter only uses lessons you approve.':'Loading Carter’s lessons…'));return W}
-  W.append(el('div','w','Carter only uses what you approve. 5 at a time, high risk first.'));
-  ls.sort((a,b)=>(b.risk==='high')-(a.risk==='high')||((b.evidence||0)-(a.evidence||0)));
+  W.append(el('div','w','Carter only uses what you approve. Lessons it already checked against our own work come first.'));
   ls.slice(0,5).forEach(l=>{const P=el('div','cdP'),o=TK.open[l.id];P.append(el('div','help',(l.risk==='high'?'⚠ High risk · ':'')+(l.topic||'')+(l.evidence>1?' · seen '+l.evidence+'×':'')));P.append(el('b','',l.question||''));P.append(el('div','',l.answer||''));
+    if(l.verify){const V={verified:['✅ Checked: matches what we do','#e3f6ea','#14532d'],partly:['🟡 Partly matches what we do','#fff3d6','#7a5200'],contradicted:['⛔ Our own work says otherwise','#fdecea','#7a1f1a'],not_found:['❔ Nothing in our work confirms it yet','#eef1f8','#1F2A5C']}[l.verify]||['',''];
+      const vb=el('div','help',V[0]+(l.verify_sources?' ('+l.verify_sources+' sources)':'')+(l.verify_note?' · '+l.verify_note:''));vb.style.background=V[1];vb.style.color=V[2];vb.style.borderRadius='8px';vb.style.padding='6px 8px';vb.style.marginTop='6px';P.append(vb)}
     if(l.quote)P.append(el('div','help','From: “'+l.quote+'”'));
     const F=el('div','cdF'),bt=(lab,cl,fn)=>{const b=el('button',cl,lab);b.type='button';b.style.background=cl==='dn'?'':'#eef1f8';if(cl!=='dn')b.style.color='#1F2A5C';b.onclick=()=>fn(b);F.append(b);return b};
     bt('✓ Approve','dn',b=>kbSend(l,'approved',l.audience==='owner'?'owner':'team','',b));
