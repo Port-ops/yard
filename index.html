@@ -3775,7 +3775,7 @@ function cxGo(k){if(k==='decide'){try{go('decisions')}catch(e){}renderBR();retur
 function camGo(k){CMT=k;try{localStorage.setItem('camTab',k)}catch(e){}try{if(TAB!=='doors')go('doors');sub('doors','cams')}catch(e){}if(!CAM)loadCams();renderCamTab()}
 
 // ---------- Carter tab ----------
-function renderBR(){if(!BR)return;brSec.hidden=false;const br=BR.brief,open=cxOpen(),decAll=open.filter(a=>!cxCam(a)&&!cxMail(a)),dec=decAll.filter(a=>(a.lane||'decide')==='decide'),team=decAll.filter(a=>a.lane==='team'),fyi=decAll.filter(a=>a.lane==='fyi'),cams=open.filter(cxCam),ob=BR.outbox||[],obw=ob.filter(o=>o.status==='proposed'),T=cxT();
+function renderBR(){if(!BR)return;{const ae=document.activeElement;if(ae&&ae.classList&&ae.classList.contains('cxQN'))return}brSec.hidden=false;const br=BR.brief,open=cxOpen(),decAll=open.filter(a=>!cxCam(a)&&!cxMail(a)),dec=decAll.filter(a=>(a.lane||'decide')==='decide'),team=decAll.filter(a=>a.lane==='team'),fyi=decAll.filter(a=>a.lane==='fyi'),cams=open.filter(cxCam),ob=BR.outbox||[],obw=ob.filter(o=>o.status==='proposed'),T=cxT();
   $('brAsof').textContent=br?'Brief written '+cxWhen(br.at)+' · new brief 6:07 AM, recap 6:35 PM':'No brief yet. The first one runs at 6:07 AM.';
   {const S=$('cxSpend');S.textContent='';const cap=+BR.cap||0,sp=+BR.spent_today||0;S.append(el('b','','$'+sp.toFixed(2)),el('span','',' AI today of $'+cap));const bar=el('i');bar.style.width=Math.min(100,cap?sp/cap*100:0)+'%';const w=el('span','bar');w.append(bar);S.append(w)}
   {const N=$('cxNeed');N.textContent='';const items=[[obw.length,'email'+(obw.length===1?'':'s')+' to approve',()=>cxGo('outbox'),true],[dec.length,'decision'+(dec.length===1?'':'s')+' waiting',()=>cxGo('decide'),dec.some(a=>a.tier>=4)],[cams.length,'camera alert'+(cams.length===1?'':'s'),()=>camGo('alerts'),false],[BR.lessons_waiting||0,'lesson'+((BR.lessons_waiting||0)===1?'':'s')+' to check',()=>cxGo('lessons'),false]].filter(x=>x[0]);
@@ -3793,9 +3793,33 @@ function cxBrief(B){const br=BR.brief,b=br&&br.body;if(!b){B.append(cxEmpty('No 
   block('Fires — act today',b.fires,(li,f)=>{li.append(el('b','',f.what||''));const m=[f.owner&&('Owner: '+f.owner),f.by_when&&('By '+f.by_when)].filter(Boolean).join(' · ');if(m)li.append(el('span','m',m));if(f.why_it_matters)li.append(el('span','w',f.why_it_matters))},'fire',f=>[f.what||'',[f.owner&&'Owner: '+f.owner,f.by_when&&'By '+f.by_when,f.why_it_matters].filter(Boolean).join('. ')]);
   block('People',b.people,(li,p)=>{li.append(el('b','',p.name+': '),document.createTextNode(p.note||''))},'',p=>[p.name+': '+(p.note||''),'']);
   block('Outside 2FF',b.outside,(li,o)=>{li.append(el('b','',o.item||''),el('span','w','→ '+(o.so_what||'')))},'',o=>[o.item||'',o.so_what||'']);
-  if(b.question_for_richard){const q=el('div','cxQ');q.append(el('span','l','Carter asks you'),el('p','',b.question_for_richard));B.append(q)}
+  if(b.question_for_richard)B.append(cxQBox(br,b.question_for_richard));
   if(br.review&&br.review.text){const d=el('details','cxBlk');d.append(el('summary','','Second opinion (ChatGPT)'),el('p','t',br.review.text));B.append(d)}
   if((br.sources||[]).length){const d=el('details','cxBlk');d.append(el('summary','','Sources ('+br.sources.length+')'));const u=el('ul');br.sources.slice(0,12).forEach(s=>{const li=el('li'),a=el('a','',String(s).replace(/^https?:\/\//,'').slice(0,80));a.href=s;a.target='_blank';a.rel='noopener';li.append(a);u.append(li)});d.append(u);B.append(d)}}
+
+// ---------- "Carter asks you" (owner 11/12/2026): tap to go to what Carter means, or answer him. The answer is saved on the brief,
+// becomes a task on the Today list of whoever will do it, and Carter sees it when he writes the next brief (yard.brief_answer).
+let QX={mode:'',who:'',note:'',busy:false,msg:'',team:null};
+try{CXROUTES.push([/\bcall (him|her|them|back)\b|missed \d+ of \d+ calls|asked you .* to call/i,'texts','todo','Open phone To-do'])}catch(e){}
+function cxQBox(br,q){const W=el('div','cxQ'),A=br.answer||null;W.append(el('span','l','Carter asks you'),el('p','',q));
+  const nav=el('div','cxAct');const r=cxRoute(q);
+  if(r){const g=el('button','btn sm',r.l+' →');g.type='button';g.addEventListener('click',()=>cxNav(r));nav.append(g)}
+  const d=el('button',r?'btn2 sm':'btn sm','Show me the details →');d.type='button';d.addEventListener('click',()=>cxAsk('Carter asked me in today\'s brief: "'+q+'". Show me exactly what you are talking about: who it is, their phone and email, the email or text thread with dates, and what you suggest I say. Keep it short.'));nav.append(d);
+  W.append(nav);
+  if(A&&QX.mode!=='edit'){const ch={me:'I\'ll do it',delegate:'Handed to '+(A.who_name||A.who||''),done:'Already done',no:'Not doing it',note:'Replied'}[A.choice]||A.choice;
+    const a=el('div','cxQA');a.append(el('b','','✓ You answered: '+ch),A.note?el('span','',' · '+A.note):'',el('span','m',' · Carter will follow up in the next brief'));
+    const c=el('button','btn2 sm','Change');c.type='button';c.addEventListener('click',()=>{QX={mode:'edit',who:A.who||'',note:A.note||'',busy:false,msg:'',team:QX.team};QX.pick=A.choice;renderBR()});a.append(c);W.append(a);return W}
+  W.append(el('div','cxQh','Answer Carter'));
+  const opts=el('div','cxFilt');[['me','✓ I\'ll do it'],['delegate','↪ Hand it to someone'],['done','✔ Already done'],['no','✗ No'],['note','✎ Just reply']].forEach(([k,l])=>{
+    const b=el('button','cxF'+(QX.pick===k?' on':''),l);b.type='button';b.addEventListener('click',()=>{QX.pick=k;QX.msg='';if(k==='delegate'&&!QX.team)tmCall('brief_team').then(j=>{QX.team=j.team||[];renderBR()}).catch(e=>{QX.msg=e.message;renderBR()});renderBR()});opts.append(b)});
+  W.append(opts);
+  if(QX.pick==='delegate'){const t=el('div','cxFilt');if(!QX.team)t.append(el('span','m','Loading the team…'));else QX.team.forEach(p=>{const b=el('button','cxF'+(QX.who===p.slug?' on':''),p.n);b.type='button';b.addEventListener('click',()=>{QX.who=p.slug;renderBR()});t.append(b)});W.append(t)}
+  if(QX.pick){const ta=el('textarea','cxQN');ta.rows=2;ta.placeholder=QX.pick==='delegate'?'Note for them (optional)':QX.pick==='me'?'When? e.g. tomorrow before 9 AM (optional)':'Anything Carter should know (optional)';ta.value=QX.note||'';ta.addEventListener('input',()=>{QX.note=ta.value});W.append(ta);
+    const row=el('div','cxAct'),s=el('button','btn sm',QX.busy?'Saving…':'Send to Carter');s.type='button';s.disabled=QX.busy||(QX.pick==='delegate'&&!QX.who)||(QX.pick==='note'&&!(QX.note||'').trim());
+    s.addEventListener('click',()=>{QX.busy=true;renderBR();tmCall('brief_answer',{brief:br.id,choice:QX.pick,who:QX.pick==='delegate'?QX.who:'',note:QX.note||''}).then(j=>{br.answer=j.answer;QX={mode:'',who:'',note:'',busy:false,msg:j.text||'Saved.',team:QX.team};renderBR()}).catch(e=>{QX.busy=false;QX.msg=(e&&e.message)||'Not saved.';renderBR()})});
+    row.append(s);if(A){const x=el('button','btn2 sm','Cancel');x.type='button';x.addEventListener('click',()=>{QX.mode='';QX.pick='';renderBR()});row.append(x)}W.append(row)}
+  if(QX.msg)W.append(el('div','cxQm',QX.msg));
+  return W}
 
 function cxDecide(B,{dec,team,fyi}){team=team||[];fyi=fyi||[];const cap=+(BR.decide_cap||7);
   const srcs=['all',...new Set(dec.map(a=>a.source))];if(!srcs.includes(CXF))CXF='all';
@@ -3918,7 +3942,7 @@ function renderCamTab(){if(!BR&&!CAM)return;if(camSec.hidden){camSec.hidden=fals
 '.cxKpi.bad,.cxTile.bad{border-left-color:var(--cx-red)}.cxKpi.bad b{color:var(--cx-red)}.cxKpi.watch,.cxTile.watch{border-left-color:#e0a100}.cxKpi.good,.cxTile.good{border-left-color:var(--cx-green)}'+
 '.cxBlk{background:var(--cx-bg);border:1px solid var(--cx-line);border-radius:12px;padding:12px 14px;margin:0 0 12px}.cxBlk h3{margin:0 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px}.cxBlk ul{margin:0;padding-left:18px}.cxBlk li{margin:0 0 8px;line-height:1.4}.cxBlk li .m{display:block;font-size:12.5px;color:var(--cx-brand);font-weight:600;margin-top:2px}.cxBlk li .w{display:block;font-size:13px;color:var(--cx-mut)}.cxBlk.fire{border-left:4px solid var(--cx-red)}.cxBlk summary{font-weight:600;cursor:pointer;min-height:28px;display:flex;align-items:center;gap:8px}'+
 '.cxGrp>.cxAct{margin:6px 0 8px}.cxBar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px}'+
-'.cxQ{border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--cx-soft);border:1px solid color-mix(in srgb,var(--cx-brand) 25%,var(--cx-line))}.cxQ .l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--cx-brand)}.cxQ p{margin:4px 0 0;font-size:15.5px}'+
+'.cxQ{border-radius:12px;padding:12px 14px;margin:0 0 12px;background:var(--cx-soft);border:1px solid color-mix(in srgb,var(--cx-brand) 25%,var(--cx-line))}.cxQ .l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--cx-brand)}.cxQ p{margin:4px 0 0;font-size:15.5px}.cxQ .cxAct{margin-top:10px}.cxQh{margin:12px 0 6px;font-size:13px;font-weight:700;color:var(--cx-ink)}.cxQ .cxFilt{margin:0 0 8px}.cxQN{width:100%;box-sizing:border-box;border:1px solid var(--cx-line);border-radius:10px;padding:8px 10px;font:inherit;font-size:15px;margin:2px 0 4px}.cxQA{margin-top:10px;font-size:14px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}.cxQA .m{color:#5b6475}.cxQm{margin-top:6px;font-size:13.5px;font-weight:600;color:var(--cx-brand)}'+
 '.cxFilt{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.cxF{border:1px solid var(--cx-line);background:var(--cx-bg);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--cx-ink);min-height:34px}.cxF.on{background:var(--cx-brand);border-color:var(--cx-brand);color:#fff}'+
 '.cxRank{font-weight:700;color:#C8102E;margin-right:4px}.cxCard{background:var(--cx-bg);border:1px solid var(--cx-line);border-radius:12px;padding:12px 14px;margin:0 0 10px;display:flex;flex-direction:column;gap:6px}.cxCard.dec{opacity:.7}.cxCard h4{margin:0;font-size:15.5px;line-height:1.35}'+
 '.cxTop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cxPill{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--cx-line);color:var(--cx-ink)}.cxPill.t3{background:#fff1d6;color:#7a4a00}.cxPill.t4{background:#fde5e3;color:var(--cx-red)}.cxPill.t0,.cxPill.t1{background:#e7f1ea;color:var(--cx-green)}.cxPill.t2{background:#e8eaf6;color:var(--cx-brand)}'+
