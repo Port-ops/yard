@@ -4194,17 +4194,19 @@ async function cdLoad(){if(!TMOK||!navigator.onLine)return;try{CD=await tmCall('
 async function cdSave(t,o,quiet){try{await tmCall('todo_update',Object.assign({id:t.id},o));if(!quiet)qToast('Saved')}catch(e){qToast((e&&e.message)||'Not saved')}}
 async function cdTick(t,btn){if(btn)btn.disabled=true;try{await tmCall('todo_done',{id:t.id,undo:!!t.done_at});
   if(!t.done_at)qToast(t.kind==='focus'?('🔥 Task of the day done'+((CD&&CD.streak||0)+1>1?' · '+((CD.streak||0)+1)+'-day streak':'')+'!'):'✓ Done');await cdLoad()}catch(e){alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false}}
-function cdLesson(t){const v=CDVIEW[t.id]||(CDVIEW[t.id]={tab:'steps',qi:0,qa:[]}),steps=cdLines(t.how).filter(x=>!/^one way to do it:?$/i.test(x)),sd=Array.isArray(t.steps_done)?t.steps_done.slice():[];
-  const L=el('div','cdL');const k=el('div','k');k.append(el('span','','⭐ Task of the day'));if(t.skill)k.append(el('span','',t.skill));if(t.minutes)k.append(el('span','','~'+t.minutes+' min'));if(t.done_at)k.append(el('span','','✓ Done'));L.append(k);
+function cdLesson(t){const v=CDVIEW[t.id]||(CDVIEW[t.id]={tab:t.apply_task?'ex':'steps',qi:0,qa:[]}),steps=cdLines(t.how).filter(x=>!/^one way to do it:?$/i.test(x)),sd=Array.isArray(t.steps_done)?t.steps_done.slice():[];
+  const L=el('div','cdL');const k=el('div','k');k.append(el('span','','⭐ Task of the day'));if(t.skill)k.append(el('span','',t.skill));if(t.minutes)k.append(el('span','',(t.apply_task?'📖 ':'~')+t.minutes+' min'+(t.apply_task?' lesson':'')));if(t.done_at)k.append(el('span','','✓ Done'));L.append(k);
   L.append(el('h3','',t.title));if(t.why)L.append(el('div','w',t.why));if(t.where_hint)L.append(el('div','w','Where: '+t.where_hint));
-  const n=steps.length,dn=steps.filter((_,i)=>sd[i]).length,pg=el('div','cdPg'),pi=el('i');pi.style.width=(t.done_at?100:n?Math.round(dn*100/n):0)+'%';pg.append(pi);L.append(pg);
-  L.append(el('div','w',t.done_at?'Finished. Nice work.':n?(dn+' of '+n+' steps'):''));
+  const AP0=!!t.apply_task,n=steps.length,dn=steps.filter((_,i)=>sd[i]).length,pg=el('div','cdPg'),pi=el('i');pi.style.width=(t.done_at?100:AP0?((t.quiz_score!=null?50:0)+(t.apply_done_at?50:0)):n?Math.round(dn*100/n):0)+'%';pg.append(pi);L.append(pg);
+  L.append(el('div','w',t.done_at?'Finished. Nice work.':AP0?('Read the example and watch-outs, take the quick check'+(t.quiz_score!=null?' ✓':'')+', then try it on real work.'):n?(dn+' of '+n+' steps'):''));
   const quiz=Array.isArray(t.quiz)?t.quiz.filter(q=>q&&q.q&&Array.isArray(q.options)):[],srcs=(Array.isArray(t.sources)?t.sources:[]).filter(s=>s&&/^https:\/\//.test(s.url||''));if(!srcs.length&&t.source_url&&/^https:\/\//.test(t.source_url))srcs.push({title:cdHost(t.source_url),url:t.source_url});
-  const tabs=[['steps','Steps',n],['ex','Example',t.example],['wo','Watch out',t.pitfalls],['quiz','Quick check',quiz.length],['src','Sources',srcs.length],['learn','My notes',1]].filter(x=>x[2]);
+  const AP=!!t.apply_task,tabs=(AP?[['ex','Example',t.example],['wo','Watch out',t.pitfalls],['quiz','Quick check',quiz.length],['steps','Try it'+(t.apply_done_at?' ✓':''),1]]:[['steps','Steps',n],['ex','Example',t.example],['wo','Watch out',t.pitfalls],['quiz','Quick check',quiz.length]]).concat([['src','Sources',srcs.length],['learn','My notes',1]]).filter(x=>x[2]);
   if(!tabs.some(x=>x[0]===v.tab))v.tab=tabs[0]&&tabs[0][0];
   const tb=el('div','cdT');tabs.forEach(([key,lab])=>{const b=el('button',v.tab===key?'on':'',lab+(key==='quiz'&&t.quiz_score!=null?' ✓':''));b.type='button';b.onclick=()=>{v.tab=key;cdRender()};tb.append(b)});L.append(tb);
   const P=el('div','cdP');
-  if(v.tab==='steps'){if(/^one way to do it/i.test(String(t.how||'').trim()))P.append(el('div','help','One way to do it. Use your judgment.'));
+  if(v.tab==='steps'){if(AP){P.append(el('div','help','Optional: use today\'s lesson on real work'+(t.apply_minutes?' (~'+t.apply_minutes+' min)':'')+'.'));P.append(el('b','',t.apply_task));
+      const ub=el('button','btn',t.apply_done_at?'✓ Used it (undo)':'I used it on real work');ub.type='button';ub.style.margin='6px 0';ub.onclick=async()=>{ub.disabled=true;try{await tmCall('todo_apply',{id:t.id,undo:!!t.apply_done_at});t.apply_done_at=t.apply_done_at?null:new Date().toISOString();qToast(t.apply_done_at?'💪 Nice. That is how it sticks.':'Marked not done')}catch(e){qToast((e&&e.message)||'Not saved')}cdRender()};P.append(ub)}
+    if(/^one way to do it/i.test(String(t.how||'').trim()))P.append(el('div','help','One way to do it. Use your judgment.'));
     steps.forEach((x,i)=>{const r=el('div','st'+(sd[i]?' ok':'')),b=el('button','',sd[i]?'✓':String(i+1));b.type='button';b.setAttribute('aria-label','Step '+(i+1));
       b.onclick=()=>{sd[i]=!sd[i];t.steps_done=sd.slice(0,n);cdSave(t,{steps:t.steps_done},true);if(n&&sd.slice(0,n).filter(Boolean).length===n&&!t.done_at)qToast('All steps done. Tap "Mark done" when you finish.');cdRender()};r.append(b,el('span','',x));P.append(r)})}
   else if(v.tab==='ex'){P.append(el('div','help','Worked example for 2FF'));P.append(el('div','cdEx',t.example))}
@@ -4224,6 +4226,17 @@ function cdLesson(t){const v=CDVIEW[t.id]||(CDVIEW[t.id]={tab:'steps',qi:0,qa:[]
   const ak=el('button','ak','💬 Ask Carter');ak.type='button';ak.onclick=()=>cxAsk('Help me with my task of the day: "'+t.title+'". '+(t.why?'Context: '+t.why+'. ':'')+'Walk me through it for 2FF with an example.');F.append(ak);
   [[1,'👍 Helpful'],[-1,'👎 Not for me']].forEach(([r,lab])=>{const b=el('button','rt'+(t.rating===r?' on':''),lab);b.type='button';b.onclick=()=>{t.rating=t.rating===r?null:r;cdSave(t,{rating:t.rating==null?0:r},true);qToast(t.rating==null?'Rating cleared':'Thanks. Carter uses this to pick better tasks.');cdRender()};F.append(b)});
   L.append(F);return L}
+function cdReview(r){const V=CDVIEW['rv'+r.id]||(CDVIEW['rv'+r.id]={}),B=el('div','cdL');B.style.background='linear-gradient(135deg,#3b2a6b,#5b3fa0)';
+  const k=el('div','k');k.append(el('span','','🔁 Quick review'));if(r.skill)k.append(el('span','',r.skill));k.append(el('span','','from '+r.day));B.append(k);
+  B.append(el('div','w','From your lesson: '+r.title+'. Coming back to it a few days later is what makes it stick.'));
+  const P=el('div','cdP'),Q=el('div','cdQ');Q.append(el('b','',r.q));const opts=Array.isArray(r.options)?r.options:[];
+  opts.forEach((o,i)=>{const done=V.saved,b=el('button',done?(i===r.answer?'r':(i===V.pick?'x':'')):(i===V.pick?'r':''),o);b.type='button';b.disabled=!!done;
+    if(V.pick===i&&!done){b.style.background='#eef1f8';b.style.borderColor='#1F2A5C'}b.onclick=()=>{V.pick=i;cdRender()};Q.append(b)});
+  if(V.pick!=null&&!V.saved){Q.append(el('p','help','How sure were you?'));const row=el('div');row.style.display='flex';row.style.gap='8px';
+    [['I was sure',true],['I guessed',false]].forEach(([lab,sure])=>{const b=el('button','btn',lab);b.type='button';b.onclick=async()=>{b.disabled=true;const ok=V.pick===r.answer;
+      try{await tmCall('todo_review',{id:r.id,qi:r.qi,correct:ok,sure});V.saved=true;V.ok=ok;V.sure=sure;qToast(ok&&sure?'✅ Locked in':'Saved. It will come back in a couple of days.')}catch(e){qToast((e&&e.message)||'Not saved');b.disabled=false}cdRender()};row.append(b)});Q.append(row)}
+  if(V.saved)Q.append(el('p','help',(V.ok?'✅ Right. ':'❌ Not quite. ')+(r.why||'')+(V.ok&&V.sure?'':' This one will come back in 2 days.')));
+  P.append(Q);B.append(P);return B}
 function cdItem(t){const row=el('div','cdI'+(t.done_at?' ok':'')),btn=el('button','ck',t.done_at?'✓':(t.kind==='info'?'ℹ':t.kind==='meeting'?'📅':''));btn.type='button';btn.title=t.done_at?'Mark not done':'Mark done';btn.onclick=()=>cdTick(t,btn);
   const tx=el('div');tx.style.flex='1';tx.append(el('b','',t.title));const meta=[t.why,t.where_hint,t.minutes?('~'+t.minutes+' min'):''].filter(Boolean).join(' · ');if(meta)tx.append(el('div','help',meta));
   if(t.how){const d=el('details');d.append(el('summary','','How'));cdLines(t.how).forEach((x,i)=>d.append(el('p','help',(i+1)+'. '+x)));tx.append(d)}row.append(btn,tx);return row}
@@ -4232,6 +4245,7 @@ function cdRender(){const b=cdBox();if(!b)return;b.textContent='';if(!CD){b.hidd
   const hd=el('div','mdHd');hd.append(el('b','','From Carter'));const right=el('span','mdCount');if(CD.streak)right.append(el('span','cdS','🔥 '+CD.streak+'-day streak'),document.createTextNode(' '));if(R.length)right.append(document.createTextNode(dn+' of '+R.length+' done'));hd.append(right);b.append(hd);
   if(CD.day&&CD.today&&CD.day!==CD.today)b.append(el('p','help','Today\'s list comes at about 7 AM Eastern. Showing your last list ('+CD.day+').'));
   if(!R.length)b.append(el('p','help','Every morning Carter posts your list and a task of the day for your job, with steps, an example and a quick check.'));
+  if(CD.review)b.append(cdReview(CD.review));
   focus.forEach(t=>b.append(cdLesson(t)));rest.forEach(t=>b.append(cdItem(t)));
   const H=CD.history||[];if(H.length){const d=el('details');d.append(el('summary','','📚 My lessons ('+H.length+')'));const sk={};H.forEach(h=>{if(h.skill&&h.done_at)sk[h.skill]=(sk[h.skill]||0)+1});
     const ks=Object.entries(sk).sort((a,c)=>c[1]-a[1]);if(ks.length)d.append(el('p','help','Skills practiced: '+ks.map(([s,c])=>s+(c>1?' ×'+c:'')).join(' · ')));
