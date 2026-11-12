@@ -1601,13 +1601,34 @@ function imLinkify(txt){const f=document.createDocumentFragment();String(txt||''
 function imSite(r){if(r.website)return /^https?:/i.test(r.website)?r.website:'https://'+r.website;const m=String((r.hq_or_local_office||'')+' '+(r.savannah_evidence||'')).match(/https?:\/\/[^\s)·,;]+/i);return m?m[0]:''}
 function imLink(label,href,title){const a=el('a','imq',label);a.href=href;a.target=/^(mailto|tel):/.test(href)?'_self':'_blank';a.rel='noopener';if(title)a.title=title;a.addEventListener('click',e=>e.stopPropagation());return a}
 function imSetStatus(r,st,btn){const n=prompt((IMST.find(x=>x[0]===st)||[0,st])[1]+' - add a note? (who, what they said, next step). Leave blank to skip.','');if(n===null)return;slRun('salesImf',{id:r.id,status:st,note:(n||'').trim()},btn)}
+// ---------- Send from my own email (owner 11/12/2026: "make this button send from rp@" + "everyone who uses Work Finder ... with their email")
+// Richard sends from rp@ (Carter outbox path). Everyone else sends from their own company mailbox; the draft's signature is switched to
+// theirs and they can edit the text first. The server checks the sign-in ticket, the cs@ ban, blocked companies and a daily cap.
+const PS_URL='https://lzwidcwiejowjhgzkcxo.supabase.co/functions/v1/prospect-send';let IMME=null,IMMEL=0,IMB={};
+async function imApi(action,o){const ticket=await tmTicket();const r=await fetch(PS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({ticket,action},o||{}))});
+  let j=await r.json().catch(()=>({ok:false,error:'No answer from the server.'}));if(r.status===401&&!o.__r){return imApi(action,Object.assign({},o,{__r:1}))}if(j.error&&!j.ok)throw new Error(j.error);return j}
+function imMe(){if(IMME||IMMEL)return IMME;IMMEL=1;imApi('me',{}).then(j=>{IMME=j;try{renderIM()}catch(e){}}).catch(()=>{IMMEL=0});return null}
+function imBody(r){if(IMB[r.id]!=null)return IMB[r.id];let t=String(r.draft_body||'');const me=IMME;
+  if(me&&!me.owner){t=t.replace(/\bI run 2FF Logistics\b/g,'I\'m with 2FF Logistics').replace(/^Richard Prescott\s*$/m,me.name+(me.title?'\n'+me.title:'')).replace(/rp@2f-logistics\.com/g,me.from)}
+  return t}
+function imSendRow(row,r,d){const me=imMe(),from=me?me.from:'my email',again=r.status==='sent_by_human';
+  if(me&&!me.owner){const ed=el('details','imEd');ed.append(el('summary','','✏️ Edit before sending (signed as you)'));const ta=el('textarea');ta.rows=10;ta.value=imBody(r);ta.style.width='100%';ta.style.textTransform='none';ta.addEventListener('input',()=>{IMB[r.id]=ta.value});ed.append(ta);d.append(ed)}
+  let em=null;if(!r.contact_email&&!again){em=el('input');em.type='email';em.placeholder='Type their email to send from here';em.style.flex='1';em.style.minWidth='200px';em.style.textTransform='none';em.setAttribute('autocapitalize','off');em.setAttribute('autocorrect','off');em.autocomplete='off';em.value=IMT[r.id]||'';em.addEventListener('input',()=>{IMT[r.id]=em.value});row.append(em)}
+  if(again&&!r.contact_email)return;
+  const sn=el('button','btn',(again?'🔁 Send again from ':'🚀 Send from ')+from);sn.type='button';if(!me)sn.disabled=true;
+  sn.addEventListener('click',()=>{const to=em?em.value.trim().toLowerCase():r.contact_email;if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(to||'')){alert('Type a full email address first.');if(em)em.focus();return}
+    const prev=(String(r.notes||'').match(/SENT (\d{4}-\d{2}-\d{2} \d{1,2}:\d{2} [AP]M)/)||[])[1];
+    if(!confirm((again?'This was already sent'+(prev?' on '+prev:'')+'. Send the same email AGAIN':'Send this email')+' from '+from+' to '+to+' now?'))return;
+    sn.disabled=true;sn.textContent='Sending…';const o={id:r.id,again:again,body:imBody(r)};if(em)o.to=to;
+    imApi('send',o).then(j=>{sn.textContent=j.sent?'✅ Sent from '+(j.from||from):j.already?'Already on its way':'✅ Queued, sends within 5 min';delete IMB[r.id];try{loadSL(true)}catch(e){}}).catch(e=>{sn.disabled=false;sn.textContent='Try again';alert((e&&e.message)||'Not sent.')})});
+  row.append(sn)}
 // ---------- Find contact (owner 11/12/2026): Perplexity looks up the named person's PUBLISHED business email, phone and LinkedIn.
 // A published email is saved on the prospect (that also puts the usual approval card on the Owner tab). A pattern guess is only
 // offered as "unverified": tapping it fills the email box, and Richard still taps Send himself. Each search costs a few cents.
 let IMR={},IMT={};
-function imResearch(c,r){if(!(SL&&SL.admin)||r.do_not_contact)return;const R=IMR[r.id]||{},W=el('div','imRes');
+function imResearch(c,r){if(!SL||r.do_not_contact)return;const R=IMR[r.id]||{},W=el('div','imRes');
   const b=el('button','btn2',R.busy?'🔎 Searching… (about 30 seconds)':R.res?'🔎 Search again':'🔎 Find contact (Perplexity)');b.type='button';b.disabled=!!R.busy;
-  b.addEventListener('click',e=>{e.stopPropagation();IMR[r.id]={busy:true};renderIM();tmCall('prospect_research',{id:r.id}).then(j=>{IMR[r.id]={res:j.research,saved:j.saved_email};if(j.saved_email)r.contact_email=j.saved_email;renderIM();try{loadSL(true)}catch(_){}}).catch(x=>{IMR[r.id]={err:(x&&x.message)||'Search failed.'};renderIM()})});
+  b.addEventListener('click',e=>{e.stopPropagation();IMR[r.id]={busy:true};renderIM();imApi('research',{id:r.id}).then(j=>{IMR[r.id]={res:j.research,saved:j.saved_email};if(j.saved_email)r.contact_email=j.saved_email;renderIM();try{loadSL(true)}catch(_){}}).catch(x=>{IMR[r.id]={err:(x&&x.message)||'Search failed.'};renderIM()})});
   W.append(b);if(R.err)W.append(el('span','imResErr',' '+R.err));
   const res=R.res,src=String(r.contact_source||'');
   const guess=res?res.guess:((src.match(/possible email \(unverified[^)]*\):\s*([^\s·|]+@[^\s·|]+)/)||[])[1]||'');
@@ -1651,9 +1672,8 @@ function renderIM(){const L=imSec.querySelector('#imL'),R=(SL&&SL.imf)||[];
       const src=Array.isArray(r.sources)?r.sources:[];if(src.length){const d=el('div','meta');d.append('Sources: ');src.slice(0,8).forEach((x,i)=>{const u=typeof x==='string'?x:(x&&(x.url||x.link))||'';const t=typeof x==='string'?x.replace(/^https?:\/\/(www\.)?/,'').split('/')[0]:(x&&(x.title||x.name))||u;if(u){if(i)d.append(' · ');d.append(imLink(t,u))}});c.append(d)}
       if(r.do_not_contact)c.append(el('div','ev bad','DO NOT CONTACT'+(r.dnc_reason?': '+r.dnc_reason:'')));
       else if(r.draft_body){const d=el('details');d.open=true;const s=el('summary','','Draft email'+(r.draft_subject?': '+r.draft_subject:''));d.append(s,el('pre','',r.draft_body));const row=el('div','row');if(r.status==='sent_by_human'){const m=String(r.notes||'').match(/SENT (\d{4}-\d{2}-\d{2} \d{1,2}:\d{2} [AP]M) from Work Finder to ([^ (|]+)/);const sb=el('div','imSent',m?'✅ Already sent '+m[1]+' to '+m[2]+' · no need to send it again':'✅ You marked this one sent · the Send button is off so it doesn\'t go twice');d.append(sb)}const cp=el('button','btn2','📋 Copy draft');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText((r.draft_subject?'Subject: '+r.draft_subject+'\n\n':'')+r.draft_body);cp.textContent='Copied ✓'}catch(e){}});row.append(cp);
-        if(r.contact_email){const a=el('a','btn2','✉️ Open in my email');a.href='mailto:'+encodeURIComponent(r.contact_email)+'?subject='+encodeURIComponent(r.draft_subject||'')+'&body='+encodeURIComponent(r.draft_body);row.append(a);if(SL.admin&&r.status==='drafted'){const sn=el('button','btn','🚀 Send now');sn.type='button';sn.addEventListener('click',()=>{if(!confirm('Send this email from rp@ to '+r.contact_email+' now?'))return;slRun('salesImfSend',{id:r.id},sn)});row.append(sn)}}
-        else if(site){const a=el('a','btn2','📋→🌐 Copy & open their site');a.href=site;a.target='_blank';a.rel='noopener';a.addEventListener('click',()=>{try{navigator.clipboard.writeText(r.draft_body)}catch(e){}});row.append(a)}
-        if(SL.admin&&r.status==='drafted'&&!r.contact_email){const em=el('input');em.type='email';em.placeholder='Type their email to send from here';em.style.flex='1';em.style.minWidth='200px';em.style.textTransform='none';em.setAttribute('autocapitalize','off');em.setAttribute('autocorrect','off');em.autocomplete='off';em.value=IMT[r.id]||'';em.addEventListener('input',()=>{IMT[r.id]=em.value});const sn=el('button','btn','🚀 Send now');sn.type='button';sn.addEventListener('click',()=>{const to=em.value.trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(to)){alert('Type a full email address first.');em.focus();return}if(!confirm('Send this email from rp@ to '+to+' now?'))return;slRun('salesImfSend',{id:r.id,to:to},sn)});row.append(em,sn)}
+        if(!r.do_not_contact&&(r.status==='drafted'||r.status==='sent_by_human'))imSendRow(row,r,d);
+        if(!r.contact_email&&site){const a=el('a','btn2','📋→🌐 Copy & open their site');a.href=site;a.target='_blank';a.rel='noopener';a.addEventListener('click',()=>{try{navigator.clipboard.writeText(imBody(r))}catch(e){}});row.append(a)}
         d.append(row);c.append(d)}
       if(r.notes){const d=el('div','meta');d.append('Notes: ',imLinkify(r.notes));c.append(d)}
       const row=el('div','row'),sel=el('select');IMST.filter(([k])=>k!=='do_not_contact'||SL.admin).forEach(([k,l])=>{const o=el('option','',l);o.value=k;if(k===r.status)o.selected=true;sel.append(o)});const nt=el('input');nt.placeholder='Note (who you talked to, next step)';nt.style.flex='1';nt.style.textTransform='none';
