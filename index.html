@@ -4167,28 +4167,79 @@ function tmBanner(){let b=$('tmBan');const o=TM&&TM.open;if(!o){if(b)b.remove();
 function tmInit(){try{if(!roles().length)return setTimeout(tmInit,3000);tmLoad()}catch(e){setTimeout(tmInit,5000)}}tmInit();
 setInterval(()=>{if(document.visibilityState==='visible'&&TMOK){if(TAB==='time')tmLoad();else if(TM&&TM.open)tmBanner()}},120000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&TMOK)tmLoad()});
-// ---------- Carter's daily list (owner 11/11/2026): each person gets their own to-do + a task of the day unique to their job, ----------
-// with how-to steps Carter researched on Perplexity. Written each morning to carter.daily_todos by the "Carter — Morning To-Do" task;
-// read and ticked through the time-clock function (same sign-in ticket as the Time tab). People can only tick their own items.
-let CD=null;
+// ---------- Carter's daily list (owner 11/11/2026): each person's own to-do + a TASK OF THE DAY unique to their job, built as a ----------
+// small lesson: tick-off steps, a worked 2FF example, pitfalls, a 2-question quick check, sources, "ask Carter", a note of what they
+// learned and a helpful/not rating (Carter uses ratings to pick better tasks). Streak + history are the person's own; no comparisons.
+// Data: carter.daily_todos, written each morning by the "Carter — Everyone's Daily To-Do" task; read/ticked through time-clock.
+let CD=null,CDVIEW={};
+(function(){const st=document.createElement('style');st.textContent=
+'.cdL{background:linear-gradient(135deg,#1F2A5C,#2f4a8f);color:#fff;border-radius:14px;padding:12px 14px;margin:8px 0}.cdL .k{font-size:12px;opacity:.85;display:flex;gap:6px;flex-wrap:wrap;align-items:center}'+
+'.cdL .k span{background:rgba(255,255,255,.16);border-radius:10px;padding:2px 8px}.cdL h3{margin:6px 0 2px;font-size:18px;line-height:1.25;color:#fff}.cdL .w{font-size:13px;opacity:.9}'+
+'.cdPg{height:6px;background:rgba(255,255,255,.2);border-radius:3px;margin:10px 0 4px;overflow:hidden}.cdPg i{display:block;height:100%;background:#7ee2a8;transition:width .3s}'+
+'.cdT{display:flex;gap:6px;overflow-x:auto;margin:10px 0 0;padding-bottom:2px}.cdT button{flex:none;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:16px;padding:6px 12px;font-size:13px;min-height:34px}.cdT button.on{background:#fff;color:#1F2A5C;font-weight:700}'+
+'.cdP{background:#fff;color:#1d2433;border-radius:12px;padding:10px 12px;margin-top:8px;font-size:14px;line-height:1.45}.cdP .st{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid #eef0f5}.cdP .st:first-child{border-top:0}'+
+'.cdP .st button{flex:none;width:28px;height:28px;border-radius:8px;border:2px solid #1F2A5C;background:#fff;color:#1F2A5C;font-weight:700;padding:0;min-height:0}.cdP .st.ok button{background:#1F2A5C;color:#fff}.cdP .st.ok span{color:#7a8194;text-decoration:line-through}'+
+'.cdEx{border-left:4px solid #2f7de1;background:#f2f7fe;padding:8px 10px;border-radius:6px;white-space:pre-wrap}.cdWo{display:flex;gap:8px;padding:5px 0}.cdQ button{display:block;width:100%;text-align:left;margin:6px 0;border:1px solid #cfd5e3;background:#fff;border-radius:10px;padding:9px 12px;min-height:40px;color:#1d2433}'+
+'.cdQ button.r{background:#e3f6ea;border-color:#3aa76d}.cdQ button.x{background:#fdecea;border-color:#d9534f}.cdSrc a{display:inline-block;margin:4px 6px 0 0;padding:5px 10px;border-radius:14px;background:#eef1f8;color:#1F2A5C;font-size:13px;text-decoration:none}'+
+'.cdF{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.cdF button{border-radius:18px;min-height:38px;padding:6px 14px;border:0;font-weight:700}.cdF .dn{background:#7ee2a8;color:#123}.cdF .dn.on{background:#fff;color:#1F2A5C}.cdF .ak{background:rgba(255,255,255,.16);color:#fff}'+
+'.cdF .rt{background:rgba(255,255,255,.12);color:#fff;font-weight:400}.cdF .rt.on{background:#fff;color:#1F2A5C}.cdLn textarea{width:100%;min-height:60px;border-radius:10px;border:1px solid #cfd5e3;padding:8px;font:inherit;font-size:15px;text-transform:none;box-sizing:border-box}'+
+'.cdI{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line,#e6e8ef)}.cdI .ck{flex:none;width:34px;height:34px;border-radius:17px;border:2px solid #1F2A5C;background:#fff;color:#1F2A5C;padding:0;min-height:0;font-size:15px}'+
+'.cdI.ok{opacity:.55}.cdI.ok .ck{background:#1F2A5C;color:#fff}.cdI.ok b{text-decoration:line-through}.cdS{font-size:12px;border-radius:10px;padding:2px 8px;background:#fff3d6;color:#7a5200;font-weight:700}'+
+'@media (prefers-color-scheme:dark){.cdP{background:#1d2330;color:#e8eaee}.cdP .st{border-color:#2f3747}.cdEx{background:#18243a}.cdQ button{background:#1d2330;color:#e8eaee;border-color:#2f3747}.cdSrc a{background:#26304a;color:#cfe0ff}.cdP .st button{background:#1d2330;color:#cfe0ff;border-color:#cfe0ff}}';
+document.head.append(st)})();
+const cdLines=t=>String(t||'').split(/\n+/).map(x=>x.replace(/^\s*(\d+[.)]|[-•*])\s*/,'').trim()).filter(Boolean);
+const cdHost=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return 'source'}};
 function cdBox(){let b=$('cdDay');if(!b){b=el('div','myDay');b.id='cdDay';const a=$('myDay')||$('tFresh')||$('tChips');if(!a)return null;a.after(b)}return b}
 async function cdLoad(){if(!TMOK||!navigator.onLine)return;try{CD=await tmCall('todo');cdRender()}catch(e){const b=cdBox();if(b){b.hidden=false;b.textContent='';b.append(el('b','','From Carter'),el('p','help',(e&&e.message)||'Could not load your list.'))}}}
-async function cdTick(t,btn){btn.disabled=true;try{await tmCall('todo_done',{id:t.id,undo:!!t.done_at});if(!t.done_at)qToast('✓ Done');await cdLoad()}catch(e){alert((e&&e.message)||'Not saved.');btn.disabled=false}}
-function cdHow(t){const d=el('details');d.append(el('summary','','How to do it'));String(t.how||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>d.append(el('p','help',x)));
-  if(t.source_url&&/^https:\/\//.test(t.source_url)){const a=el('a','','Source');a.href=t.source_url;a.target='_blank';a.rel='noopener';const p=el('p','help');p.append(a);d.append(p)}return d}
-function cdItem(t,focus){const row=el(focus?'div':'li');row.style.cssText='display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #e6e8ef'+(t.done_at?';opacity:.55':'');
-  const btn=el('button','',t.done_at?'✓':'○');btn.type='button';btn.title=t.done_at?'Mark not done':'Mark done';btn.style.cssText='min-width:36px;height:36px;border-radius:18px;border:1px solid #1F2A5C;background:'+(t.done_at?'#1F2A5C;color:#fff':'#fff;color:#1F2A5C')+';font-size:16px';btn.onclick=()=>cdTick(t,btn);
-  const tx=el('div');tx.style.flex='1';const ti=el('b','',t.title);if(t.done_at)ti.style.textDecoration='line-through';tx.append(ti);
-  const meta=[t.why,t.where_hint,t.minutes?('about '+t.minutes+' min'):''].filter(Boolean).join(' · ');if(meta)tx.append(el('div','help',meta));
-  if(t.how)tx.append(cdHow(t));row.append(btn,tx);return row}
+async function cdSave(t,o,quiet){try{await tmCall('todo_update',Object.assign({id:t.id},o));if(!quiet)qToast('Saved')}catch(e){qToast((e&&e.message)||'Not saved')}}
+async function cdTick(t,btn){if(btn)btn.disabled=true;try{await tmCall('todo_done',{id:t.id,undo:!!t.done_at});
+  if(!t.done_at)qToast(t.kind==='focus'?('🔥 Task of the day done'+((CD&&CD.streak||0)+1>1?' · '+((CD.streak||0)+1)+'-day streak':'')+'!'):'✓ Done');await cdLoad()}catch(e){alert((e&&e.message)||'Not saved.');if(btn)btn.disabled=false}}
+function cdLesson(t){const v=CDVIEW[t.id]||(CDVIEW[t.id]={tab:'steps',qi:0,qa:[]}),steps=cdLines(t.how).filter(x=>!/^one way to do it:?$/i.test(x)),sd=Array.isArray(t.steps_done)?t.steps_done.slice():[];
+  const L=el('div','cdL');const k=el('div','k');k.append(el('span','','⭐ Task of the day'));if(t.skill)k.append(el('span','',t.skill));if(t.minutes)k.append(el('span','','~'+t.minutes+' min'));if(t.done_at)k.append(el('span','','✓ Done'));L.append(k);
+  L.append(el('h3','',t.title));if(t.why)L.append(el('div','w',t.why));if(t.where_hint)L.append(el('div','w','Where: '+t.where_hint));
+  const n=steps.length,dn=steps.filter((_,i)=>sd[i]).length,pg=el('div','cdPg'),pi=el('i');pi.style.width=(t.done_at?100:n?Math.round(dn*100/n):0)+'%';pg.append(pi);L.append(pg);
+  L.append(el('div','w',t.done_at?'Finished. Nice work.':n?(dn+' of '+n+' steps'):''));
+  const quiz=Array.isArray(t.quiz)?t.quiz.filter(q=>q&&q.q&&Array.isArray(q.options)):[],srcs=(Array.isArray(t.sources)?t.sources:[]).filter(s=>s&&/^https:\/\//.test(s.url||''));if(!srcs.length&&t.source_url&&/^https:\/\//.test(t.source_url))srcs.push({title:cdHost(t.source_url),url:t.source_url});
+  const tabs=[['steps','Steps',n],['ex','Example',t.example],['wo','Watch out',t.pitfalls],['quiz','Quick check',quiz.length],['src','Sources',srcs.length],['learn','My notes',1]].filter(x=>x[2]);
+  if(!tabs.some(x=>x[0]===v.tab))v.tab=tabs[0]&&tabs[0][0];
+  const tb=el('div','cdT');tabs.forEach(([key,lab])=>{const b=el('button',v.tab===key?'on':'',lab+(key==='quiz'&&t.quiz_score!=null?' ✓':''));b.type='button';b.onclick=()=>{v.tab=key;cdRender()};tb.append(b)});L.append(tb);
+  const P=el('div','cdP');
+  if(v.tab==='steps'){if(/^one way to do it/i.test(String(t.how||'').trim()))P.append(el('div','help','One way to do it. Use your judgment.'));
+    steps.forEach((x,i)=>{const r=el('div','st'+(sd[i]?' ok':'')),b=el('button','',sd[i]?'✓':String(i+1));b.type='button';b.setAttribute('aria-label','Step '+(i+1));
+      b.onclick=()=>{sd[i]=!sd[i];t.steps_done=sd.slice(0,n);cdSave(t,{steps:t.steps_done},true);if(n&&sd.slice(0,n).filter(Boolean).length===n&&!t.done_at)qToast('All steps done. Tap "Mark done" when you finish.');cdRender()};r.append(b,el('span','',x));P.append(r)})}
+  else if(v.tab==='ex'){P.append(el('div','help','Worked example for 2FF'));P.append(el('div','cdEx',t.example))}
+  else if(v.tab==='wo'){cdLines(t.pitfalls).forEach(x=>{const r=el('div','cdWo');r.append(el('span','','⚠️'),el('span','',x));P.append(r)})}
+  else if(v.tab==='quiz'){const Q=el('div','cdQ');if(v.qi>=quiz.length){const sc=v.qa.filter(Boolean).length;Q.append(el('b','','You got '+sc+' of '+quiz.length+'.'));
+      Q.append(el('p','help',sc===quiz.length?'Spot on.':'Read the step it came from and try again tomorrow.'));const again=el('button','','Try again');again.type='button';again.onclick=()=>{v.qi=0;v.qa=[];cdRender()};Q.append(again)}
+    else{const q=quiz[v.qi];Q.append(el('div','help','Question '+(v.qi+1)+' of '+quiz.length));Q.append(el('b','',q.q));const picked=v.pick;
+      q.options.forEach((o,i)=>{const b=el('button',picked==null?'':(i===q.answer?'r':(i===picked?'x':'')),o);b.type='button';b.disabled=picked!=null;b.onclick=()=>{v.pick=i;v.qa[v.qi]=i===q.answer;cdRender()};Q.append(b)});
+      if(picked!=null){Q.append(el('p','help',(picked===q.answer?'✅ Right. ':'❌ Not quite. ')+(q.why||'')));const nx=el('button','',v.qi+1<quiz.length?'Next question':'See my score');nx.type='button';
+        nx.onclick=()=>{v.pick=null;v.qi++;if(v.qi>=quiz.length){const sc=v.qa.filter(Boolean).length;t.quiz_score=sc;cdSave(t,{quiz_score:sc},true)}cdRender()};Q.append(nx)}}
+    P.append(Q)}
+  else if(v.tab==='src'){P.append(el('div','help','Where Carter found this (Perplexity / web). Tap to read more.'));const S=el('div','cdSrc');srcs.forEach(x=>{const a=el('a','','↗ '+(x.title||cdHost(x.url)));a.href=x.url;a.target='_blank';a.rel='noopener';S.append(a)});P.append(S)}
+  else if(v.tab==='learn'){const N=el('div','cdLn');N.append(el('div','help','What did you learn or change? One or two lines. It saves to your lessons.'));const ta=el('textarea');ta.value=t.learned||'';ta.placeholder='e.g. Calling before 9 AM gets the dispatcher, not voicemail.';
+    const sv=el('button','btn','Save note');sv.type='button';sv.onclick=()=>{t.learned=ta.value;cdSave(t,{learned:ta.value})};N.append(ta,sv);P.append(N)}
+  L.append(P);
+  const F=el('div','cdF'),dnb=el('button','dn'+(t.done_at?' on':''),t.done_at?'✓ Done (undo)':'Mark done');dnb.type='button';dnb.onclick=()=>cdTick(t,dnb);F.append(dnb);
+  const ak=el('button','ak','💬 Ask Carter');ak.type='button';ak.onclick=()=>cxAsk('Help me with my task of the day: "'+t.title+'". '+(t.why?'Context: '+t.why+'. ':'')+'Walk me through it for 2FF with an example.');F.append(ak);
+  [[1,'👍 Helpful'],[-1,'👎 Not for me']].forEach(([r,lab])=>{const b=el('button','rt'+(t.rating===r?' on':''),lab);b.type='button';b.onclick=()=>{t.rating=t.rating===r?null:r;cdSave(t,{rating:t.rating==null?0:r},true);qToast(t.rating==null?'Rating cleared':'Thanks. Carter uses this to pick better tasks.');cdRender()};F.append(b)});
+  L.append(F);return L}
+function cdItem(t){const row=el('div','cdI'+(t.done_at?' ok':'')),btn=el('button','ck',t.done_at?'✓':(t.kind==='info'?'ℹ':t.kind==='meeting'?'📅':''));btn.type='button';btn.title=t.done_at?'Mark not done':'Mark done';btn.onclick=()=>cdTick(t,btn);
+  const tx=el('div');tx.style.flex='1';tx.append(el('b','',t.title));const meta=[t.why,t.where_hint,t.minutes?('~'+t.minutes+' min'):''].filter(Boolean).join(' · ');if(meta)tx.append(el('div','help',meta));
+  if(t.how){const d=el('details');d.append(el('summary','','How'));cdLines(t.how).forEach((x,i)=>d.append(el('p','help',(i+1)+'. '+x)));tx.append(d)}row.append(btn,tx);return row}
 function cdRender(){const b=cdBox();if(!b)return;b.textContent='';if(!CD){b.hidden=true;return}b.hidden=false;
   const R=CD.rows||[],focus=R.filter(r=>r.kind==='focus'),rest=R.filter(r=>r.kind!=='focus'),dn=R.filter(r=>r.done_at).length;
-  const hd=el('div','mdHd');hd.append(el('b','','From Carter'),el('span','mdCount',R.length?dn+' of '+R.length+' done':''));b.append(hd);
-  if(CD.day&&CD.today&&CD.day!==CD.today)b.append(el('p','help','Today\'s list is not ready yet. Showing your last list ('+CD.day+').'));
-  if(!R.length)b.append(el('p','help','Carter posts your list and your task of the day each morning.'));
-  if(focus.length){const f=el('div');f.style.cssText='background:#F3F5FB;border-radius:10px;padding:8px 10px;margin:6px 0';f.append(el('div','help','⭐ Task of the day'));focus.forEach(t=>f.append(cdItem(t,true)));b.append(f)}
-  if(rest.length){const ul=el('ul');ul.style.cssText='list-style:none;margin:0;padding:0';rest.forEach(t=>ul.append(cdItem(t,false)));b.append(ul)}
-  if((CD.team||[]).length){const d=el('details');d.append(el('summary','','Team today'));CD.team.forEach(m=>{const p=el('p','help',(m.display_name||m.slug)+': '+m.done+' of '+m.total+' done'+(m.focus?' · ⭐ '+m.focus+(m.focus_done?' ✓':''):''));d.append(p)});b.append(d)}}
+  const hd=el('div','mdHd');hd.append(el('b','','From Carter'));const right=el('span','mdCount');if(CD.streak)right.append(el('span','cdS','🔥 '+CD.streak+'-day streak'),document.createTextNode(' '));if(R.length)right.append(document.createTextNode(dn+' of '+R.length+' done'));hd.append(right);b.append(hd);
+  if(CD.day&&CD.today&&CD.day!==CD.today)b.append(el('p','help','Today\'s list comes at about 7 AM Eastern. Showing your last list ('+CD.day+').'));
+  if(!R.length)b.append(el('p','help','Every morning Carter posts your list and a task of the day for your job, with steps, an example and a quick check.'));
+  focus.forEach(t=>b.append(cdLesson(t)));rest.forEach(t=>b.append(cdItem(t)));
+  const H=CD.history||[];if(H.length){const d=el('details');d.append(el('summary','','📚 My lessons ('+H.length+')'));const sk={};H.forEach(h=>{if(h.skill&&h.done_at)sk[h.skill]=(sk[h.skill]||0)+1});
+    const ks=Object.entries(sk).sort((a,c)=>c[1]-a[1]);if(ks.length)d.append(el('p','help','Skills practiced: '+ks.map(([s,c])=>s+(c>1?' ×'+c:'')).join(' · ')));
+    H.forEach(h=>{const p=el('div','cdI'+(h.done_at?'':' ')),x=el('div');x.style.flex='1';x.append(el('b','',(h.done_at?'✓ ':'○ ')+h.title));
+      x.append(el('div','help',[h.day,h.skill,h.quiz_score!=null?('quick check '+h.quiz_score):'',h.rating===1?'👍':h.rating===-1?'👎':''].filter(Boolean).join(' · ')));if(h.learned)x.append(el('div','help','📝 '+h.learned));
+      const s=(Array.isArray(h.sources)?h.sources:[]).filter(z=>z&&/^https:\/\//.test(z.url||''));if(s.length){const S=el('div','cdSrc');s.slice(0,3).forEach(z=>{const a=el('a','','↗ '+(z.title||cdHost(z.url)));a.href=z.url;a.target='_blank';a.rel='noopener';S.append(a)});x.append(S)}p.append(x);d.append(p)});b.append(d)}
+  if((CD.team||[]).length){const d=el('details');d.append(el('summary','','👥 Team today'));CD.team.forEach(m=>{const p=el('div','cdI'),x=el('div');x.style.flex='1';x.append(el('b','',(m.display_name||m.slug)+' · '+m.done+' of '+m.total+' done'));
+      if(m.focus)x.append(el('div','help','⭐ '+m.focus+(m.focus_done?' ✓':'')+(m.rating===1?' · 👍':m.rating===-1?' · 👎':'')));if(m.learned)x.append(el('div','help','📝 '+m.learned));p.append(x);d.append(p)});b.append(d)}}
 function cdInit(n){if(TMOK)return cdLoad();if((n||0)<20)setTimeout(()=>cdInit((n||0)+1),5000)}cdInit(0);
 setInterval(()=>{if(document.visibilityState==='visible'&&TMOK&&TAB==='today')cdLoad()},10*60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&TMOK)cdLoad()});
