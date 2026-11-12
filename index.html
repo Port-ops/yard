@@ -4111,7 +4111,7 @@ async function tmTicket(force){if(!force&&TMTK&&Date.now()<TMTKX)return TMTK;con
 async function tmCall(verb,o,retry){const ticket=await tmTicket(retry);const r=await fetch(TM_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket,verb,o:o||{}})});const j=await r.json().catch(()=>({ok:false,error:'No answer from the time server.'}));
   if(r.status===401&&!retry)return tmCall(verb,o,true);if(!j.ok)throw new Error(j.error||'Not saved');return j}
 function tmMsg(box,cls,txt){const d=el('div',cls,txt);box.prepend(d);setTimeout(()=>d.remove(),cls==='tmErr'?12000:6000)}
-async function tmLoad(){if(!Y().call||!navigator.onLine)return;try{TM=await tmCall('me');TMOK=true;tmSec.hidden=false;tmTeam.hidden=!TM.reviewer;tmAppr.hidden=!TM.owner;try{tabVis()}catch(e){}tmRender();tmBanner();if(TM.reviewer&&TAB==='time')tmLoadTeam()}
+async function tmLoad(){if(!Y().call||!navigator.onLine)return;try{TM=await tmCall('me');TMOK=true;tmSec.hidden=false;tmTeam.hidden=!TM.reviewer;tmAppr.hidden=!TM.owner;try{tabVis()}catch(e){}tmRender();tmBanner();if(TM.reviewer)tmLoadTeam()}
   catch(e){const m=String((e&&e.message)||e);if(/not on the time-tracking list/i.test(m)){TMOK=false;[tmSec,tmTeam,tmAppr].forEach(s=>s.hidden=true);try{tabVis()}catch(x){}return}$('tmMain').textContent='';tmMsg($('tmMain'),'tmErr',m)}}
 async function tmAct(verb,o,label){if(TMBUSY)return;TMBUSY=true;document.querySelectorAll('#tmMain button').forEach(b=>b.disabled=true);
   try{const r=await tmCall(verb,o);await tmLoad();tmMsg($('tmMain'),'tmRcpt','✓ '+(r.text||label||'Saved')+' · '+tmBoth(new Date().toISOString(),(TM&&TM.tz)||'America/New_York'))}
@@ -4139,7 +4139,7 @@ function tmRender(){const B=$('tmMain');if(!B||!TM)return;B.textContent='';const
     if((s.status==='draft'||s.status==='returned')&&s.week<TM.week){const b=el('button','btn2','Submit this week');b.type='button';b.style.marginLeft='8px';b.addEventListener('click',()=>{if(confirm('Submit '+tmWk(s.week)+' ('+tmH(s.worked_minutes)+')? You confirm these hours are correct.'))tmAct('submit',{id:s.id},'Submitted')});row.append(b)}
     B.append(row)});
   if(!(TM.sheets||[]).length)B.append(el('p','help','Your weekly timesheet appears here after your first shift.'));
-  B.append(el('p','help',me.class==='employee'?'Hours are reviewed, approved by Richard, and paid through ADP.':me.company==='1 Stop'?'Hours are logged for billing only.':'Your pay is your set rate. Hours confirm attendance and are reviewed weekly.'))}
+  if(!TM.owner)B.append(el('p','help',me.class==='employee'?'Hours are reviewed, approved by Richard, and paid through ADP.':me.company==='1 Stop'?'Hours are logged for billing only.':'Your pay is your set rate. Hours confirm attendance and are reviewed weekly.'))}
 async function tmLoadTeam(){const T=$('tmTeamB');if(!TM||!TM.reviewer)return;try{TMT=await tmCall('team');tmRenderTeam()}catch(e){T.textContent=String((e&&e.message)||e)}}
 function tmRenderTeam(){const T=$('tmTeamB'),A=$('tmApprB');if(!TMT)return;T.textContent='';
   T.append(el('h3','','Working now ('+(TMT.now||[]).length+')'));(TMT.now||[]).forEach(n=>T.append(el('div','',(n.on_break?'☕ ':'🟢 ')+n.display_name+' · since '+tmBoth(n.clock_in,'America/New_York'))));
