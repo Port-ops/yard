@@ -4167,6 +4167,32 @@ function tmBanner(){let b=$('tmBan');const o=TM&&TM.open;if(!o){if(b)b.remove();
 function tmInit(){try{if(!roles().length)return setTimeout(tmInit,3000);tmLoad()}catch(e){setTimeout(tmInit,5000)}}tmInit();
 setInterval(()=>{if(document.visibilityState==='visible'&&TMOK){if(TAB==='time')tmLoad();else if(TM&&TM.open)tmBanner()}},120000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&TMOK)tmLoad()});
+// ---------- Carter's daily list (owner 11/11/2026): each person gets their own to-do + a task of the day unique to their job, ----------
+// with how-to steps Carter researched on Perplexity. Written each morning to carter.daily_todos by the "Carter — Morning To-Do" task;
+// read and ticked through the time-clock function (same sign-in ticket as the Time tab). People can only tick their own items.
+let CD=null;
+function cdBox(){let b=$('cdDay');if(!b){b=el('div','myDay');b.id='cdDay';const a=$('myDay')||$('tFresh')||$('tChips');if(!a)return null;a.after(b)}return b}
+async function cdLoad(){if(!TMOK||!navigator.onLine)return;try{CD=await tmCall('todo');cdRender()}catch(e){const b=cdBox();if(b){b.hidden=false;b.textContent='';b.append(el('b','','From Carter'),el('p','help',(e&&e.message)||'Could not load your list.'))}}}
+async function cdTick(t,btn){btn.disabled=true;try{await tmCall('todo_done',{id:t.id,undo:!!t.done_at});if(!t.done_at)qToast('✓ Done');await cdLoad()}catch(e){alert((e&&e.message)||'Not saved.');btn.disabled=false}}
+function cdHow(t){const d=el('details');d.append(el('summary','','How to do it'));String(t.how||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>d.append(el('p','help',x)));
+  if(t.source_url&&/^https:\/\//.test(t.source_url)){const a=el('a','','Source');a.href=t.source_url;a.target='_blank';a.rel='noopener';const p=el('p','help');p.append(a);d.append(p)}return d}
+function cdItem(t,focus){const row=el(focus?'div':'li');row.style.cssText='display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #e6e8ef'+(t.done_at?';opacity:.55':'');
+  const btn=el('button','',t.done_at?'✓':'○');btn.type='button';btn.title=t.done_at?'Mark not done':'Mark done';btn.style.cssText='min-width:36px;height:36px;border-radius:18px;border:1px solid #1F2A5C;background:'+(t.done_at?'#1F2A5C;color:#fff':'#fff;color:#1F2A5C')+';font-size:16px';btn.onclick=()=>cdTick(t,btn);
+  const tx=el('div');tx.style.flex='1';const ti=el('b','',t.title);if(t.done_at)ti.style.textDecoration='line-through';tx.append(ti);
+  const meta=[t.why,t.where_hint,t.minutes?('about '+t.minutes+' min'):''].filter(Boolean).join(' · ');if(meta)tx.append(el('div','help',meta));
+  if(t.how)tx.append(cdHow(t));row.append(btn,tx);return row}
+function cdRender(){const b=cdBox();if(!b)return;b.textContent='';if(!CD){b.hidden=true;return}b.hidden=false;
+  const R=CD.rows||[],focus=R.filter(r=>r.kind==='focus'),rest=R.filter(r=>r.kind!=='focus'),dn=R.filter(r=>r.done_at).length;
+  const hd=el('div','mdHd');hd.append(el('b','','From Carter'),el('span','mdCount',R.length?dn+' of '+R.length+' done':''));b.append(hd);
+  if(CD.day&&CD.today&&CD.day!==CD.today)b.append(el('p','help','Today\'s list is not ready yet. Showing your last list ('+CD.day+').'));
+  if(!R.length)b.append(el('p','help','Carter posts your list and your task of the day each morning.'));
+  if(focus.length){const f=el('div');f.style.cssText='background:#F3F5FB;border-radius:10px;padding:8px 10px;margin:6px 0';f.append(el('div','help','⭐ Task of the day'));focus.forEach(t=>f.append(cdItem(t,true)));b.append(f)}
+  if(rest.length){const ul=el('ul');ul.style.cssText='list-style:none;margin:0;padding:0';rest.forEach(t=>ul.append(cdItem(t,false)));b.append(ul)}
+  if((CD.team||[]).length){const d=el('details');d.append(el('summary','','Team today'));CD.team.forEach(m=>{const p=el('p','help',(m.display_name||m.slug)+': '+m.done+' of '+m.total+' done'+(m.focus?' · ⭐ '+m.focus+(m.focus_done?' ✓':''):''));d.append(p)});b.append(d)}}
+function cdInit(n){if(TMOK)return cdLoad();if((n||0)<20)setTimeout(()=>cdInit((n||0)+1),5000)}cdInit(0);
+setInterval(()=>{if(document.visibilityState==='visible'&&TMOK&&TAB==='today')cdLoad()},10*60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&TMOK)cdLoad()});
+
 
 // ---------- 3. bottom tab bar ----------
 const IC={texts:'<svg viewBox="0 0 24 24"><path d="M6.6 3.5h2.7l1.4 4-2 1.4a12 12 0 006.4 6.4l1.4-2 4 1.4v2.7a2 2 0 01-2.2 2A16.6 16.6 0 014.6 5.7a2 2 0 012-2.2z"/></svg>',ask:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -4354,7 +4380,7 @@ setTimeout(()=>{let seen=0;try{seen=+localStorage.getItem('yardA2HS')||0;localSt
   const x=el('button','','Got it');x.type='button';x.addEventListener('click',()=>{t.remove();try{localStorage.setItem('yardA2HS','99')}catch(e){}});t.append(x);document.body.append(t);
   const st=el('style');st.textContent='.a2hs{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;gap:10px;align-items:center;background:#1F2A5C;color:#fff;border-radius:14px;padding:12px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.a2hs button{flex:none;background:#fff;color:#1F2A5C;border:0;border-radius:10px;padding:8px 12px;font-weight:700}';document.head.append(st)},6000);
 // ---------- 5. Today render ----------
-function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{renderMyCard()}catch(e){}try{renderBrief()}catch(e){}try{renderMyWork()}catch(e){}try{renderNews()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
+function renderToday(){setTimeout(()=>{try{renderMyDay()}catch(e){}try{cdRender()}catch(e){}try{renderMyCard()}catch(e){}try{renderBrief()}catch(e){}try{renderMyWork()}catch(e){}try{renderNews()}catch(e){}},0);const S=Y().S||{},me=S.me;const hr=new Date().getHours();
   $('tHello').textContent='';$('tHello').append((hr<4?'Hi':hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+(me&&!prefs().noName?', '+(prefs().nick||String(me.n).split(' ')[0]):''),el('small','',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})));
   const ci=Y().contInfo||(x=>x),inY=((S.cont&&S.cont.inYard)||[]).map(ci),open=((S.cont&&S.cont.open)||[]).map(ci);
   const late=[...inY,...open].filter(r=>r.cls==='late').length,warn=[...inY,...open].filter(r=>r.cls==='warn').length;
