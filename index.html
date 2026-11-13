@@ -1847,6 +1847,7 @@ function cbRank(r){const B=(SL&&SL.lf&&SL.lf.book)||[],d=cbPl(r.destination),ds=
     const days=b.last?Math.round((Date.now()-new Date(b.last+'T12:00:00'))/864e5):999;if(days<=21)s*=1.3;else if(days>120)s*=0.5;
     out.push({b,s,why:why.join(', ')})});
   return out.sort((a,b)=>b.s-a.s)}
+function cbIns(b){if(!b.dot)return ['lfFl','Insurance: add the USDOT number to check it.'];if(b.iq)return ['meta','🛡 Checking FMCSA insurance now… (about 2 minutes)'];if(!b.ic)return ['lfFl','🛡 Insurance not checked yet'];const d=Math.round((Date.now()-new Date(b.ic))/864e5),age=d<1?'today':d+' day'+(d>1?'s':'')+' ago';if(!b.bipd)return ['lfFl','⚠ No active liability insurance on file with FMCSA (checked '+age+'). Do not use.'];return [b.bipd>=1000000?'meta':'lfFl','🛡 $'+(b.bipd/1e6).toFixed(b.bipd%1e6?2:0).replace(/\.?0+$/,'')+'M liability on file with FMCSA (checked '+age+')'+(b.bipd<1000000?' · under $1M':'')]}
 function cbTel(p){return 'tel:'+String(p||'').replace(/[^\d+]/g,'')}
 function cbBox(r){const x=el('div','lfR'),R=cbRank(r).slice(0,5);if(r.shipper_kind==='broker')return el('span','');x.append(el('div','nm','⭐ Outside carriers we know for this lane'));
   if(!R.length){x.append(el('div','meta','No carrier in our book has run '+(cbPl(r.destination)||'this lane')+' yet. Use the carriers below or DAT.'));return x}
@@ -1873,10 +1874,13 @@ function renderCB(){const B=(SL&&SL.lf&&SL.lf.book)||[],L=cbSec.querySelector('#
     h.addEventListener('click',()=>{CBOPEN.has(b.k)?CBOPEN.delete(b.k):CBOPEN.add(b.k);renderCB()});c.append(h);
     c.append(el('div','meta',[b.kind!=='fleet'&&b.co!==b.n&&b.co,b.tr&&('truck '+b.tr),b.eq,b.last&&('last load '+b.last)].filter(Boolean).join(' · ')));
     c.append(el('div','meta','Lanes: '+((b.lanes||[]).slice(0,open?12:4).map(x=>x.l+' '+x.n+'×').join(', ')||'none yet')));
+    {const [ic,it]=cbIns(b);c.append(el('div',ic,it))}
     if(!open){L.append(c);return}
     c.append(el('div','meta','Port check: '+cbDray(b)+(b.dot?' · DOT '+b.dot:'')+(b.mc?' · MC '+b.mc:'')));
     if(b.notes)c.append(el('div','meta','Notes: '+b.notes));
+    (b.ins||[]).slice(1).forEach(f=>c.append(el('div','lfFl','⚠ '+f)));
     const K=el('div','lfBt');if(b.ph)K.append(lfA('📞 '+b.ph,cbTel(b.ph)));
+    if(b.dot&&!b.iq)K.append(lfBtn('🛡 Check insurance now',btn=>{cbSave(b,{check:true},btn).then(()=>{setTimeout(()=>loadSL(true),130000)})}));
     if(b.dot)K.append(lfA('🔎 SAFER','https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string='+b.dot));
     [['twic','TWIC'],['gpa','GPA badge'],['rfid','RFID'],['uiia','UIIA']].forEach(([k,l])=>K.append(lfBtn((b[k]?'✓ ':'')+l,btn=>cbSave(b,{[k]:!b[k]},btn),b[k]?'pri':'')));
     K.append(lfBtn('Chassis…',btn=>{const v=prompt('Chassis for '+b.n+': own, pool, rental or none?',b.ch||'');if(v!==null)cbSave(b,{ch:v.trim()},btn)}));
