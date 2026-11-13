@@ -5363,7 +5363,7 @@ window.yardView=VW;VW.apply();addEventListener('resize',()=>{clearTimeout(window
 '.hsb{position:relative;height:14px;margin:2px 4px 6px;touch-action:none;cursor:pointer}.hsb::before{content:"";position:absolute;left:0;right:0;top:5px;height:4px;border-radius:4px;background:rgba(31,42,92,.10)}'+
 '.hsb i{position:absolute;top:3px;height:8px;border-radius:6px;background:#8f99ae;min-width:28px}.hsb.drag i,.hsb:active i{background:#1F2A5C}html.desk .hsb{display:none}'+
 '#vsb{position:fixed;right:1px;top:calc(env(safe-area-inset-top,0px) + 70px);bottom:calc(env(safe-area-inset-bottom,0px) + 86px);width:16px;z-index:55;pointer-events:none;opacity:.55;transition:opacity .25s}'+
-'#vsb.on{opacity:1}#vsb i{position:absolute;right:3px;width:5px;border-radius:5px;background:#8f99ae;min-height:34px;pointer-events:auto;touch-action:none}#vsb i::after{content:"";position:absolute;inset:-6px -8px -6px -10px}#vsb.drag i{background:#1F2A5C;width:7px}#vsb[hidden],html.desk #vsb{display:none}';
+'#vsb.on{opacity:1}#vsb i{position:absolute;right:3px;width:5px;border-radius:5px;background:#8f99ae;min-height:34px;pointer-events:auto;touch-action:none}#vsb i::after{content:"";position:absolute;inset:-6px -8px -6px -10px}#vsb.drag i{background:#1F2A5C;width:7px}#vsb[hidden],html.desk #vsb{display:none}@media (pointer:coarse),(hover:none){#vsb{display:none!important}}';
 document.head.append(st)}
 const HSB_SEL='.tbl,.fchips,#todaySec .chips,.smChs,.smwT,.shQ';
 function hsbFor(sc){if(sc.__hsb)return sc.__hsb;const b=el('div','hsb'),th=el('i');b.append(th);sc.insertAdjacentElement('afterend',b);sc.__hsb=b;
@@ -5375,8 +5375,8 @@ function hsbFor(sc){if(sc.__hsb)return sc.__hsb;const b=el('div','hsb'),th=el('i
   ['pointerup','pointercancel'].forEach(t=>b.addEventListener(t,()=>b.classList.remove('drag')));upd();return b}
 function hsbScan(){if(document.documentElement.classList.contains('desk'))return;document.querySelectorAll(HSB_SEL).forEach(sc=>{const cs=getComputedStyle(sc);if(!/auto|scroll/.test(cs.overflowX)&&!sc.__hsb)return;hsbFor(sc).__upd()})}
 {let t=0;const q=()=>{clearTimeout(t);t=setTimeout(hsbScan,350)};new MutationObserver(q).observe(document.body,{childList:true,subtree:true});addEventListener('resize',q);document.addEventListener('click',()=>setTimeout(hsbScan,400),true);setTimeout(hsbScan,1500)}
-// right-edge page rail
-{const r=el('div'),th=el('i');r.id='vsb';r.append(th);document.body.append(r);let fade=0;
+// right-edge page rail (computers only: off on touch screens, owner 11/13/2026)
+if(!(matchMedia('(pointer:coarse)').matches||matchMedia('(hover:none)').matches)){const r=el('div'),th=el('i');r.id='vsb';r.append(th);document.body.append(r);let fade=0;
   const se=()=>document.scrollingElement||document.documentElement;
   const upd=()=>{const s=se(),H=r.clientHeight,vh=innerHeight,sh=s.scrollHeight;const need=sh>vh+40&&!document.documentElement.classList.contains('desk');r.hidden=!need;if(!need)return;const tl=Math.max(34,H*vh/sh);th.style.height=tl+'px';th.style.top=((H-tl)*s.scrollTop/Math.max(1,sh-vh))+'px';r.classList.add('on');clearTimeout(fade);fade=setTimeout(()=>r.classList.remove('on'),1400)};
   addEventListener('scroll',upd,{passive:true});addEventListener('resize',upd);new MutationObserver(()=>{clearTimeout(r.__t);r.__t=setTimeout(upd,300)}).observe(document.body,{childList:true,subtree:true});
