@@ -298,6 +298,8 @@ button.reset:focus-visible,input:focus-visible,.chas select:focus-visible{outlin
 .signin img{height:72px;width:auto;align-self:center;background:#fff;border-radius:4px;padding:6px}
 .signin h2{justify-content:center}
 .signin p{margin:0;color:var(--muted);font-size:14px}
+.signin .silink{background:none;border:0;color:var(--brand-text,#1f4e79);font-size:14px;text-decoration:underline;padding:4px;cursor:pointer;align-self:center}
+.signin input[type=email],.signin input[type=password]{text-transform:none}
 .signin input{font:inherit;font-family:var(--mono);font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:3px;background:var(--bg);color:var(--ink)}
 .signin .err{color:var(--stop);font-weight:600;min-height:1.2em}
 #qTag:empty{display:none}#qTag,#roleTag{margin:0}
@@ -648,14 +650,37 @@ return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-
 .then(t=>{let j;try{j=JSON.parse(t)}catch(e){throw new Error('The yard log sent an unexpected reply. Tell Richard.')}if(!j.ok)throw new Error(j.error||'Not saved');return j.data})
 .finally(()=>t&&clearTimeout(t))};
 function signIn(msg){
+// Owner 11/13/2026: sign in with work email + password. First time / forgot: emailed 6-digit code, then pick a password. Old personal code still works during the switch.
 const d=document.createElement('div');d.className='signin';
-d.innerHTML='<form autocomplete="off"><img src="logo.png" alt=""><h2>DockRelay</h2><p>Enter your personal DockRelay code, or paste the whole link Richard sent you. You only do this once on this phone.</p><input id="siCode" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Your code" aria-label="Your DockRelay code"><button class="btn" type="submit">Sign in</button><p class="err" id="siErr"></p></form>';
-document.body.append(d);const f=d.querySelector('form'),inp=d.querySelector('#siCode'),er=d.querySelector('#siErr');if(msg)er.textContent=msg;
-f.addEventListener('submit',e=>{e.preventDefault();const k=keyFrom(inp.value);if(!k){er.textContent='Enter your code.';return}
-if(!navigator.onLine){er.textContent='You need signal to sign in the first time.';return}
-er.textContent='Checking…';post({fn:'getState',args:[],k}).then(s=>{if(!s||!s.me){er.textContent='That code is not recognized. Check the link Richard sent you.';return}
-try{localStorage.setItem('yardKey',k)}catch(x){}d.remove();KEYRES(k)}).catch(x=>{er.textContent=(x&&x.message)||String(x)})});
-setTimeout(()=>inp.focus(),50)}
+const dev=()=>String(navigator.userAgent||'').replace(/\s+/g,' ').slice(0,60);
+const done=k=>{try{localStorage.setItem('yardKey',k)}catch(x){}d.remove();KEYRES(k)};
+const need=()=>{if(!navigator.onLine)throw new Error('You need signal to sign in.')};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let mode='pw',mail='';try{mail=localStorage.getItem('yardEmail')||''}catch(x){}
+const head='<img src="logo.png" alt=""><h2>DockRelay</h2>';
+const views={
+pw:()=>head+'<p>Sign in with your work email and your DockRelay password.</p><input id="siEm" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@2f-logistics.com" aria-label="Work email" value="'+esc(mail)+'"><input id="siPw" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password"><button class="btn" type="submit">Sign in</button><p class="err" id="siErr"></p><button type="button" class="silink" data-go="setup">First time / forgot password</button><button type="button" class="silink" data-go="code">Use my old personal code</button>',
+setup:()=>head+'<p>Enter your work email. We\'ll email you a 6-digit code, then you pick your password.</p><input id="siEm" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@2f-logistics.com" aria-label="Work email" value="'+esc(mail)+'"><button class="btn" type="submit">Email me a code</button><p class="err" id="siErr"></p><button type="button" class="silink" data-go="pw">Back to sign in</button>',
+newpw:()=>head+'<p>We emailed a 6-digit code to <b>'+esc(mail)+'</b>. It works for 10 minutes. Check spam if you don\'t see it.</p><input id="siCd" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" aria-label="6-digit code"><input id="siPw" type="password" autocomplete="new-password" placeholder="New password (10+ characters, with a number)" aria-label="New password"><input id="siPw2" type="password" autocomplete="new-password" placeholder="Type the password again" aria-label="Repeat password"><button class="btn" type="submit">Set password and sign in</button><p class="err" id="siErr"></p><button type="button" class="silink" data-go="setup">Send a new code</button><button type="button" class="silink" data-go="pw">Back to sign in</button>',
+code:()=>head+'<p>Enter your personal DockRelay code, or paste the whole link Richard sent you. Codes are being retired: set up your email and password soon.</p><input id="siCode" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Your code" aria-label="Your DockRelay code"><button class="btn" type="submit">Sign in</button><p class="err" id="siErr"></p><button type="button" class="silink" data-go="pw">Sign in with email instead</button>'};
+const show=m=>{mode=m;d.innerHTML='<form autocomplete="on">'+views[m]()+'</form>';const f=d.querySelector('form'),er=d.querySelector('#siErr');
+if(msg&&m==='pw'){er.textContent=msg;msg=''}
+d.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{const em=d.querySelector('#siEm');if(em)mail=em.value.trim().toLowerCase();show(b.dataset.go)}));
+f.addEventListener('submit',e=>{e.preventDefault();const v=id=>{const x=d.querySelector('#'+id);return x?x.value:''};
+const btn=f.querySelector('button[type=submit]');const busy=t=>{er.textContent=t;btn.disabled=true};const fail=x=>{btn.disabled=false;er.textContent=(x&&x.message)||String(x)};
+try{need()}catch(x){er.textContent=x.message;return}
+if(m==='pw'){mail=v('siEm').trim().toLowerCase();const pw=v('siPw');if(!mail||!pw){er.textContent='Enter your email and password.';return}
+busy('Signing in…');post({auth:'login',email:mail,pw,dev:dev()}).then(r=>{try{localStorage.setItem('yardEmail',mail)}catch(x){}done(r.k)}).catch(fail)}
+else if(m==='setup'){mail=v('siEm').trim().toLowerCase();if(!mail){er.textContent='Enter your work email.';return}
+busy('Sending…');post({auth:'start',email:mail,k:(()=>{try{return localStorage.getItem('yardKey')||''}catch(x){return ''}})()}).then(()=>{try{localStorage.setItem('yardEmail',mail)}catch(x){}show('newpw')}).catch(fail)}
+else if(m==='newpw'){const cd=v('siCd').trim(),pw=v('siPw'),pw2=v('siPw2');if(!/^\d{6}$/.test(cd)){er.textContent='Enter the 6-digit code from the email.';return}
+if(pw.length<10||!/[A-Za-z]/.test(pw)||!/\d/.test(pw)){er.textContent='Use at least 10 characters, with letters and at least one number.';return}
+if(pw!==pw2){er.textContent='The two passwords don\'t match.';return}
+busy('Saving…');post({auth:'setpw',email:mail,code:cd,pw,dev:dev()}).then(r=>done(r.k)).catch(fail)}
+else{const k=keyFrom(v('siCode'));if(!k){er.textContent='Enter your code.';return}
+busy('Checking…');post({fn:'getState',args:[],k}).then(s=>{if(!s||!s.me){fail(new Error('That code is not recognized. Check the link Richard sent you.'));return}done(k)}).catch(fail)}});
+setTimeout(()=>{const i=d.querySelector('input:not([value]),input[value=""]')||d.querySelector('input');if(i)i.focus()},50)};
+document.body.append(d);show(mode)}
 (()=>{let k='';try{k=new URLSearchParams(location.search).get('k')||'';if(k)localStorage.setItem('yardKey',k);else k=localStorage.getItem('yardKey')||''}catch(e){}
 if(k)KEYRES(k);else signIn()})();
 // ---- offline: writes made without signal are saved on the phone and sent when signal returns ----
@@ -1103,7 +1128,7 @@ load();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine)load()});
 window.addEventListener('online',()=>load());setInterval(()=>{if(navigator.onLine&&!document.hidden)load()},60000);
 {const so=document.createElement('button');so.type='button';so.className='signout';so.textContent='Sign out of this phone';
-so.addEventListener('click',()=>{if(qGet().length&&!confirm('There are entries on this phone that have not sent yet. Sign out anyway and lose them?'))return;try{localStorage.removeItem('yardKey');localStorage.removeItem('yardS');localStorage.removeItem('yardQ')}catch(e){}location.reload()});
+so.addEventListener('click',()=>{if(qGet().length&&!confirm('There are entries on this phone that have not sent yet. Sign out anyway and lose them?'))return;try{const k0=localStorage.getItem('yardKey')||'';if(k0.indexOf('s1.')===0)post({auth:'signout',k:k0},8000).catch(()=>{})}catch(e){}try{localStorage.removeItem('yardKey');localStorage.removeItem('yardS');localStorage.removeItem('yardQ')}catch(e){}location.reload()});
 document.querySelector('header').append(so)}
 if('serviceWorker' in navigator&&location.protocol==='https:'&&location.hostname!=='localhost')navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
