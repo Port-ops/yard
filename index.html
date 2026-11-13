@@ -2900,7 +2900,7 @@ const AIT={
    results:{help:'Is social media working: stories posted, streak, when we posted, channel health, recruiting funnel and tips.',chips:[['What worked?','From this screen, what worked and what should we change next week? 3 bullets.']]},
    calendar:{help:'The next 14 days. Open days have a dashed border: tap + Add a post or ✨ Idea. Tap a post to move its time or copy it.',chips:[['Fill this week','Suggest posts for the open days on this screen, one line each, with the best company and channel.']]}}},
  more:{n:'DockRelay',help:'',chips:[]}};
-const AINO=['ask','owner'],AIQH=[];let AICTX='',AIBUSY=false;
+const AINO=['ask','owner'],AIQH=[];let AICTX='',AIBUSY=false,AIUSECTX=true;
 const aiCur=()=>{let s='';try{s=(typeof CUR!=='undefined'&&CUR[TAB])||''}catch(e){}return s};
 const aiDef=()=>{const t=AIT[TAB]||{n:TAB,help:'',chips:[]},s=(t.subs||{})[aiCur()]||{};return {n:t.n||TAB,help:s.help||t.help||'',chips:(s.chips||[]).concat(t.chips||[]).filter(c=>!/^Explain this screen$/i.test(c[0])).slice(0,4)}};
 const aiRedact=s=>String(s||'').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'[email]').replace(/\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g,'[phone]').replace(/\b\d{6,}\b/g,'[number]');
@@ -2919,10 +2919,10 @@ function aiOpen(seed){const d=aiDef();let sh=$('aiSh');if(!sh){sh=el('div');sh.i
   const tk=el('button','','🎤 Talk'),x=el('button','','Close');tk.type=x.type='button';x.addEventListener('click',()=>{sh.hidden=true});tk.addEventListener('click',()=>{sh.hidden=true;try{vcTalk()}catch(e){alert('Talk is in Ask AI.')}});top.append(tt,tk,x);
   const body=el('div','aiBody'),ch=el('div','aiCh2');AICTX=aiScreen();
   const ex=el('button','ex','📖 Explain this screen');ex.type='button';ex.addEventListener('click',()=>{if(d.help){aiAdd('u','Explain this screen');aiAdd('h',d.help+'\n\nWant more detail? Ask below.')}else aiAsk2('Explain what this screen is for and how to use it, in 4 short bullets.')});ch.append(ex);
-  d.chips.forEach(([l,q])=>{const b=el('button','',l);b.type='button';b.addEventListener('click',()=>aiAsk2(q,l));ch.append(b)});
+  aiChipsFor().concat(d.chips).slice(0,6).forEach(([l,q])=>{const b=el('button','',l);b.type='button';b.addEventListener('click',()=>aiAsk2(q,l));ch.append(b)});ch.append(aiHistBtn());{const nb=el('button','','＋ New chat');nb.type='button';nb.addEventListener('click',()=>aiNewChat());ch.append(nb)}
   const cx=el('details','aiCtx'),cs=el('summary','','What the assistant sees');cx.append(cs,el('pre','',AICTX||'(nothing summarized on this screen)'));
-  const log=el('div');log.id='aiLog';body.append(ch,cx,log);AIQH.length=0;
-  const inp=el('div','aiIn'),ta=el('textarea'),go=el('button','btn','Ask');go.type='button';ta.placeholder='Ask about this screen…';inp.append(ta,go);
+  const log=el('div');log.id='aiLog';AIUSECTX=true;AICHAT=null;const cc=el('div','aiCtxChips');{const sbn=((SUBS[TAB]||[]).find(x=>x[0]===aiCur())||['',''])[1];const boxes=[...new Set((AICTX.match(AI_CONT)||[]))].slice(0,3);const chip=el('span','','👁 Looking at: '+d.n+(sbn?' › '+sbn:'')+(boxes.length?' · '+boxes.join(', '):''));const tg=el('button','btn2','Don\'t use this screen');tg.type='button';tg.addEventListener('click',()=>{AIUSECTX=!AIUSECTX;tg.textContent=AIUSECTX?'Don\'t use this screen':'Use this screen';chip.style.opacity=AIUSECTX?1:.45});cc.append(chip,tg)}body.append(ch,cc,cx,log);AIQH.length=0;
+  const inp=el('div','aiIn'),ta=el('textarea'),go=el('button','btn','Ask');go.type='button';ta.placeholder='Ask Carter… or type / for commands';inp.append(ta,go);
   const send=()=>{const q=ta.value.trim();if(!q)return;ta.value='';aiAsk2(q)};go.addEventListener('click',send);ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
   box.append(top,body,inp);sh.append(box);if(seed)aiAsk2(seed);try{AIUSE.open++;localStorage.setItem('aiUse',JSON.stringify(AIUSE))}catch(e){}}
 function aiAdd(who,t,actions){const L=$('aiLog');if(!L)return null;const m=el('div','aiMsg '+who);m.append(document.createTextNode(t));if(actions){const r=el('div','row');actions.forEach(([l,f])=>{const b=el('button','btn2',l);b.type='button';b.addEventListener('click',()=>f(b));r.append(b)});m.append(r)}L.append(m);m.scrollIntoView({behavior:'smooth',block:'end'});return m}
@@ -2948,12 +2948,77 @@ function aiDemoGo(steps,i){const st=steps[i];if(!st)return;try{if($('aiSh'))$('a
 function aiDemoBox(steps){const box=el('div','aiDemo');box.append(el('b','','Show me'));steps.forEach((st,i)=>{const nm=(SUBS[st.tab].find(x=>x[0]===st.sb)||[,''])[1],tn=st.tab.charAt(0).toUpperCase()+st.tab.slice(1);
   const b=el('button','btn2 sm',(i+1)+'. '+tn+' › '+nm+(st.l?' — '+st.l:''));b.type='button';b.addEventListener('click',()=>aiDemoGo(steps,i));box.append(b)});return box}
 {const st=document.createElement('style');st.textContent='.aiDemo{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px solid #c9d6f2;border-radius:10px;background:#f4f7ff}.aiDemo b{font-size:13px}.aiDemo button{text-align:left;white-space:normal}.aiDemoBar{position:fixed;left:10px;right:74px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:60;background:#1f2a52;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:8px}.aiDemoTxt{font-size:14px;line-height:1.35}.aiDemoBtns{display:flex;gap:8px;flex-wrap:wrap}.aiDemoBar .btn2{background:#fff;color:#1f2a52}';document.head.append(st)}
-function aiAsk2(q,label){if(AIBUSY)return;AIBUSY=true;aiAdd('u',label||q);const w=aiAdd('a','Thinking…'),d=aiDef();
-  const full='You are helping a 2FF Logistics / 1 Stop Logistics team member who is on the "'+d.n+'" screen of DockRelay.'+(AICTX?' Safe summary of what is on their screen right now:\n'+AICTX+'\n(Only use this summary; never invent records, names, numbers, PINs or dates. If something is not in it, say which tab or filter to open.)':'')+'\nYou only explain and draft: you cannot change, send or approve anything.\n\nRequest: '+q;
-  Y().call('aiAsk',[{mode:'ask',q:(AICMD.test(q)?q:full).slice(0,4000),tab:TAB,hist:AIQH.slice(-3)}]).then(r=>{const raw=String(r.text||'').trim(),demo=aiDemos(raw),t=demo.text;w.textContent='';w.append(document.createTextNode(t));if(demo.steps.length)w.append(aiDemoBox(demo.steps));AIQH.push({q,a:t});
-    const row=el('div','row'),cp=el('button','btn2','Copy');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(t);cp.textContent='Copied ✓'}catch(e){}});row.append(cp);
-    if(TAB==='social'){const u=el('button','btn2','Start a post with this');u.type='button';u.addEventListener('click',()=>{$('aiSh').hidden=true;shNew({text:t,ai:true})});row.append(u)}
-    const up=el('button','btn2','👍'),dn=el('button','btn2','👎');[up,dn].forEach((b,i)=>{b.type='button';b.addEventListener('click',()=>{try{AIUSE[i?'down':'up']++;localStorage.setItem('aiUse',JSON.stringify(AIUSE))}catch(e){}b.textContent=i?'Thanks, noted':'Thanks!';up.disabled=dn.disabled=true})});row.append(up,dn);w.append(row)})
+// ---- Ask Carter v2 (owner 11/13/2026: "build it all around each person's access") ----
+// Everything Carter can DO is checked twice: the app only shows actions the person's access allows (can()), and the
+// server checks again when the action runs (watchAdd / PIN rules). Carter proposes; the person taps Confirm.
+const AI_CONT=/\b([A-Z]{4}\d{7})\b/g;
+const aiMe=()=>String(((Y().S&&Y().S.me)||{}).n||'');
+const aiCanDo=a=>a==='find'||a==='show'||a==='draft'||(a==='watch'&&(can('pin')||can('gate')))||(a==='pin'&&can('pin'));
+function aiRecGo(c){try{$('aiSh').hidden=true}catch(e){}try{go('today');setTimeout(()=>{const q=$('qNum'),b=$('qGo');if(q&&b){q.value=c;b.click();q.scrollIntoView({behavior:'smooth',block:'center'})}},150)}catch(e){alert('Search is on the Today tab.')}}
+function aiLinkify(t){const f=document.createDocumentFragment();let last=0;String(t).replace(AI_CONT,(m,c,i)=>{f.append(document.createTextNode(t.slice(last,i)));const a=el('a','aiRec',c);a.href='#';a.title='Open '+c;a.addEventListener('click',e=>{e.preventDefault();aiRecGo(c)});f.append(a);last=i+m.length;return m});f.append(document.createTextNode(t.slice(last)));return f}
+// [[do:watch|MSCU1234567]] · [[do:pin|DI|MSCU1234567]] · [[do:find|MSCU1234567]]
+function aiActs(raw){const acts=[];const text=String(raw).replace(/\[\[do:\s*([a-z]+)\|([^\]]*)\]\]/gi,(m,a,arg)=>{a=a.toLowerCase();const p=String(arg).split('|').map(x=>x.trim().toUpperCase());
+  if(a==='watch'){const cs=(p.join(' ').match(/[A-Z]{4}\d{7}/g)||[]).slice(0,10);if(cs.length)acts.push({a,cs})}
+  else if(a==='pin'){const t=['DI','DM','RE','RM'].includes(p[0])?p[0]:'DI',c=(p.join(' ').match(/[A-Z]{4}\d{7}/)||[''])[0];acts.push({a,t,c})}
+  else if(a==='find'){const c=(p.join(' ').match(/[A-Z]{4}\d{7}/)||[''])[0];if(c)acts.push({a,c})}
+  return ''}).replace(/\n{3,}/g,'\n\n').trim();return {text,acts:acts.slice(0,4)}}
+const PIN_L={DI:'PIN OUT · pull import (full)',DM:'PIN OUT · pull empty',RE:'PIN IN · drop export (full)',RM:'PIN IN · return empty'};
+function aiActCard(x){const c=el('div','aiDo'),can_=aiCanDo(x.a);
+  const title=x.a==='watch'?'Add to Watch: '+x.cs.join(', '):x.a==='pin'?'Prepare '+PIN_L[x.t]+(x.c?' for '+x.c:''):'Open '+x.c;
+  c.append(el('b','',title));
+  if(!can_){c.append(el('div','t','Your access does not include this. Ask Richard if you need it.'));return c}
+  const msg=el('div','t',x.a==='watch'?'GPA will tell us when each box is available. Nothing else changes.':x.a==='pin'?'Opens the PIN form filled in. You check it, then tap Review and Confirm yourself. Nothing goes to GPA until you do.':'');c.append(msg);
+  const r=el('div','row'),ok=el('button','btn sm',x.a==='watch'?'Confirm':'Open');ok.type='button';const no=el('button','btn2 sm','Cancel');no.type='button';r.append(ok,no);c.append(r);
+  no.addEventListener('click',()=>{c.classList.add('done');r.remove();msg.textContent='Cancelled.'});
+  ok.addEventListener('click',()=>{ok.disabled=no.disabled=true;
+    if(x.a==='find'){aiRecGo(x.c);return}
+    if(x.a==='pin'){try{$('aiSh').hidden=true;go('port');sub('port','pins');setTimeout(()=>{const b=document.querySelector('#pinTypes button[data-t="'+x.t+'"]');if(b)b.click();setTimeout(()=>{const i=document.querySelector('#pinFields [data-k="containerNbr"]');if(i&&x.c){i.value=x.c;i.dispatchEvent(new Event('input'))}const f=$('pinForm');if(f)f.scrollIntoView({behavior:'smooth',block:'center'})},200)},150)}catch(e){alert('The PIN screen is not available on your account.')}return}
+    msg.textContent='Saving…';Y().call('watchAdd',[{containers:x.cs.join(' '),load:'',line:''}]).then(d=>{c.classList.add('done');r.remove();msg.textContent='✓ Done '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+': watching '+(d.added||[]).length+((d.dup||[]).length?' · already watching '+d.dup.join(', '):'')+'. See Port › Watch.'})
+      .catch(e=>{ok.disabled=no.disabled=false;msg.textContent='Not done: '+((e&&e.message)||e)})});
+  return c}
+// Slash commands (fast path for power users). Each still respects access.
+const AI_SLASH=[['/find','/find MSCU1234567 · open a box'],['/watch','/watch MSCU1234567 · add to Watch'],['/pin','/pin MSCU1234567 · prepare a PIN OUT (or /pin RM MSCU…)'],['/show','/show port/pins · open a screen'],['/draft','/draft customer update for … · Carter writes it'],['/new','/new · start a new chat'],['/help','/help · list commands']];
+function aiSlash(q){const m=q.match(/^\/(\w+)\s*(.*)$/);if(!m)return false;const cmd=m[1].toLowerCase(),arg=m[2].trim(),U=arg.toUpperCase(),c=(U.match(/[A-Z]{4}\d{7}/)||[''])[0];
+  aiAdd('u',q);const w=aiAdd('a','');
+  if(cmd==='help'){w.append(document.createTextNode('Commands:\n'+AI_SLASH.map(x=>x[1]).join('\n')));return true}
+  if(cmd==='new'){aiNewChat();return true}
+  if(cmd==='find'){if(!c){w.textContent='Type a container number, e.g. /find MSCU1234567';return true}w.append(aiActCard({a:'find',c}));return true}
+  if(cmd==='watch'){const cs=(U.match(/[A-Z]{4}\d{7}/g)||[]);if(!cs.length){w.textContent='Type container numbers, e.g. /watch MSCU1234567';return true}w.append(aiActCard({a:'watch',cs:cs.slice(0,10)}));return true}
+  if(cmd==='pin'){const t=(U.match(/\b(DI|DM|RE|RM)\b/)||['','DI'])[1];w.append(aiActCard({a:'pin',t,c}));return true}
+  if(cmd==='show'){const d=aiDemos('[[show:'+arg.toLowerCase()+']]');if(d.steps.length)w.append(aiDemoBox(d.steps));else w.textContent='Use a screen like /show port/pins, /show yard/inyard, /show today/att';return true}
+  if(cmd==='draft'){w.remove();const L=$('aiLog');if(L&&L.lastChild)L.lastChild.remove();AIBUSY=false;aiAsk2('Draft: '+arg);return true}
+  w.textContent='Unknown command. Type /help.';return true}
+// Saved chats on this phone, per person (owner: pick a conversation back up). Not shared with anyone.
+const aiChatKey=()=>'carterChats_'+aiMe();
+function aiChats(){try{return JSON.parse(localStorage.getItem(aiChatKey())||'[]')}catch(e){return []}}
+let AICHAT=null;
+function aiSaveTurn(q,a){try{if(!aiMe())return;const L=aiChats();if(!AICHAT){AICHAT={id:Date.now(),at:Date.now(),title:q.slice(0,60),msgs:[]};L.unshift(AICHAT)}else{const i=L.findIndex(x=>x.id===AICHAT.id);if(i<0)L.unshift(AICHAT);else L[i]=AICHAT}
+  AICHAT.msgs.push({q:String(q).slice(0,1500),a:String(a).slice(0,4000)});AICHAT.at=Date.now();localStorage.setItem(aiChatKey(),JSON.stringify(L.slice(0,25)))}catch(e){}}
+function aiNewChat(){AICHAT=null;AIQH.length=0;const L=$('aiLog');if(L)L.textContent='';aiAdd('a','New chat. Ask anything, or type / for commands.')}
+function aiLoadChat(ch){AICHAT=ch;AIQH.length=0;const L=$('aiLog');if(!L)return;L.textContent='';ch.msgs.forEach(m=>{aiAdd('u',m.q);const w=aiAdd('a','');aiRender(w,m.a,m.q,true);AIQH.push({q:m.q,a:m.a})})}
+function aiHistBtn(){const b=el('button','','🕘 Earlier chats');b.type='button';b.addEventListener('click',()=>{const L=aiChats(),log=$('aiLog');if(!log)return;const box=el('div','aiDemo');box.append(el('b','',L.length?'Your earlier chats (this phone)':'No earlier chats yet.'));
+  L.slice(0,12).forEach(ch=>{const x=el('button','btn2 sm',new Date(ch.at).toLocaleDateString([],{month:'short',day:'numeric'})+' · '+ch.title);x.type='button';x.addEventListener('click',()=>aiLoadChat(ch));box.append(x)});
+  if(L.length){const clr=el('button','btn2 sm','Delete all my saved chats');clr.type='button';clr.addEventListener('click',()=>{if(confirm('Delete all your saved Carter chats on this phone?')){try{localStorage.removeItem(aiChatKey())}catch(e){}box.remove()}});box.append(clr)}
+  log.append(box);box.scrollIntoView({behavior:'smooth',block:'end'})});return b}
+// Feedback + "remember this" go to the server so Carter actually learns (Richard approves lessons in Carter › Lessons).
+function aiFb(vote,q,a,btn){btn.disabled=true;Y().call('carterFb',[{vote,q:String(q).slice(0,1500),a:String(a).slice(0,3000),tab:TAB}]).then(()=>{btn.textContent=vote==='remember'?'Saved for Richard to approve ✓':vote==='up'?'Thanks!':'Thanks, Carter will learn from it'}).catch(()=>{try{AIUSE[vote==='down'?'down':'up']++;localStorage.setItem('aiUse',JSON.stringify(AIUSE))}catch(e){}btn.textContent='Noted on this phone'})}
+function aiRender(w,raw,q,old){const demo=aiDemos(raw),act=aiActs(demo.text),t=act.text;w.textContent='';w.append(aiLinkify(t));
+  act.acts.forEach(x=>w.append(aiActCard(x)));if(demo.steps.length)w.append(aiDemoBox(demo.steps));
+  if(!old)w.append(el('div','aiAsof','as of '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+' · check anything important'));
+  const row=el('div','row'),cp=el('button','btn2','Copy');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(t);cp.textContent='Copied ✓'}catch(e){}});row.append(cp);
+  if(/^(draft|write|email|reply)/i.test(q)||/^Subject:/im.test(t)){const em=el('button','btn2','Open in email');em.type='button';em.addEventListener('click',()=>{const sub=(t.match(/^Subject:\s*(.+)$/im)||['',''])[1],body=t.replace(/^Subject:.*$/im,'').trim();location.href='mailto:?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body)});row.append(em)}
+  if(typeof TAB!=='undefined'&&TAB==='social'){const u=el('button','btn2','Start a post with this');u.type='button';u.addEventListener('click',()=>{$('aiSh').hidden=true;shNew({text:t,ai:true})});row.append(u)}
+  if(!old){const up=el('button','btn2','👍'),dn=el('button','btn2','👎'),rm=el('button','btn2','Remember this');[up,dn,rm].forEach(b=>b.type='button');
+    up.addEventListener('click',()=>{dn.disabled=true;aiFb('up',q,t,up)});dn.addEventListener('click',()=>{up.disabled=true;const why=prompt('What was wrong or missing? (optional)')||'';aiFb('down',q+(why?'\n[why] '+why:''),t,dn)});rm.addEventListener('click',()=>aiFb('remember',q,t,rm));row.append(up,dn,rm)}
+  w.append(row);return t}
+// Starter questions by job (shown only when the person's access fits) + a proactive one from Today's risk list.
+const AI_ROLE_CHIPS=[['pin',"What's at risk today?","Which containers are at risk today (free time, per diem, PINs waiting)? Most urgent first, with the next step for each."],['gate','Gate dates to enter',"Which gate moves still need gate dates entered in the yard log?"],['yard',"What's in the yard past free time?","Which boxes in the yard are past or near free time? List them with line and days."],['safety','Safety today',"Any safety events or risky drivers today? What should I follow up on?"],['view','How is the day going?',"What did we do today so far: gate moves, yard in/out, PINs, quotes?"]];
+function aiChipsFor(){const out=[];try{const A=(typeof attention==='function'?attention():[])||[],red=A.filter(x=>x[0]==='r');if(red.length)out.push(['⚠ '+red.length+' need attention','These items need attention right now: '+red.slice(0,6).map(x=>x[1]).join('; ')+'. What should I do first, and how?'])}catch(e){}
+  AI_ROLE_CHIPS.forEach(([r,l,q])=>{if(out.length<3&&(r==='view'?true:can(r)))out.push([l,q])});return out}
+{const st=document.createElement('style');st.textContent='.aiRec{color:#1f4e9e;font-weight:600;text-decoration:underline;cursor:pointer}.aiDo{border:1px solid #c9d6f2;background:#fff;border-radius:10px;padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:6px}.aiDo.done{opacity:.85;background:#f3fbf3;border-color:#b7dfb7}.aiDo .t{font-size:13px;color:#5d686d}.aiAsof{font-size:11px;color:#8a949a;margin-top:6px}.aiCtxChips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px}.aiCtxChips span{font-size:12px;background:#eef2fb;border-radius:12px;padding:3px 8px}.aiCtxChips button{font-size:12px;padding:2px 8px}';document.head.append(st)}
+function aiAsk2(q,label){if(AIBUSY)return;if(/^\//.test(String(q).trim())&&aiSlash(String(q).trim()))return;AIBUSY=true;aiAdd('u',label||q);const w=aiAdd('a','Thinking…'),d=aiDef();
+  const full='You are helping a 2FF Logistics / 1 Stop Logistics team member who is on the "'+d.n+'" screen of DockRelay.'+(AICTX&&AIUSECTX?' Safe summary of what is on their screen right now:\n'+AICTX+'\n(Only use this summary; never invent records, names, numbers, PINs or dates. If something is not in it, say which tab or filter to open.)':'')+'\nYou explain and draft. You cannot change, send or approve anything yourself: to offer an action, add a [[do:...]] line and the person confirms it (the app checks their access).\n\nRequest: '+q;
+  Y().call('aiAsk',[{mode:'ask',q:(AICMD.test(q)?q:full).slice(0,4000),tab:TAB,hist:AIQH.slice(-3)}]).then(r=>{const t=aiRender(w,String(r.text||'').trim(),q);AIQH.push({q,a:t});aiSaveTurn(q,t)})
     .catch(e=>{const m=(e&&e.message)||String(e);w.textContent=/NEED_EMAIL/.test(m)?'Verify your company email in Ask AI once, then try again.':m}).finally(()=>{AIBUSY=false})}
 let AIUSE={open:0,up:0,down:0};try{AIUSE=Object.assign(AIUSE,JSON.parse(localStorage.getItem('aiUse')||'{}'))}catch(e){}
 {const f=el('button');f.id='aiFab';f.type='button';f.setAttribute('aria-label','Ask the assistant about this screen');f.textContent='✨';f.addEventListener('click',()=>aiOpen());document.body.append(f);
