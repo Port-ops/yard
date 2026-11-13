@@ -1803,7 +1803,7 @@ function renderLF(){const D=(SL&&SL.lf)||{loads:[],matches:[],carriers:{}},L=lfS
     [[LFMODE[r.mode]||r.mode,''],[LFKIND[r.shipper_kind],'k-'+r.shipper_kind],[LFST[r.status]||r.status,''],r.hazmat?['Hazmat','']:null,r.boxes?[r.boxes+' load(s)','']:null].filter(Boolean).forEach(([t,k])=>h.append(el('span','tag '+k,t)));
     h.addEventListener('click',()=>{open?LFOPEN.delete(r.id):LFOPEN.add(r.id);renderLF()});c.append(h);
     c.append(el('div','meta',[r.shipper,r.contact,r.email,r.pickup_date&&('pickup '+r.pickup_date),r.target_sell&&('rate $'+r.target_sell),wfAgo(r.created_at),r.source==='manual'?'added by '+(r.updated_by||'staff'):'from Find Work'].filter(Boolean).join(' · ')));
-    if(!open){{const ob=cbRank(r).slice(0,3);if(ob.length)c.append(el('div','meta','⭐ Our carriers: '+ob.map(x=>x.b.n+(x.why?' ('+x.why.replace(/^ran /,'')+')':'')).join(', ')))}if(ms.length){const t=ms.slice(0,3).map(m=>(C[m.dot]||{}).n).filter(Boolean).join(', ');c.append(el('div','meta',ms.length+' carrier(s) near pickup: '+t+(ms.length>3?'…':'')))}L.append(c);return}
+    if(!open){{const ob=cbRank(r).slice(0,3);if(ob.length)c.append(el('div','meta','⭐ Known carriers: '+ob.map(x=>x.b.n+(x.why?' ('+x.why.replace(/^ran /,'')+')':'')).join(', ')))}if(ms.length){const t=ms.slice(0,3).map(m=>(C[m.dot]||{}).n).filter(Boolean).join(', ');c.append(el('div','meta',ms.length+' carrier(s) near pickup: '+t+(ms.length>3?'…':'')))}L.append(c);return}
     if(r.notes)c.append(el('div','meta','Notes: '+r.notes));
     const K=el('div','lfBt');
     if(r.shipper_kind!=='direct')K.append(lfBtn('✔ Direct shipper',b=>lfRun('load_kind',{id:r.id,kind:'direct'},b)));
@@ -1848,25 +1848,25 @@ function cbRank(r){const B=(SL&&SL.lf&&SL.lf.book)||[],d=cbPl(r.destination),ds=
     out.push({b,s,why:why.join(', ')})});
   return out.sort((a,b)=>b.s-a.s)}
 function cbTel(p){return 'tel:'+String(p||'').replace(/[^\d+]/g,'')}
-function cbBox(r){const x=el('div','lfR'),R=cbRank(r).slice(0,5);x.append(el('div','nm','⭐ Our carriers for this lane'));
-  if(!R.length){x.append(el('div','meta','None of our carriers has run '+(cbPl(r.destination)||'this lane')+' yet. Use the carriers below or DAT.'));return x}
+function cbBox(r){const x=el('div','lfR'),R=cbRank(r).slice(0,5);if(r.shipper_kind==='broker')return el('span','');x.append(el('div','nm','⭐ Outside carriers we know for this lane'));
+  if(!R.length){x.append(el('div','meta','No carrier in our book has run '+(cbPl(r.destination)||'this lane')+' yet. Use the carriers below or DAT.'));return x}
   R.forEach(({b,why})=>{const d=el('div','');d.append(el('b','',b.n),document.createTextNode(' · '+cbKindTag(b)+(b.co&&b.kind!=='fleet'&&b.co!==b.n?' ('+b.co+')':'')+' · '+why+(b.last?' · last load '+b.last:'')));
     const B=el('div','lfBt');if(b.ph)B.append(lfA('📞 '+b.ph,cbTel(b.ph)));B.append(lfBtn('Open in carrier book',()=>{CBQ=b.n;try{go('sales');sub('sales','book')}catch(e){}renderCB()}));d.append(B);
     if(r.mode==='drayage')d.append(el('div','meta','Port check: '+cbDray(b)));
     if(b.kind==='outside'&&!b.ok)d.append(el('div','lfFl','Outside carrier: US 1 must set it up and an admin approve it before you offer the load.'));
     x.append(d)});
-  x.append(el('div','meta','Call these first. The carriers under this box come from the FMCSA list and have never hauled for us.'));return x}
-const cbSec=mk('cbSec','sales','book','<h2>Carrier book <span class="t" id="cbAsof">our trucks, leased owner-operators and outside carriers we have used · from the 2FF TRACKER sheet every night</span></h2>'+
-'<p class="help">These carriers show first on every load in Loads &amp; carriers, ranked by how often they ran that lane. Tick the port checks (TWIC, GPA badge, RFID, UIIA, chassis) and add DOT/MC as you confirm them. Only an admin can approve an outside carrier, after US 1 sets it up.</p>'+
+  x.append(el('div','meta','Call these first. The carriers below come from the FMCSA list and have never hauled for us.'));return x}
+const cbSec=mk('cbSec','sales','book','<h2>Carrier book <span class="t" id="cbAsof">outside carriers only · our trucks and leased owner-operators are not carriers</span></h2>'+
+'<p class="help">Outside carriers we have used or are vetting. They show first on every load in Loads &amp; carriers, ranked by the lanes they ran for us. Tick the port checks (TWIC, GPA badge, RFID, UIIA, chassis) and add DOT/MC as you confirm them. Only an admin can approve an outside carrier, after US 1 sets it up.</p>'+
 '<div class="fchips" id="cbF"></div><div class="drow"><input id="cbQ" placeholder="Search name, company, city" autocomplete="off" style="text-transform:none;flex:1"></div><div id="cbL"></div>');
 {const a=$('lfSec');if(a&&a.parentNode)a.parentNode.insertBefore(cbSec,a.nextSibling);else wrap.append(cbSec)}
 let CBF='all',CBQ='';const CBOPEN=new Set();
 function cbSave(b,patch,btn){patch.key=b.k;if(btn)btn.disabled=true;return Y().call('carrierBookSet',[patch]).then(()=>loadSL(true)).catch(e=>{const m=String((e&&e.message)||e||'');alert(/unknown action/i.test(m)?'This switches on after the DockRelay server update is deployed.':(m||'Could not save.'))}).finally(()=>{if(btn)btn.disabled=false})}
 function renderCB(){const B=(SL&&SL.lf&&SL.lf.book)||[],L=cbSec.querySelector('#cbL');if(!L)return;
-  const ready=b=>b.twic&&b.gpa&&b.rfid&&b.uiia,F=[['all','All'],['fleet','2FF trucks'],['leased','Leased owner-ops'],['outside','Outside'],['dray','Port-ready']];
-  slChips(cbSec.querySelector('#cbF'),F.map(([k,l])=>[k,l,k==='all'?B.length:k==='dray'?B.filter(ready).length:B.filter(b=>b.kind===k).length]),CBF,k=>{CBF=k;renderCB()});
+  const ready=b=>b.twic&&b.gpa&&b.rfid&&b.uiia,F=[['all','All'],['ok','Approved'],['wait','Needs US 1 approval'],['dray','Port-ready']];
+  slChips(cbSec.querySelector('#cbF'),F.map(([k,l])=>[k,l,k==='all'?B.length:k==='dray'?B.filter(ready).length:B.filter(b=>k==='ok'?b.ok:!b.ok).length]),CBF,k=>{CBF=k;renderCB()});
   const inp=cbSec.querySelector('#cbQ');if(inp.value!==CBQ)inp.value=CBQ;const q=CBQ.toLowerCase();
-  const rows=B.filter(b=>(CBF==='all'||(CBF==='dray'?ready(b):b.kind===CBF))&&(!q||[b.n,b.co,(b.lanes||[]).map(x=>x.l).join(' ')].join(' ').toLowerCase().includes(q)));
+  const rows=B.filter(b=>(CBF==='all'||(CBF==='dray'?ready(b):CBF==='ok'?b.ok:!b.ok))&&(!q||[b.n,b.co,(b.lanes||[]).map(x=>x.l).join(' ')].join(' ').toLowerCase().includes(q)));
   L.textContent='';if(!rows.length){L.append(el('p','muted',SL?'No carriers here.':'Loading…'));return}
   rows.forEach(b=>{const open=CBOPEN.has(b.k)||(q&&rows.length===1),c=el('div','lfC'),h=el('h4');
     h.append(el('span','imchev',open?'▾':'▸'),el('span','',b.n),el('span','tag',cbKindTag(b)),el('span','tag',b.loads+' loads'));
