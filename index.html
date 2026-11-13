@@ -2932,9 +2932,25 @@ const AICMD=/^\s*(?:carter[,:]?\s*)?(?:(?:please\s+|can you\s+|go ahead and\s+)?
 // https://yard.2f-logistics.com/?ask=<what you said> opens the app, opens the assistant and sends it to Carter.
 setTimeout(()=>{try{const a=new URLSearchParams(location.search).get('ask');if(!a)return;try{history.replaceState(null,'',location.pathname)}catch(e){}
   const go=()=>{try{aiOpen();setTimeout(()=>aiAsk2(String(a).slice(0,1900)),500)}catch(e){}};(typeof KEYP!=='undefined'&&KEYP.then)?KEYP.then(()=>setTimeout(go,1800)):setTimeout(go,2500)}catch(e){}},300);
+// ---- Carter "Show me" demos (owner 11/13/2026): Carter adds [[show:tab/section|what to look at]] lines; each becomes a button that opens
+// that screen, highlights it and keeps a "Back to Carter / Next step" bar on screen so the person can follow the walkthrough.
+function aiDemos(raw){const steps=[];const text=String(raw).replace(/\[\[show:([a-z]+)\/([a-z]+)\|?([^\]]*)\]\]/gi,(m,tab,sb,l)=>{tab=tab.toLowerCase();sb=sb.toLowerCase();if(SUBS[tab]&&SUBS[tab].some(x=>x[0]===sb))steps.push({tab,sb,l:String(l||'').trim()});return ''}).replace(/\n{3,}/g,'\n\n').trim();return {text,steps:steps.slice(0,6)}}
+function aiDemoGo(steps,i){const st=steps[i];if(!st)return;try{if($('aiSh'))$('aiSh').hidden=true}catch(e){}
+  let ok=true;try{if(tabBtn(st.tab)&&tabBtn(st.tab).style.display==='none')ok=false;else{go(st.tab);if(!subAvail(st.tab).includes(st.sb))ok=false;else sub(st.tab,st.sb)}}catch(e){ok=false}
+  setTimeout(()=>{const sec=[...wrap.querySelectorAll('[data-tab="'+st.tab+'"]')].find(x=>x.classList.contains('vis'));if(sec){sec.scrollIntoView({behavior:'smooth',block:'start'});sec.classList.remove('flash');void sec.offsetWidth;sec.classList.add('flash')}},120);
+  let bar=$('aiDemoBar');if(!bar){bar=el('div','aiDemoBar');bar.id='aiDemoBar';document.body.append(bar)}bar.textContent='';
+  const nm=(SUBS[st.tab].find(x=>x[0]===st.sb)||[,''])[1];
+  bar.append(el('div','aiDemoTxt',(ok?'Step '+(i+1)+' of '+steps.length+': '+nm:'You don\'t have this screen. Ask Richard if you need it.')+(st.l&&ok?' · '+st.l:'')));
+  const r=el('div','aiDemoBtns');
+  if(i+1<steps.length){const n=el('button','btn sm','Next step →');n.type='button';n.addEventListener('click',()=>aiDemoGo(steps,i+1));r.append(n)}
+  const back=el('button','btn2 sm','Back to Carter');back.type='button';back.addEventListener('click',()=>{bar.remove();try{aiOpen()}catch(e){}});r.append(back);
+  const x=el('button','btn2 sm','✕');x.type='button';x.setAttribute('aria-label','Close');x.addEventListener('click',()=>bar.remove());r.append(x);bar.append(r)}
+function aiDemoBox(steps){const box=el('div','aiDemo');box.append(el('b','','Show me'));steps.forEach((st,i)=>{const nm=(SUBS[st.tab].find(x=>x[0]===st.sb)||[,''])[1],tn=st.tab.charAt(0).toUpperCase()+st.tab.slice(1);
+  const b=el('button','btn2 sm',(i+1)+'. '+tn+' › '+nm+(st.l?' — '+st.l:''));b.type='button';b.addEventListener('click',()=>aiDemoGo(steps,i));box.append(b)});return box}
+{const st=document.createElement('style');st.textContent='.aiDemo{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;border:1px solid #c9d6f2;border-radius:10px;background:#f4f7ff}.aiDemo b{font-size:13px}.aiDemo button{text-align:left;white-space:normal}.aiDemoBar{position:fixed;left:10px;right:74px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:60;background:#1f2a52;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:8px}.aiDemoTxt{font-size:14px;line-height:1.35}.aiDemoBtns{display:flex;gap:8px;flex-wrap:wrap}.aiDemoBar .btn2{background:#fff;color:#1f2a52}';document.head.append(st)}
 function aiAsk2(q,label){if(AIBUSY)return;AIBUSY=true;aiAdd('u',label||q);const w=aiAdd('a','Thinking…'),d=aiDef();
   const full='You are helping a 2FF Logistics / 1 Stop Logistics team member who is on the "'+d.n+'" screen of DockRelay.'+(AICTX?' Safe summary of what is on their screen right now:\n'+AICTX+'\n(Only use this summary; never invent records, names, numbers, PINs or dates. If something is not in it, say which tab or filter to open.)':'')+'\nYou only explain and draft: you cannot change, send or approve anything.\n\nRequest: '+q;
-  Y().call('aiAsk',[{mode:'ask',q:(AICMD.test(q)?q:full).slice(0,4000),tab:TAB,hist:AIQH.slice(-3)}]).then(r=>{const t=String(r.text||'').trim();w.textContent='';w.append(document.createTextNode(t));AIQH.push({q,a:t});
+  Y().call('aiAsk',[{mode:'ask',q:(AICMD.test(q)?q:full).slice(0,4000),tab:TAB,hist:AIQH.slice(-3)}]).then(r=>{const raw=String(r.text||'').trim(),demo=aiDemos(raw),t=demo.text;w.textContent='';w.append(document.createTextNode(t));if(demo.steps.length)w.append(aiDemoBox(demo.steps));AIQH.push({q,a:t});
     const row=el('div','row'),cp=el('button','btn2','Copy');cp.type='button';cp.addEventListener('click',()=>{try{navigator.clipboard.writeText(t);cp.textContent='Copied ✓'}catch(e){}});row.append(cp);
     if(TAB==='social'){const u=el('button','btn2','Start a post with this');u.type='button';u.addEventListener('click',()=>{$('aiSh').hidden=true;shNew({text:t,ai:true})});row.append(u)}
     const up=el('button','btn2','👍'),dn=el('button','btn2','👎');[up,dn].forEach((b,i)=>{b.type='button';b.addEventListener('click',()=>{try{AIUSE[i?'down':'up']++;localStorage.setItem('aiUse',JSON.stringify(AIUSE))}catch(e){}b.textContent=i?'Thanks, noted':'Thanks!';up.disabled=dn.disabled=true})});row.append(up,dn);w.append(row)})
@@ -4856,8 +4872,8 @@ async function vcStart(){const p=vcPanel();let mode='tap';try{mode=localStorage.
       onModeChange:m=>{const sp=!!(m&&m.mode==='speaking');if(sp&&!speaking){thinking=false;if(cutMsg){cutMsg=null}try{s.setVolume({volume:vol})}catch(e){}if(mode==='tap')setMic(false)}speaking=sp;if(!sp&&mode==='tap'&&!micOn)thinking=false;paint()},
       onMessage:m=>{if(!m||!m.message)return;if(m.source==='user'){add('u',m.message);if(mode==='tap'&&!speaking){thinking=true;paint()}}else lastA=add('a',m.message)},
       onDisconnect:()=>fin('Voice ended'),onError:e=>{add('a',(e&&e.message)||String(e))}};
-    if(d.conversation_token){try{s=await EL.Conversation.startSession(Object.assign({conversationToken:d.conversation_token,connectionType:'webrtc'},cb))}catch(e){s=null}}
-    if(!s&&!closed)s=await EL.Conversation.startSession(Object.assign({signedUrl:d.signed_url,connectionType:'websocket'},cb));
+    if(d.conversation_token){try{s=await EL.Conversation.startSession(Object.assign({conversationToken:d.conversation_token,connectionType:'webrtc'},d.vars?{dynamicVariables:d.vars}:{},cb))}catch(e){s=null}}
+    if(!s&&!closed)s=await EL.Conversation.startSession(Object.assign({signedUrl:d.signed_url,connectionType:'websocket'},d.vars?{dynamicVariables:d.vars}:{},cb));
     VC={s,fin};setMic(mode==='auto');paint()}
   catch(e){const m=(e&&e.message)||String(e);if(/NEED_EMAIL/.test(m)){p.hidden=true;closed=true;AINE='__voice__';if(TAB!=='ask')go('ask');aiDraw();return}
     if(/Permission|NotAllowed|denied/i.test(m)){fin('Microphone blocked');sub.textContent='Microphone access is blocked. Allow it for this app in iPhone Settings, then try again. You can still type.';return}
