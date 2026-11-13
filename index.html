@@ -4335,6 +4335,29 @@ const tmSec=mk('tmSec','time','clock','<h2>My time <span class="t" id="tmAsof"><
 const tmTeam=mk('tmTeam','time','team','<h2>Team time <span class="t">reviewers</span></h2><div id="tmTeamB"><p class="help">Loading…</p></div>');
 const tmAppr=mk('tmAppr','time','approve','<h2>Approve timesheets <span class="t">Richard only</span></h2><div id="tmApprB"><p class="help">Loading…</p></div>');
 [tmSec,tmTeam,tmAppr].forEach(s=>{s.hidden=true;wrap.append(s)});
+// ===== Sign-ins (owner 11/13/2026: "give Yanix the power to view everyone log in times"). Admins only; the server checks too. =====
+const siSec=mk('siSec','time','signins','<h2>Sign-ins <span class="t" id="siAsof">admins only · when each person signed in to DockRelay</span></h2><p class="help">Eastern time, with Manila time in brackets. Clock-in times are on the Team screen.</p><div class="fchips" id="siF"></div><div id="siB"><p class="help">Loading…</p></div>');
+siSec.hidden=true;wrap.append(siSec);
+let SI=null,SID=7;
+const siT=ts=>new Date(ts).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+const siH=(ts,tz)=>new Date(ts).toLocaleString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'});
+const siDay=ts=>new Date(ts).toLocaleDateString('en-US',{timeZone:'America/New_York',weekday:'long',month:'short',day:'numeric'});
+const siAgo=ts=>{const m=Math.round((Date.now()-ts)/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':(Math.round(m/1440)===1?'1 day ago':Math.round(m/1440)+' days ago')};
+async function siLoad(){if(!roles().includes('admin'))return;siSec.hidden=false;try{tabVis()}catch(e){}
+  try{SI=await Y().call('signInLog',[{days:SID}]);siRender()}catch(e){const B=$('siB');B.textContent='';const m=String((e&&e.message)||e||'');B.append(el('p','lfFl',/unknown|not a function/i.test(m)?'This switches on after the DockRelay server update.':m))}}
+function siRender(){const B=$('siB');if(!B||!SI)return;B.textContent='';
+  slChips($('siF'),[[7,'Last 7 days'],[14,'14 days'],[30,'30 days']],SID,k=>{SID=k;siLoad()});
+  const P=(SI.people||[]).slice().sort((a,b)=>(b.last||0)-(a.last||0)),cnt={};(SI.rows||[]).forEach(r=>cnt[r.n]=(cnt[r.n]||0)+1);
+  B.append(el('h3','','Everyone'));
+  P.forEach(p=>{const c=el('div','lfC'),h=el('h4');h.append(el('span','',p.n));if(p.off)h.append(el('span','tag','switched off'));
+    h.append(el('span','tag',p.devices?p.devices+' device'+(p.devices>1?'s':'')+' signed in':'not signed in now'));c.append(h);
+    c.append(el('div',p.last?'meta':'lfFl',p.last?'Last sign-in: '+siT(p.last)+' ('+siH(p.last,'Asia/Manila')+' Manila) · '+siAgo(p.last)+' · '+(cnt[p.n]||0)+' in '+SID+' days':'Has never signed in with email + password yet'));
+    B.append(c)});
+  B.append(el('h3','','Sign-in history'));
+  const R=SI.rows||[];if(!R.length){B.append(el('p','muted','No sign-ins in the last '+SID+' days.'));return}
+  let day='';R.forEach(r=>{const d=siDay(r.at);if(d!==day){day=d;B.append(el('div','nm',d))}
+    B.append(el('div','meta',siH(r.at,'America/New_York')+' ('+siH(r.at,'Asia/Manila')+' Manila) · '+r.n+' · '+String(r.how||'').replace(/^signed in with /,'')))});
+  const a=$('siAsof');if(a)a.textContent='admins only · updated '+siH(Date.now(),'America/New_York')}
 {const st=document.createElement('style');st.textContent='#tmMain .tmBig{font-size:20px;font-weight:700;margin:6px 0}#tmMain .tmSub{color:var(--mut,#5d686d);font-size:13px}.tmBtns{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.tmBtns .btn,.tmBtns .btn2{flex:1;min-width:120px;min-height:48px;font-size:16px}.tmRcpt{background:#e8f5e9;border-left:4px solid #2e7d32;padding:8px 10px;margin:8px 0;border-radius:6px}.tmErr{background:#fdecea;border-left:4px solid #c8102e;padding:8px 10px;margin:8px 0;border-radius:6px}.tmWarn{background:#fff8e1;border-left:4px solid #f9a825;padding:8px 10px;margin:8px 0;border-radius:6px}.tmTbl{width:100%;border-collapse:collapse;font-size:14px}.tmTbl td,.tmTbl th{padding:6px 4px;border-bottom:1px solid #e3e6e8;text-align:left;vertical-align:top}.tmTag{display:inline-block;padding:1px 7px;border-radius:9px;font-size:12px;background:#eef1f3}.tmTag.ok{background:#e8f5e9}.tmTag.bad{background:#fdecea}.tmBanner{position:sticky;top:0;z-index:5;background:#1f2a44;color:#fff;padding:6px 12px;font-size:14px;text-align:center;cursor:pointer}';document.head.append(st)}
 const tmH=m=>{m=+m||0;return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'};
 const tmFmt=(ts,tz)=>ts?new Date(ts).toLocaleString('en-US',{timeZone:tz,weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
@@ -4346,7 +4369,7 @@ async function tmTicket(force){if(!force&&TMTK&&Date.now()<TMTKX)return TMTK;let
 async function tmCall(verb,o,retry){const ticket=await tmTicket(retry);const r=await fetch(TM_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket,verb,o:o||{}})});const j=await r.json().catch(()=>({ok:false,error:'No answer from the time server.'}));
   if(r.status===401&&!retry)return tmCall(verb,o,true);if(!j.ok)throw new Error(j.error||'Not saved');return j}
 function tmMsg(box,cls,txt){const d=el('div',cls,txt);box.prepend(d);setTimeout(()=>d.remove(),cls==='tmErr'?12000:6000)}
-async function tmLoad(){if(!Y().call||!navigator.onLine)return;try{TM=await tmCall('me');TMOK=true;tmSec.hidden=false;tmTeam.hidden=!TM.reviewer;tmAppr.hidden=!TM.owner;try{tabVis()}catch(e){}tmRender();tmBanner();if(TM.reviewer)tmLoadTeam()}
+async function tmLoad(){if(!Y().call||!navigator.onLine)return;try{TM=await tmCall('me');TMOK=true;tmSec.hidden=false;tmTeam.hidden=!TM.reviewer;tmAppr.hidden=!TM.owner;try{tabVis()}catch(e){}tmRender();tmBanner();if(TM.reviewer)tmLoadTeam();try{siLoad()}catch(e){}}
   catch(e){const m=String((e&&e.message)||e);if(/not on the time-tracking list/i.test(m)){TMOK=false;[tmSec,tmTeam,tmAppr].forEach(s=>s.hidden=true);try{tabVis()}catch(x){}return}$('tmMain').textContent='';tmMsg($('tmMain'),'tmErr',m)}}
 async function tmAct(verb,o,label){if(TMBUSY)return;TMBUSY=true;document.querySelectorAll('#tmMain button').forEach(b=>b.disabled=true);
   try{const r=await tmCall(verb,o);await tmLoad();tmMsg($('tmMain'),'tmRcpt','✓ '+(r.text||label||'Saved')+' · '+tmBoth(new Date().toISOString(),(TM&&TM.tz)||'America/New_York'))}
@@ -4531,7 +4554,7 @@ TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.inne
   b.addEventListener('click',()=>go(k));inn.append(b)});
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
-const SUBS={time:[['clock','My time'],['team','Team'],['approve','Approve']],ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],growth:[['all','Growth']],decisions:[['all','Decisions']],
+const SUBS={time:[['clock','My time'],['team','Team'],['approve','Approve'],['signins','Sign-ins']],ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],growth:[['all','Growth']],decisions:[['all','Decisions']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
