@@ -4577,13 +4577,67 @@ IC.growth='<svg viewBox="0 0 24 24"><path d="M12 21v-9"/><path d="M12 12C12 8 9 
 IC.decisions='<svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 12l3 3 5-6"/></svg>';
 IC.time='<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2.5h5M12 2.5V5"/></svg>';
 IC.carter='<svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/><path d="M17.5 4.5l1-1.5M19.5 7h1.8"/></svg>';
-const TABS=[['today','Today'],['tasks','Tasks'],['time','Time'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['decisions','Decisions'],['growth','Growth'],['owner','Owner'],['doors','Doors & Cams'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
+// ---------- 2FF Dashboard tab (owner 11/14/2026) ----------
+// Read-only copy of Yanix's 2FF Dashboard, live from DockRelay (Supabase dash.*, fed by the DockRelay Sync connector).
+// Office staff see rates and driver pay; commissions only Richard and Yanix; Brandon gets no tab. Edits happen in Yanix's dashboard.
+IC.dash2ff='<svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9h17M8 13h3M8 16.5h6"/><path d="M15.5 12.5l1.5 1.5 2.5-3"/></svg>';
+let D2=null,D2T=0,D2BUSY=false,D2ERR='',D2Q='';
+const D2OK=()=>{const me=Y().S&&Y().S.me;return !!(me&&me.n&&!/^Brandon Sharman$/i.test(me.n))};
+{const st=el('style');st.textContent='.d2K{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}.d2K>div{border:1px solid #d9dee2;border-radius:10px;padding:10px;background:#fff}.d2K>div.r{border-color:#d92d20}.d2K b{display:block;font-size:26px;line-height:1.1}.d2K small{color:#5b6670}.d2As{font-size:12px;color:#5b6670}.d2As.old{color:#b42318;font-weight:600}.d2T td,.d2T th{white-space:nowrap}.d2T td.n{text-align:right}.d2Pill{display:inline-block;padding:1px 7px;border-radius:9px;font-size:12px;background:#eef1f3}.d2Pill.ok{background:#e7f6ec;color:#127a3e}.d2Pill.w{background:#fff4e5;color:#9a5b00}';document.head.append(st)}
+const d2Sec=mk('d2Sec','dash2ff','board','<h2>2FF Dashboard <span class="t" id="d2As">loading…</span></h2><p class="help">A live copy of the 2FF Dashboard. To change a load, edit it in the 2FF Dashboard; it shows here within seconds.</p><div class="d2K" id="d2K"></div><h3>Today\'s appointments</h3><div class="tbl"><table class="score d2T" id="d2Today"></table></div><h3>Port runs today</h3><div class="tbl"><table class="score d2T" id="d2Runs"></table></div>');
+const d2Loads=mk('d2Loads','dash2ff','loads','<h2>Loads <span class="t" id="d2LN"></span></h2><div class="drow"><input id="d2Q" placeholder="Filter: container, load #, customer, driver, status" autocomplete="off" style="text-transform:none"></div><div class="tbl"><table class="score d2T" id="d2L"></table></div>');
+const d2Plan=mk('d2Plan','dash2ff','plan','<h2>Containers to plan <span class="t" id="d2PN"></span></h2><p class="help">Not pulled and not marked done in the 2FF Dashboard.</p><div class="tbl"><table class="score d2T" id="d2P"></table></div>');
+const d2Tasks=mk('d2Tasks','dash2ff','tasks','<h2>Open tasks <span class="t" id="d2TN"></span></h2><div class="tbl"><table class="score d2T" id="d2Tk"></table></div>');
+[d2Sec,d2Loads,d2Plan,d2Tasks].forEach(s=>wrap.append(s));
+const d2D=v=>{if(!v)return '';const p=String(v).slice(0,10).split('-');return p.length===3?(+p[1])+'/'+(+p[2]):String(v)};
+const d2M=v=>v==null||v===''?'':'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
+function d2Table(T,head,rows){T.textContent='';const hr=el('tr');head.forEach(h=>hr.append(el('th','',h)));T.append(hr);
+  if(!rows.length){const tr=el('tr'),td=el('td','','Nothing here.');td.colSpan=head.length;tr.append(td);T.append(tr);return}
+  rows.forEach(r=>{const tr=el('tr');r.forEach(c=>{const td=el('td',typeof c==='object'&&c&&c.n?'n':'');if(c&&typeof c==='object'&&c.node)td.append(c.node);else td.textContent=c&&typeof c==='object'?(c.t??''):(c??'');tr.append(td)});T.append(tr)})}
+function d2Status(s){const p=el('span','d2Pill'+(/deliver|complete/i.test(s||'')?' ok':/await|pending/i.test(s||'')?' w':''),s||'—');return {node:p}}
+function d2Render(){const me=(D2&&D2.me)||{};const as=$('d2As');
+  if(!D2){as.textContent=D2ERR||'loading…';return}
+  const t=D2.asof?new Date(D2.asof):null,mins=t?Math.round((Date.now()-t)/60000):null;
+  as.textContent='Last update '+(t?t.toLocaleString('en-US',{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'never')+(D2.last_by&&!/^import/.test(D2.last_by)?' by '+D2.last_by:'')+(me.money?'':' · no dollar figures on your login');
+  as.className='t d2As'+(mins!=null&&mins>240?' old':'');
+  const k=D2.tiles||{},K=$('d2K');K.textContent='';
+  [[k.appts_today,'Appointments today',(k.delivered_today||0)+' delivered',(k.appts_today||0)>(k.delivered_today||0)],
+   [k.open_loads,'Open loads',(k.awaiting_eta||0)+' awaiting ETA',false],
+   [k.empties_out,'Empties still out',(k.empties_out_3d||0)+' out 3+ days',(k.empties_out_3d||0)>0],
+   [k.lfd_3d,'LFD in the next 3 days','not pulled yet',(k.lfd_3d||0)>0],
+   [k.plan_open,'Containers to plan','not pulled, not done',false],
+   [k.open_tasks,'Open tasks','team to-dos',false],
+   [k.port_runs_today==null?0:k.port_runs_today,'Port runs today','',false]].forEach(([n,l,s,red])=>{const d=el('div',red?'r':'');d.append(el('small','',l),el('b','',String(n??0)),el('small','',s));K.append(d)});
+  const L=D2.loads||[],today=D2.today;
+  const td=L.filter(x=>x.appt===today);
+  d2Table($('d2Today'),['Load','Container','Customer','Window','Driver','Status','Deliver to'],td.map(x=>[x.load,x.container,x.customer,x.window,x.driver,d2Status(x.status),x.deliver_to]));
+  const runs=D2.port_runs_today||[];
+  d2Table($('d2Runs'),['Job','Container','Size','Customer','Driver','Chassis','Notes'],runs.map(r=>[r.job,r.box,r.size,r.customer,r.driver,r.chassis,r.notes]));
+  const q=D2Q.trim().toUpperCase(),f=q?L.filter(x=>[x.load,x.container,x.customer,x.driver,x.status,x.booking].join(' ').toUpperCase().includes(q)):L;
+  $('d2LN').textContent=f.length+' of '+L.length+' · open, or moved in the last 3 days';
+  const head=['Load','Container','Size','Customer','Status','Appt','LFD','Driver','Pulled','Delivered','Returned','Return to'];
+  if(me.money)head.push('Rate','Linehaul','Pull pay','Delivery pay','Return pay');if(me.comm)head.push('Commission');
+  d2Table($('d2L'),head,f.map(x=>{const r=[x.load,x.container,x.size,x.customer,d2Status(x.status),d2D(x.appt)+(x.window?' '+x.window:''),d2D(x.lfd),x.driver,d2D(x.pulled),d2D(x.delivered),d2D(x.returned),x.return_to];
+    if(me.money)r.push({t:d2M(x.rate),n:1},{t:d2M(x.linehaul),n:1},{t:d2M(x.pull_pay),n:1},{t:d2M(x.delivery_pay),n:1},{t:d2M(x.return_pay),n:1});if(me.comm)r.push({t:d2M(x.commission),n:1});return r}));
+  const P=D2.plan||[];$('d2PN').textContent=P.length;
+  d2Table($('d2P'),['Container','Size','Customer','Status','ETA','LFD','Owner','Notes'],P.map(p=>[p.container,p.size,p.customer,p.status,p.eta,d2D(p.lfd),p.owner,p.notes]));
+  const TK=D2.tasks||[];$('d2TN').textContent=TK.length;
+  d2Table($('d2Tk'),['Task','For','From','About','Created'],TK.map(x=>[x.text,x.to,x.from,x.ref,x.at?new Date(x.at).toLocaleDateString('en-US',{month:'numeric',day:'numeric'}):'']))}
+function loadD2(force){if(!D2OK()||D2BUSY||!navigator.onLine||!Y().call)return;if(!force&&Date.now()-D2T<45000)return;D2BUSY=true;D2T=Date.now();
+  Y().call('getDash2ff',[]).then(d=>{D2=d;D2ERR='';try{localStorage.setItem('d2Last',JSON.stringify(d))}catch(e){}d2Render()})
+  .catch(e=>{D2ERR='Could not load: '+String((e&&e.message)||e);if(!D2){try{D2=JSON.parse(localStorage.getItem('d2Last')||'null')}catch(x){}}d2Render()}).finally(()=>{D2BUSY=false})}
+$('d2Q').addEventListener('input',e=>{D2Q=e.target.value;d2Render()});
+try{D2=JSON.parse(localStorage.getItem('d2Last')||'null');if(D2&&!D2OK())D2=null}catch(e){}
+setInterval(()=>{try{if(typeof TAB!=='undefined'&&TAB==='dash2ff')loadD2(false)}catch(e){}},15000);
+window.addEventListener('yard',()=>{[d2Sec,d2Loads,d2Plan,d2Tasks].forEach(s=>s.hidden=!D2OK());try{if(typeof TAB!=='undefined'&&TAB==='dash2ff')loadD2(false)}catch(e){}});
+
+const TABS=[['today','Today'],['dash2ff','2FF Dashboard'],['tasks','Tasks'],['time','Time'],['yard','Yard'],['port','Port'],['sales','Work Finder'],['texts','RingCentral'],['social','Social Media'],['reports','Reports'],['gps','GPS'],['safety','Safety'],['carter','Carter'],['decisions','Decisions'],['growth','Growth'],['owner','Owner'],['doors','Doors & Cams'],['ask','Ask Carter']]; // Doors: own tab for the Kwikset office locks (owner 11/2/2026)
 const nav=el('nav','tabbar');nav.setAttribute('aria-label','App sections');const inn=el('div','in');nav.append(inn);
 TABS.forEach(([k,l])=>{const b=el('button');b.type='button';b.dataset.k=k;b.innerHTML=IC[k];b.append(el('span','l',l),el('span','bdg'));
   b.addEventListener('click',()=>go(k));inn.append(b)});
 document.body.append(nav);document.body.classList.add('tabs');
 // ---------- sub-tabs inside each tab ----------
-const SUBS={time:[['clock','My time'],['team','Team'],['approve','Approve'],['signins','Sign-ins']],ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],growth:[['all','Growth']],decisions:[['all','Decisions']],
+const SUBS={dash2ff:[['board','Today'],['loads','Loads'],['plan','Plan'],['tasks','Tasks']],time:[['clock','My time'],['team','Team'],['approve','Approve'],['signins','Sign-ins']],ask:[['chat','Ask AI']],today:[['att','Attention'],['feed','Port feed']],doors:[['locks','Office doors'],['users','Door users'],['cams','Cameras']],growth:[['all','Growth']],decisions:[['all','Decisions']],
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
@@ -4614,7 +4668,7 @@ function sub(t,k,quiet){const av=subAvail(t);if(!av.includes(k))k=av[0]||SUBS[t]
 function show(){[...wrap.children].forEach(x=>{if(!x.dataset||!x.dataset.tab)return;x.classList.toggle('vis',x.dataset.tab===TAB&&(x.dataset.sub==='*'||x.dataset.sub===CUR[TAB]))})}
 function subBadge(t,k,n,red){const b=SB[t]&&SB[t].querySelector('button[data-k="'+k+'"] .sb');if(b){b.textContent=n?String(n):'';b.className='sb'+(red?' r':'')}}
 let TAB='';
-function go(k,target,quiet){TAB=k;if(k==='ask')setTimeout(()=>{try{aiDraw()}catch(x){}},30);document.body.dataset.tab=k;inn.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.k===k);b.setAttribute('aria-current',b.dataset.k===k?'page':'false')});try{moreSync()}catch(e){}
+function go(k,target,quiet){TAB=k;if(k==='dash2ff')setTimeout(()=>{try{loadD2(true)}catch(x){}},30);if(k==='ask')setTimeout(()=>{try{aiDraw()}catch(x){}},30);document.body.dataset.tab=k;inn.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.k===k);b.setAttribute('aria-current',b.dataset.k===k?'page':'false')});try{moreSync()}catch(e){}
   {const tg=target&&(typeof target==='string'?document.querySelector(target):target);const hs=tg&&tg.closest&&tg.closest('.wrap > [data-sub]');sub(k,hs&&hs.dataset.sub!=='*'?hs.dataset.sub:(CUR[k]||''),true)}
   if(!quiet){try{localStorage.setItem('yardTab',k)}catch(e){}if(history.replaceState)history.replaceState(null,'','#'+k)}
   if(target){setTimeout(()=>{const t=typeof target==='string'?document.querySelector(target):target;if(t){t.scrollIntoView({behavior:'smooth',block:'center'});t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash')}},60)}
@@ -4674,7 +4728,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!sheet.hidden)close
 '.msItem i{position:absolute;top:6px;right:8px;font:700 10px/16px inherit;font-style:normal;min-width:16px;height:16px;border-radius:8px;padding:0 4px;background:#b42318;color:#fff}.msItem i.y{background:#e0a100}.msNote{font-size:12.5px;color:var(--muted);margin:12px 2px 0}';document.head.append(st)}
 
 // hide tabs that are empty for this person
-function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()||fcCan(),growth:fcCan(),decisions:fcCan(),time:TMOK};['tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors','growth','decisions','time'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
+function tabVis(){const lim=roles().includes('limited')&&!roles().includes('admin');const R={dash2ff:D2OK(),tasks:can('yard'),yard:can('yard')||roles().includes('view'),reports:can('yard')||roles().includes('view'),gps:!lim,safety:!lim,port:!lim,sales:slCan(),social:smCan(),owner:fcCan(),carter:fcCan(),texts:TXOK,doors:drOK()||fcCan(),growth:fcCan(),decisions:fcCan(),time:TMOK};['dash2ff','tasks','yard','reports','gps','safety','port','sales','social','owner','carter','texts','doors','growth','decisions','time'].forEach(k=>{const any=R[k]&&[...wrap.querySelectorAll('section[data-tab="'+k+'"]')].some(s=>!s.hidden);tabBtn(k).hidden=false;tabBtn(k).style.display=any?'':'none'});
   try{pinTabs()}catch(e){console.warn('pinTabs',e);inn.style.gridTemplateColumns='repeat('+[...inn.children].filter(b=>b.style.display!=='none').length+',1fr)'}
   if(tabBtn(TAB)&&tabBtn(TAB).style.display==='none')go('today');else sub(TAB,CUR[TAB]||'',true)}
 
