@@ -3510,7 +3510,7 @@ $('txQ').addEventListener('input',(()=>{let tm;return e=>{clearTimeout(tm);tm=se
 $('txAll').addEventListener('click',e=>{const b=e.target;b.disabled=true;Y().call('textsSeenAll',[{line:TXLN}]).then(d=>{TX=d;renderTX()}).catch(x=>alert((x&&x.message)||'Could not save.')).finally(()=>{b.disabled=false})});
 setTimeout(()=>loadTX(true),4000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB==='texts')loadTX(true)},15000);setInterval(()=>{if(document.visibilityState==='visible'&&TAB!=='texts')loadTX(true)},5*60000);
 // ---- RingCentral > To-do: shared callback list (one task per caller/texter, owner + deadline) ----
-const tdSec=mk('tdSec','texts','todo','<h2>Phone to-do <span class="t" id="tdAsof">every missed call, voicemail and unanswered text gets one owner and a deadline</span></h2><div class="kpis" id="tdK"></div><div class="fchips" id="tdF"></div><div id="tdL"></div><p class="t" style="margin-top:10px">Deadline: 5 minutes during office hours (Mon–Fri 8–7, Sat 8–1), otherwise 8:05 AM next business day. A task closes itself when anyone at 2FF calls or texts that number back.</p>');
+const tdSec=mk('tdSec','texts','todo','<h2>Phone to-do <span class="t" id="tdAsof">every missed call, voicemail and unanswered text gets one owner and a deadline</span></h2><div class="kpis" id="tdK"></div><div class="fchips" id="tdF"></div><div id="tdL"></div><p class="t" style="margin-top:10px">Deadline: 5 minutes during office hours (Mon–Fri 7–6, Sat 8–1), otherwise when the office next opens (7:05 AM weekdays, 8:05 AM Saturday). A task closes itself when anyone at 2FF calls or texts that number back.</p>');
 tdSec.hidden=true;wrap.append(tdSec);
 {const st=el('style');st.textContent='.tdC{border:1px solid var(--line);border-radius:12px;background:var(--panel,#fff);padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:5px}.tdC.late{border-color:var(--stop,#b42318);box-shadow:inset 3px 0 0 var(--stop,#b42318)}.tdC.urg{box-shadow:inset 3px 0 0 var(--accent,#C8102E)}.tdC.done{opacity:.6}'+
 '.tdC .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tdC .h b{font-size:15.5px}.tdC .k{font-size:12px;font-weight:700;border-radius:8px;padding:1px 8px;background:var(--line2,#eef1f6)}.tdC .du{margin-left:auto;font-size:12.5px;font-weight:650}.tdC .du.late{color:var(--stop,#b42318)}.tdC .du.ok{color:var(--ok,#1f7a44)}'+
@@ -4248,6 +4248,35 @@ function renderPF(){pfSec.hidden=!(TX&&TX.admin);if(!PSC)return;const P=PSC.peop
       r.append(el('span','t',new Date(x.at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})),el('b','',x.person),el('span','',(x.kind==='call_back_late'?'📞 ':x.kind==='text_late'?'💬 ':'✅ ')+x.detail+(x.who?' · '+txFmtN(x.who):'')),el('span','m',x.open?'still open':(x.min>=60?(x.min/60).toFixed(1)+' h':x.min+' min')+' late'));list.append(r)})};
     sel.addEventListener('change',draw);draw();box.append(hd,list);L.append(box)}}
 {let n=0;setInterval(()=>{n++;if(document.visibilityState==='visible'&&TAB==='texts'&&CUR.texts==='perf'&&n%4===0)loadPF()},15000)}
+// ---- DRIVER CHECK-INS (owner 11/14/2026): drivers call Carter (877 line) with status; dispatch sees and clears them here ----
+const dkSec=mk('dkSec','texts','checkins','<h2>Driver check-ins <span class="t" id="dkAsof">drivers who called Carter with a status · last 3 days</span></h2><div class="fchips" id="dkF"></div><div class="kpis" id="dkK"></div><div id="dkL"></div>'+
+ '<p class="t" style="margin-top:10px">Carter logs these from calls to the main line. Delays and problems also land in To-do with a callback deadline. Tap <b>Seen</b> once dispatch has it. Carter never gives drivers instructions; you do.</p>');
+wrap.append(dkSec);let DK=null,DKF='open';
+{const st=el('style');st.textContent='.dkC{border:1px solid var(--line,#d6dad8);border-radius:12px;padding:10px 12px;background:var(--panel,#fff);margin:8px 0;display:grid;gap:4px}.dkC.p{border-left:5px solid var(--stop,#b42318)}.dkC.done{opacity:.55}.dkC .h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.dkC .h b{font-size:15px}.dkC .num{font-family:var(--mono,monospace);font-weight:700;letter-spacing:.03em}.dkC .st{font-weight:650}.dkC .st.p{color:var(--stop,#b42318)}.dkC .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}.dkC .unk{color:#9a6700}';document.head.append(st)}
+const DK_ST={picked_up:'Picked up',in_transit:'On the way',at_receiver:'At the receiver',unloaded:'Unloaded',empty_returned:'Empty returned',at_our_yard:'At our yard',delayed:'Running late',problem:'Problem',other:'Other'};
+const DK_FN='https://lzwidcwiejowjhgzkcxo.supabase.co/functions/v1/driver-checkins';let DK_T={t:'',at:0};
+async function dkTicket(){if(DK_T.t&&Date.now()-DK_T.at<8*60000)return DK_T.t;const t=await Y().call('aiAsk',[{mode:'ask',q:'§gate token',tab:'texts'}]);if(!t||!t.ticket)throw new Error((t&&t.error)||'Could not sign in. Tap Refresh.');DK_T={t:t.ticket,at:Date.now()};return t.ticket}
+async function dkCall(o){const go=async()=>fetch(DK_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({ticket:await dkTicket()},o))}).then(x=>x.json());let r=await go();if(r&&r.ok===false&&/ticket/i.test(r.error||'')){DK_T={t:'',at:0};r=await go()}return r}
+function loadDK(){if(!Y().call)return;$('dkAsof').textContent='loading…';dkCall({action:'list'}).then(r=>{if(!r||r.ok===false)throw new Error((r&&r.error)||'Could not load');DK=r;renderDK()}).catch(e=>{const m=String((e&&e.message)||e);$('dkAsof').textContent=/NEED_EMAIL/.test(m)?'Verify your company email in Ask first, then come back.':m})}
+function renderDK(){if(!DK)return;const R=DK.rows||[],open=R.filter(x=>!x.reviewed_at),prob=open.filter(x=>x.problem);
+  $('dkAsof').textContent='last 3 days · as of '+new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  try{slChips($('dkF'),[['open','Not seen ('+open.length+')',null],['problem','Problems ('+prob.length+')',null],['all','All ('+R.length+')',null]],DKF,k=>{DKF=k;renderDK()})}catch(e){}
+  const K=$('dkK');K.textContent='';[['Not seen',open.length],['Problems / late',prob.length],['Today',R.filter(x=>new Date(x.at).toDateString()===new Date().toDateString()).length]].forEach(([l,n])=>{const d=el('div');d.append(el('b','',String(n)),el('span','',l));K.append(d)});
+  const L=$('dkL');L.textContent='';const show=R.filter(x=>DKF==='all'||(DKF==='open'?!x.reviewed_at:(x.problem&&!x.reviewed_at)));
+  if(!show.length){L.append(el('p','t',DKF==='all'?'No check-ins in the last 3 days.':'All clear. Nothing waiting.'))}
+  show.forEach(x=>{const c=el('div','dkC'+(x.problem?' p':'')+(x.reviewed_at?' done':''));const h=el('div','h');
+    h.append(el('b','',x.driver_name||'Unknown caller'));if(!x.known_driver)h.append(el('span','t unk','not matched to a driver'));
+    h.append(el('span','t',new Date(x.at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})));c.append(h);
+    const l2=el('div');l2.append(el('span','st'+(x.problem?' p':''),DK_ST[x.status]||x.status));if(x.container){l2.append(document.createTextNode(' · '));l2.append(el('span','num',x.container))}c.append(l2);
+    const det=[x.location&&('📍 '+x.location),x.eta&&('ETA '+x.eta)].filter(Boolean).join(' · ');if(det)c.append(el('div','t',det));
+    if(x.note)c.append(el('div','',x.note));
+    const b=el('div','btns');if(x.phone){const a=el('a','btn2','📞 Call '+(x.driver_name||'back'));a.href='tel:'+x.phone;b.append(a)}
+    if(x.task_id)b.append(el('span','t','In To-do'));
+    if(x.reviewed_at)b.append(el('span','t','✓ Seen by '+(x.reviewed_by||'')+' '+new Date(x.reviewed_at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})));
+    else{const s=el('button','btn','✓ Seen');s.type='button';s.addEventListener('click',()=>{s.disabled=true;dkCall({action:'done',id:x.id}).then(r=>{if(r&&r.ok===false)throw new Error(r.error||'Not saved');x.reviewed_at=new Date().toISOString();x.reviewed_by='you';renderDK()}).catch(e=>{alert((e&&e.message)||'Not saved');s.disabled=false})});b.append(s)}
+    c.append(b);L.append(c)});
+  try{subBadge('texts','checkins',open.length,prob.length>0)}catch(e){}}
+{let n=0;setTimeout(loadDK,4000);setInterval(()=>{n++;if(document.visibilityState==='visible'&&(TAB==='texts'&&CUR.texts==='checkins'||n%6===0))loadDK()},20000)}
 // ---- GROWTH (owner 11/2/2026): Carter's research and money ideas in one place, newest first. Richard only: the data comes with getBrain,
 // which the server checks is Richard. Read-only here; approve or reject proposals in Carter > Decisions.
 const grSec=mk('grSec','growth','all','<div class="grHd"><h2>Growth <span class="t">Carter\'s research and money ideas · newest first</span></h2></div>'+
@@ -4558,7 +4587,7 @@ const SUBS={time:[['clock','My time'],['team','Team'],['approve','Approve'],['si
 tasks:[['morning','Morning'],['day','During the day'],['end','End of day'],['week','Mon–Sun'],['contacts','Who to call']],
 yard:[['inyard','In the yard'],['scac','SCAC finder'],['containers','Check in / out'],['fleet','Our 17 chassis'],['chassis','Chassis'],['walk','Yard walk'],['fix','Fix an entry']],
 port:[['moves','Gate moves'],['gates','Hours of operation'],['pins','PINs'],['ow','Overweight'],['watch','Watch'],['empties','Empties'],['gate','Gate dates'],['pool','Pool chassis'],['trucks','Trucks'],['cred','Credentials']],
-texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['perf','Scorecard']],
+texts:[['todo','To-do'],['inbox','Texts'],['calls','Calls'],['checkins','Driver check-ins'],['perf','Scorecard']],
 sales:[['work','Find work'],['loads','Loads & carriers'],['book','Carrier book'],['quotes','Quote desk'],['lanes','Lanes'],['dat','DAT'],['viewers','Profile viewers'],['finder','Freight finder'],['research','Research']],
 carter:[['brief','Brief'],['status','Status'],['decide','Decisions'],['mail','Email'],['outbox','Outbox'],['team','Team'],['lessons','Lessons'],['spend','Spend']],
 owner:[['browser',"Carter's browser"],['notify','Notify'],['center','Command Center'],['driverpay','Driver pay'],['books','Receivables & payables'],['payroll','Payroll'],['connect','Integrations']],
